@@ -62,7 +62,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
             .from('announcement')
             .select('*')
             .eq('season_id', appState.activeSeasonId!)
-            .order('created_at', descending: true);
+            .order('created_at', ascending: false);
 
         if (response != null) {
           final List<Map<String, dynamic>> loaded = [];
