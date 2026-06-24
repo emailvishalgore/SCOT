@@ -79,30 +79,10 @@ android {
         }
     }
 
-    flavorDimensions "default"
-    productFlavors { 
-        production {
-            dimension "default"
-            applicationIdSuffix ""
-            manifestPlaceholders = [appName: "App Name"]
-        }
-        staging {
-            dimension "default"
-            applicationIdSuffix ".stg"
-            manifestPlaceholders = [appName: "[STG] App Name"]
-        }
-        development {
-            dimension "default"
-            applicationIdSuffix ".dev"
-            manifestPlaceholders = [appName: "[DEV] App Name"]
-        }
-    }
-
-
     buildTypes {
         release {
-            signingConfig signingConfigs.release
-            minifyEnabled true
+            signingConfig signingConfigs.debug
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt')
         }
         debug {
