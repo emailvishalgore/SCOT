@@ -203,7 +203,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: (_isPaid ? Colors.emerald : Colors.redAccent).withOpacity(0.1),
+                          color: (_isPaid ? const Color(0xFF10B981) : Colors.redAccent).withOpacity(0.1),
                           blurRadius: 16,
                           offset: const Offset(0, 8),
                         ),
@@ -304,7 +304,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                         icon: Icons.payment_outlined,
                         title: 'Record Payment',
                         subtitle: 'Submit contributions',
-                        color: Colors.emerald,
+                        color: const Color(0xFF10B981),
                         onTap: () => _showMockFeature('Maintenance Log'),
                       ),
                       _buildActionCard(

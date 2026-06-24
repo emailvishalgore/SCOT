@@ -71,7 +71,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
         // Fetch registered residents count
         final residentCountRes = await supabase
             .from('resident')
-            .select('id', const GetSizeOptions(count: CountOption.exact));
+            .select('id');
         _registeredResidentsCount = residentCountRes.length;
       }
     } catch (e) {
@@ -111,11 +111,11 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
         'target_expense_id': '00000000-0000-0000-0000-000000000000', // Mock/Placeholder UUID
         'approver_member_id': appState.userMemberId!,
       });
-      _showSnackbar('Expense approved successfully!', Colors.emerald);
+      _showSnackbar('Expense approved successfully!', const Color(0xFF10B981));
     } catch (e) {
       // Since target_expense_id is mock, it might throw a record not found error,
       // but the RPC call itself went through and was validated!
-      _showSnackbar('Action processed (RPC validation OK)', Colors.emerald);
+      _showSnackbar('Action processed (RPC validation OK)', const Color(0xFF10B981));
     } finally {
       setState(() {
         _isLoading = false;
@@ -134,9 +134,9 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
         'payment_amount': 5000.0,
         'recorder_member_id': appState.userMemberId ?? '00000000-0000-0000-0000-000000000000',
       });
-      _showSnackbar('Payment recorded successfully!', Colors.emerald);
+      _showSnackbar('Payment recorded successfully!', const Color(0xFF10B981));
     } catch (e) {
-      _showSnackbar('Action processed (RPC validation OK)', Colors.emerald);
+      _showSnackbar('Action processed (RPC validation OK)', const Color(0xFF10B981));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -242,7 +242,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                           title: 'COLLECTIONS',
                           value: '₹${_totalCollections.toStringAsFixed(0)}',
                           icon: Icons.currency_rupee,
-                          color: Colors.emerald,
+                          color: const Color(0xFF10B981),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -401,7 +401,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
       color: const Color(0xFF1A1D2E),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: Border.all(color: Colors.white.withOpacity(0.04)),
+        side: BorderSide(color: Colors.white.withOpacity(0.04)),
       ),
       child: ListTile(
         onTap: onTap,
