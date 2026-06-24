@@ -5,6 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../app_state.dart';
 import '../theme/design_system.dart';
 import 'login_screen.dart';
+import 'events_screen.dart';
+import 'leaderboard_and_fixtures_screen.dart';
+import 'announcements_screen.dart';
+import 'gallery_screen.dart';
 
 class ResidentDashboard extends StatefulWidget {
   const ResidentDashboard({super.key});
@@ -252,6 +256,53 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 20),
+
+                  // Latest Announcement Feed Card
+                  if (appState.activeSeasonId == 'demo-season-id' && appState.demoAnnouncements.isNotEmpty) ...[
+                    InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AnnouncementsScreen()),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(24),
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.primary),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'LATEST ANNOUNCEMENT',
+                                  style: DesignSystem.headingStyle(fontSize: 10, color: DesignSystem.textMuted).copyWith(letterSpacing: 1.5),
+                                ),
+                                const Icon(Icons.campaign_rounded, color: DesignSystem.primary, size: 18),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              appState.demoAnnouncements.first['title'],
+                              style: DesignSystem.headingStyle(fontSize: 14, color: DesignSystem.textPrimary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              appState.demoAnnouncements.first['content'],
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: DesignSystem.bodyStyle(fontSize: 12, color: DesignSystem.textMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 32),
 
                   // Quick Actions Grid Title
@@ -280,7 +331,12 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                         title: 'Register Event',
                         subtitle: 'Sign up for matches',
                         color: DesignSystem.primary,
-                        onTap: () => _showMockFeature('Event Registration'),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const EventsScreen()),
+                          ).then((_) => _fetchResidentDetails());
+                        },
                       ),
                       _buildActionCard(
                         context: context,
@@ -288,24 +344,39 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                         title: 'Match Scores',
                         subtitle: 'View active fixtures',
                         color: DesignSystem.accentYellow,
-                        iconColorOverride: const Color(0xFFD4AF37), // Darker yellow/gold for visibility
-                        onTap: () => _showMockFeature('Live Scoring'),
+                        iconColorOverride: const Color(0xFFD4AF37),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const LeaderboardAndFixturesScreen()),
+                          );
+                        },
                       ),
                       _buildActionCard(
                         context: context,
-                        icon: Icons.payment_rounded,
-                        title: 'Record Payment',
-                        subtitle: 'Submit contributions',
+                        icon: Icons.campaign_rounded,
+                        title: 'Bulletin Board',
+                        subtitle: 'Society updates',
                         color: DesignSystem.successGreen,
-                        onTap: () => _showMockFeature('Maintenance Log'),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const AnnouncementsScreen()),
+                          );
+                        },
                       ),
                       _buildActionCard(
                         context: context,
-                        icon: Icons.receipt_long_rounded,
-                        title: 'My Receipts',
-                        subtitle: 'Download past records',
+                        icon: Icons.photo_library_rounded,
+                        title: 'Media Gallery',
+                        subtitle: 'Match photos grid',
                         color: DesignSystem.accentPurple,
-                        onTap: () => _showMockFeature('Receipt Explorer'),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const GalleryScreen()),
+                          );
+                        },
                       ),
                     ],
                   ),

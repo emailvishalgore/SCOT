@@ -44,6 +44,57 @@ class AppState extends ChangeNotifier {
     },
   ];
 
+  // --- Live Registrations Mocks ---
+  final Set<String> demoRegisteredEvents = {};
+
+  // --- Announcements Mocks ---
+  final List<Map<String, dynamic>> demoAnnouncements = [
+    {
+      'id': 'ann-1',
+      'title': 'SCOT TOPAZ Sports Fiesta Registration Open!',
+      'content': 'We are excited to announce that registration for the upcoming Sports Fiesta is now open. Onboard your family members and sign up for football, badminton, and carrom!',
+      'scope': 'GLOBAL',
+      'wing_id': '',
+      'date': 'June 24, 2026',
+      'author': 'SCOT Core Team'
+    },
+    {
+      'id': 'ann-2',
+      'title': 'Wing N Water Tank Cleaning',
+      'content': 'Please note that the main water tank for Wing N will undergo maintenance this Friday from 10:00 AM to 2:00 PM. Please store water in advance.',
+      'scope': 'WING',
+      'wing_id': 'demo-wing-N-id', // Match mock wing N
+      'date': 'June 23, 2026',
+      'author': 'Commander Jack (Wing N)'
+    }
+  ];
+
+  // --- Sponsorships & Quotes Mocks ---
+  final List<Map<String, dynamic>> demoSponsors = [
+    {
+      'id': 'spon-1',
+      'name': 'Topaz Supermarket',
+      'amount': 25000.0,
+      'tier': 'PLATINUM',
+    },
+    {
+      'id': 'spon-2',
+      'name': 'Organic Greens Inc.',
+      'amount': 10000.0,
+      'tier': 'GOLD',
+    }
+  ];
+
+  final List<Map<String, dynamic>> demoQuotes = [
+    {
+      'id': 'qte-1',
+      'vendor': 'Tasty Catering Service',
+      'amount': 15000.0,
+      'description': 'Food and drinks estimate for 100 residents.',
+      'file': 'catering_quote_v2.pdf'
+    }
+  ];
+
   void addCustomTestAccount(Map<String, String> account) {
     customTestAccounts.add(account);
     notifyListeners();
@@ -65,6 +116,30 @@ class AppState extends ChangeNotifier {
       demoPendingApprovals = demoPendingApprovals > 0 ? demoPendingApprovals - 1 : 0;
       notifyListeners();
     }
+  }
+
+  void registerForEventInDemo(String subEventId) {
+    demoRegisteredEvents.add(subEventId);
+    notifyListeners();
+  }
+
+  bool isRegisteredInDemo(String subEventId) {
+    return demoRegisteredEvents.contains(subEventId);
+  }
+
+  void addAnnouncementInDemo(Map<String, dynamic> ann) {
+    demoAnnouncements.insert(0, ann);
+    notifyListeners();
+  }
+
+  void addSponsorInDemo(Map<String, dynamic> spon) {
+    demoSponsors.insert(0, spon);
+    notifyListeners();
+  }
+
+  void addQuoteInDemo(Map<String, dynamic> quote) {
+    demoQuotes.insert(0, quote);
+    notifyListeners();
   }
 
   void setLoading(bool val) {

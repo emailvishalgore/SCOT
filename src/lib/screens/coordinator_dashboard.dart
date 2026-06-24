@@ -10,6 +10,8 @@ import 'resident_onboarding_screen.dart';
 import 'record_payment_screen.dart';
 import 'approve_expenses_screen.dart';
 import 'record_score_screen.dart';
+import 'create_competition_screen.dart';
+import 'finance_portal_screen.dart';
 
 class CoordinatorDashboard extends StatefulWidget {
   const CoordinatorDashboard({super.key});
@@ -406,6 +408,30 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const ResidentOnboardingScreen()),
+                      );
+                    },
+                  ),
+                  _buildConsoleTile(
+                    icon: Icons.sports_rounded,
+                    title: 'Create Competition & Brackets',
+                    subtitle: 'Set points configs and run scheduler DDLs',
+                    color: DesignSystem.primary,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CreateCompetitionScreen()),
+                      );
+                    },
+                  ),
+                  _buildConsoleTile(
+                    icon: Icons.monetization_on_outlined,
+                    title: 'Sponsorships & Vendor Estimates',
+                    subtitle: 'Manage branding ledger & quote PDFs',
+                    color: DesignSystem.secondary,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const FinancePortalScreen()),
                       );
                     },
                   ),
