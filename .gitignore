@@ -1,0 +1,23 @@
+# Database and Local Containers
+supabase/.temp/
+pgdata/
+*.zip
+*.log
+
+# IDEs and OS
+.idea/
+.vscode/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Build artifacts
+src/build/
+src/.dart_tool/
+src/.flutter-plugins
+src/.flutter-plugins-dependencies
+src/.packages
+src/pubspec.lock

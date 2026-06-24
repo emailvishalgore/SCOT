@@ -1,0 +1,12 @@
+- [x] Native Flutter Client Setup
+  - [x] Clean and initialize standard Flutter project structure in `src/`.
+  - [x] Configure `pubspec.yaml` with Supabase, Provider, and Google Fonts.
+  - [x] Create the `AppState` model to decode JWT claims and fetch active seasons.
+  - [x] Implement `main.dart` with dual local/cloud testing flags and auth-gated routing.
+  - [x] Design `LoginScreen` featuring an OTP login form and a "Quick Test Accounts" autofill panel.
+  - [x] Design `ResidentDashboard` showing Wing/Flat name and maintenance status.
+  - [x] Design `CoordinatorDashboard` showing stats and RPC bindings (Approve Expense, Record Payment).
+- [x] Cloud Build Automation Setup
+  - [x] Create the GitHub Actions workflow (`.github/workflows/build_apk.yml`) to compile the release APK.
+  - [x] Create root `.gitignore` to keep local repository clean.
+  - [x] Update `walkthrough.md` with implementation summaries.
