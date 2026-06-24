@@ -6,6 +6,7 @@ import '../app_state.dart';
 import '../theme/design_system.dart';
 import 'resident_dashboard.dart';
 import 'coordinator_dashboard.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,119 +15,117 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final _phoneController = TextEditingController();
-  final _otpController = TextEditingController();
-  bool _otpSent = false;
+class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final _usernameController = TextEditingController();
+  final _pinController = TextEditingController();
   bool _isLoading = false;
 
   final List<Map<String, String>> _testAccounts = [
     {
       'name': 'Dave Miller (SCOT Admin)',
-      'phone': '+919999988884',
-      'role': 'SCOT_ADMIN'
+      'username': 'dave_miller',
+      'pin': '1234',
+      'type': 'COORDINATOR'
     },
     {
-      'name': 'John Doe (Wing Commander & Champion)',
-      'phone': '+919999988888',
-      'role': 'WING_COMMANDER'
+      'name': 'Jack Commander (Wing N Commander)',
+      'username': 'jack_commander',
+      'pin': '1234',
+      'type': 'COORDINATOR'
     },
     {
-      'name': 'Bob Smith (Core Team / Admin)',
-      'phone': '+919999988886',
-      'role': 'CORE_TEAM'
+      'name': 'John Doe (Resident Flat 102)',
+      'username': 'john_doe',
+      'pin': '1234',
+      'type': 'RESIDENT'
     },
     {
-      'name': 'Jane Doe (General Resident)',
-      'phone': '+919999988887',
-      'role': 'HOME_MEMBER'
-    },
-    {
-      'name': 'Alice Cooper (Flat Owner)',
-      'phone': '+919999988885',
-      'role': 'HOME_CHIEF'
+      'name': 'Jane Doe (Family Member Flat 102)',
+      'username': 'jane_doe',
+      'pin': '1234',
+      'type': 'RESIDENT'
     },
   ];
 
-  Future<void> _sendOtp() async {
-    final phone = _phoneController.text.trim();
-    if (phone.isEmpty) {
-      _showError('Please enter a valid phone number');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    try {
-      await Supabase.instance.client.auth.signInWithOtp(
-        phone: phone,
-      );
-      setState(() => _otpSent = true);
-      _showSuccess('OTP Sent to $phone (Test code is 123456)');
-    } catch (e) {
-      final allTestAccounts = [..._testAccounts, ...Provider.of<AppState>(context, listen: false).customTestAccounts];
-      final isTest = allTestAccounts.any((element) => element['phone'] == phone);
-      if (isTest) {
-        setState(() => _otpSent = true);
-        _showWarning('SMS API provider disabled. Switched to offline demo mode. Enter 123456.');
-      } else {
-        _showError('Error sending OTP: ${e.toString()}');
-      }
-    } finally {
-      setState(() => _isLoading = false);
-    }
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      setState(() {
+        _usernameController.clear();
+        _pinController.clear();
+      });
+    });
   }
 
-  Future<void> _verifyOtp() async {
-    final phone = _phoneController.text.trim();
-    final otp = _otpController.text.trim();
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _usernameController.dispose();
+    _pinController.dispose();
+    super.dispose();
+  }
 
-    if (otp.isEmpty) {
-      _showError('Please enter the verification code');
+  Future<void> _handleLogin() async {
+    final username = _usernameController.text.trim();
+    final pin = _pinController.text.trim();
+
+    if (username.isEmpty || pin.isEmpty) {
+      _showError('Please fill in all credentials');
       return;
     }
 
     setState(() => _isLoading = true);
-    try {
-      final response = await Supabase.instance.client.auth.verifyOTP(
-        phone: phone,
-        token: otp,
-        type: OtpType.sms,
-      );
+    final appState = Provider.of<AppState>(context, listen: false);
 
-      final session = response.session;
-      if (session != null) {
-        final appState = Provider.of<AppState>(context, listen: false);
-        await appState.decodeJwtClaims(session.accessToken);
-        await appState.fetchActiveSeason(Supabase.instance.client);
-
-        if (!mounted) return;
-        _routeUser(appState.userRole);
-      } else {
-        _showError('Verification failed. Session is empty.');
-      }
-    } catch (e) {
-      final allTestAccounts = [..._testAccounts, ...Provider.of<AppState>(context, listen: false).customTestAccounts];
-      final isTest = allTestAccounts.any((element) => element['phone'] == phone);
-      if (isTest && otp == '123456') {
-        final appState = Provider.of<AppState>(context, listen: false);
-        final acc = allTestAccounts.firstWhere((element) => element['phone'] == phone);
-        
-        appState.userRole = acc['role'];
-        appState.userResidentId = 'demo-resident-id';
-        appState.userMemberId = 'demo-member-id';
-        appState.userWingId = acc['wing_id'] ?? 'N';
-        appState.userFlatId = acc['flat_id'] ?? 'demo-flat-id';
-        appState.activeSeasonId = 'demo-season-id';
-        appState.notifyListeners();
-
-        _showSuccess('Logged in to Offline Demo Mode as ${acc['name']}');
-        if (!mounted) return;
-        _routeUser(appState.userRole);
-      } else {
-        _showError('Verification failed: ${e.toString()}');
-      }
-    } finally {
+    if (appState.activeSeasonId == 'demo-season-id') {
+      // Offline Demo Authentication
+      await Future.delayed(const Duration(milliseconds: 600));
+      final res = appState.authenticateUserInDemo(username, pin);
+      
       setState(() => _isLoading = false);
+
+      if (res['success'] == true) {
+        _showSuccess('Welcome back, ${res['name']}! (Demo Mode)');
+        if (!mounted) return;
+        _routeUser(res['role']);
+      } else {
+        _showError(res['message'] ?? 'Authentication failed');
+      }
+    } else {
+      // Real Cloud: Query Supabase core.authenticate_user RPC
+      try {
+        final supabase = Supabase.instance.client;
+        final response = await supabase.rpc('authenticate_user', params: {
+          'p_username': username,
+          'p_pin': pin,
+        });
+
+        final Map<String, dynamic> result = response as Map<String, dynamic>;
+
+        if (result['success'] == true) {
+          appState.userRole = result['role']?.toString();
+          appState.userResidentId = result['resident_id']?.toString();
+          appState.userMemberId = result['member_id']?.toString() ?? '';
+          appState.userWingId = result['wing_id']?.toString() ?? 'N';
+          appState.userFlatId = result['flat_id']?.toString() ?? '';
+          appState.activeSeasonId = result['season_id']?.toString();
+          appState.notifyListeners();
+
+          setState(() => _isLoading = false);
+          _showSuccess('Welcome back, ${result['name']}!');
+          if (!mounted) return;
+          _routeUser(appState.userRole);
+        } else {
+          setState(() => _isLoading = false);
+          _showError(result['message'] ?? 'Authentication failed');
+        }
+      } catch (e) {
+        setState(() => _isLoading = false);
+        _showError('Authentication failed: ${e.toString()}');
+      }
     }
   }
 
@@ -134,7 +133,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (role == 'SCOT_ADMIN' ||
         role == 'CORE_TEAM' ||
         role == 'EVENT_CHAMPION' ||
-        role == 'WING_COMMANDER') {
+        role == 'WING_COMMANDER' ||
+        role == 'WING_CAPTAIN') {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const CoordinatorDashboard()),
@@ -151,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: Colors.redAccent,
+        backgroundColor: DesignSystem.accentCoral,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -161,17 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: const Color(0xFF10B981),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showWarning(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: const Color(0xFFF59E0B),
+        backgroundColor: DesignSystem.successGreen,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -220,6 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
+          
           // Scrollable login content
           SafeArea(
             child: SingleChildScrollView(
@@ -227,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 10),
                   // App Logo & Header
                   Center(
                     child: Container(
@@ -247,35 +238,34 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(70),
                         child: Image.asset(
                           'assets/images/logo.png',
-                          height: 140,
-                          width: 140,
+                          height: 110,
+                          width: 110,
                           fit: BoxFit.cover,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   Text(
                     'SCOT TOPAZ',
                     textAlign: TextAlign.center,
                     style: DesignSystem.headingStyle(
-                      fontSize: 32,
+                      fontSize: 28,
                       color: DesignSystem.primary,
                     ),
                   ),
-                  const SizedBox(height: 8),
                   Text(
                     'Community Operations Platform',
                     textAlign: TextAlign.center,
                     style: DesignSystem.bodyStyle(
-                      fontSize: 16,
+                      fontSize: 14,
                       color: DesignSystem.textMuted,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 28),
 
-                  // Playful Input Card
+                  // Login Form Card
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: DesignSystem.cardDecoration(
@@ -284,82 +274,53 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          _otpSent ? 'Enter Verification Code' : 'Welcome to the Neighborhood!',
-                          style: DesignSystem.headingStyle(
-                            fontSize: 18,
-                            color: DesignSystem.textPrimary,
+                        TabBar(
+                          controller: _tabController,
+                          labelColor: DesignSystem.primary,
+                          unselectedLabelColor: DesignSystem.textMuted,
+                          indicatorColor: DesignSystem.primary,
+                          indicatorWeight: 3,
+                          labelStyle: DesignSystem.headingStyle(fontSize: 14),
+                          tabs: const [
+                            Tab(text: 'Resident Login'),
+                            Tab(text: 'SCOT Team'),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Username Input
+                        TextField(
+                          controller: _usernameController,
+                          style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
+                          decoration: InputDecoration(
+                            labelText: 'Username or Member ID',
+                            labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
+                            prefixIcon: const Icon(Icons.person_outline_rounded, color: DesignSystem.primary),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                           ),
                         ),
                         const SizedBox(height: 16),
 
-                        // Phone Input
+                        // PIN Input
                         TextField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          enabled: !_otpSent,
-                          style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
+                          controller: _pinController,
+                          keyboardType: TextInputType.number,
+                          obscureText: true,
+                          maxLength: 4,
+                          style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, fontSize: 16),
                           decoration: InputDecoration(
-                            labelText: 'Phone Number',
-                            labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted),
-                            prefixIcon: const Icon(Icons.phone_outlined, color: DesignSystem.primary),
-                            hintText: '+919999988888',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              borderSide: BorderSide(color: DesignSystem.primary.withOpacity(0.3), width: 1.5),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
+                            labelText: 'Login PIN',
+                            labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
+                            prefixIcon: const Icon(Icons.lock_outline_rounded, color: DesignSystem.primary),
+                            counterText: '',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                           ),
                         ),
-
-                        if (_otpSent) ...[
-                          const SizedBox(height: 16),
-                          // OTP Input
-                          TextField(
-                            controller: _otpController,
-                            keyboardType: TextInputType.number,
-                            maxLength: 6,
-                            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                            decoration: InputDecoration(
-                              labelText: 'Verification Code',
-                              labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted),
-                              prefixIcon: const Icon(Icons.lock_outline, color: DesignSystem.primary),
-                              hintText: '123456',
-                              counterText: '',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                borderSide: BorderSide(color: DesignSystem.primary.withOpacity(0.3), width: 1.5),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                            ),
-                          ),
-                        ],
-
                         const SizedBox(height: 24),
 
                         // Submit Button
                         ElevatedButton(
-                          onPressed: _isLoading
-                              ? null
-                              : (_otpSent ? _verifyOtp : _sendOtp),
+                          onPressed: _isLoading ? null : _handleLogin,
                           style: DesignSystem.buttonStyle(color: DesignSystem.primary),
                           child: _isLoading
                               ? const SizedBox(
@@ -371,39 +332,60 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 )
                               : Text(
-                                  _otpSent ? 'VERIFY CODE' : 'GET STARTED',
+                                  'LOG IN',
                                   style: DesignSystem.headingStyle(
-                                    fontSize: 16,
+                                    fontSize: 15,
                                     color: Colors.white,
                                   ),
                                 ),
                         ),
 
-                        if (_otpSent) ...[
-                          const SizedBox(height: 12),
-                          TextButton(
-                            onPressed: () => setState(() {
-                              _otpSent = false;
-                              _otpController.clear();
-                            }),
-                            child: Text(
-                              'Change Phone Number',
-                              style: DesignSystem.bodyStyle(
-                                color: DesignSystem.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          )
-                        ]
+                        // Register Gating Link (Resident login tab only)
+                        AnimatedBuilder(
+                          animation: _tabController,
+                          builder: (context, child) {
+                            if (_tabController.index == 0) {
+                              return Column(
+                                children: [
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'New to Topaz? ',
+                                        style: DesignSystem.bodyStyle(fontSize: 13, color: DesignSystem.textMuted),
+                                      ),
+                                      InkWell(
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                                          );
+                                        },
+                                        child: Text(
+                                          'Register Flat',
+                                          style: DesignSystem.headingStyle(
+                                            fontSize: 13,
+                                            color: DesignSystem.secondary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 32),
 
                   // Quick Test Accounts Panel
                   Text(
-                    'QUICK TEST ACCOUNTS',
+                    'QUICK DEMO ACCOUNTS',
                     textAlign: TextAlign.center,
                     style: DesignSystem.headingStyle(
                       fontSize: 12,
@@ -411,27 +393,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       fontWeight: FontWeight.bold,
                     ).copyWith(letterSpacing: 2),
                   ),
-                   const SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: [..._testAccounts, ...Provider.of<AppState>(context).customTestAccounts].length,
+                    itemCount: _testAccounts.length,
                     itemBuilder: (context, index) {
-                      final allTestAccounts = [..._testAccounts, ...Provider.of<AppState>(context, listen: false).customTestAccounts];
-                      final acc = allTestAccounts[index];
-                      final role = acc['role'];
-                      final Color cardColor = role == 'SCOT_ADMIN'
-                          ? DesignSystem.primary
-                          : (role == 'CORE_TEAM'
-                              ? DesignSystem.accentCoral
-                              : (role == 'WING_COMMANDER' || role == 'WING_CAPTAIN'
-                                  ? DesignSystem.secondary
-                                  : DesignSystem.accentPurple));
-                      final isOrganizer = role == 'SCOT_ADMIN' ||
-                          role == 'CORE_TEAM' ||
-                          role == 'WING_COMMANDER' ||
-                          role == 'WING_CAPTAIN' ||
-                          role == 'EVENT_CHAMPION';
+                      final acc = _testAccounts[index];
+                      final isResident = acc['type'] == 'RESIDENT';
+                      final Color cardColor = isResident ? DesignSystem.secondary : DesignSystem.primary;
+
                       return Card(
                         color: Colors.white,
                         margin: const EdgeInsets.only(bottom: 12),
@@ -440,15 +411,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(20),
                           side: BorderSide(
                             color: cardColor.withOpacity(0.3),
-                            width: 1.5,
+                            width: 1.2,
                           ),
                         ),
                         child: ListTile(
                           onTap: () {
                             setState(() {
-                              _phoneController.text = acc['phone']!;
-                              _otpSent = false;
-                              _otpController.clear();
+                              _usernameController.text = acc['username']!;
+                              _pinController.text = acc['pin']!;
+                              _tabController.index = isResident ? 0 : 1;
                             });
                           },
                           leading: Container(
@@ -458,9 +429,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              acc['role'] == 'CORE_TEAM' || acc['role'] == 'WING_COMMANDER'
-                                  ? Icons.admin_panel_settings_rounded
-                                  : Icons.home_rounded,
+                              isResident ? Icons.home_rounded : Icons.admin_panel_settings_rounded,
                               color: cardColor,
                             ),
                           ),
@@ -472,7 +441,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           subtitle: Text(
-                            'Tap to autofill ${acc['phone']}',
+                            'Username: ${acc['username']} • PIN: ${acc['pin']}',
                             style: DesignSystem.bodyStyle(
                               color: DesignSystem.textMuted,
                               fontSize: 12,

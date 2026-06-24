@@ -12,6 +12,7 @@ import 'approve_expenses_screen.dart';
 import 'record_score_screen.dart';
 import 'create_competition_screen.dart';
 import 'finance_portal_screen.dart';
+import 'approve_registrations_screen.dart';
 
 class CoordinatorDashboard extends StatefulWidget {
   const CoordinatorDashboard({super.key});
@@ -348,6 +349,15 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                         );
                       },
                     ),
+                    _buildConsoleTile(
+                      icon: Icons.delete_sweep_rounded,
+                      title: 'Delete/Reset Flat Entry',
+                      subtitle: 'Wipe all residents and assignments for a wing & flat',
+                      color: DesignSystem.accentCoral,
+                      onTap: () {
+                        _showDeleteFlatDialog();
+                      },
+                    ),
                     const SizedBox(height: 24),
                   ],
 
@@ -371,6 +381,18 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const ApproveExpensesScreen()),
+                      ).then((_) => _fetchCoordinatorDetails());
+                    },
+                  ),
+                  _buildConsoleTile(
+                    icon: Icons.how_to_reg_outlined,
+                    title: 'Review Registrations',
+                    subtitle: 'Approve or reject flat registrations & family rosters',
+                    color: DesignSystem.primary,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ApproveRegistrationsScreen()),
                       ).then((_) => _fetchCoordinatorDetails());
                     },
                   ),
@@ -524,4 +546,247 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
       ),
     );
   }
+
+  void _showDeleteFlatDialog() {
+    String selectedWing = 'N';
+    String? selectedFlatId;
+    String selectedFlatNumber = '';
+    List<Map<String, String>> flatsList = [];
+    bool isLoadingFlats = true;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> loadFlatsForWing() async {
+              setDialogState(() => isLoadingFlats = true);
+              final appState = Provider.of<AppState>(context, listen: false);
+
+              if (appState.activeSeasonId == 'demo-season-id') {
+                final List<Map<String, String>> mockFlats = [];
+                for (int floor = 1; floor <= 7; floor++) {
+                  for (int flatNum = 1; flatNum <= 4; flatNum++) {
+                    final numStr = '$floor${flatNum.toString().padLeft(2, '0')}';
+                    mockFlats.add({
+                      'id': 'demo-flat-$selectedWing-$numStr',
+                      'number': numStr,
+                    });
+                  }
+                }
+                setDialogState(() {
+                  flatsList = mockFlats;
+                  if (flatsList.isNotEmpty) {
+                    selectedFlatId = flatsList.first['id'];
+                    selectedFlatNumber = flatsList.first['number']!;
+                  }
+                  isLoadingFlats = false;
+                });
+              } else {
+                try {
+                  final supabase = Supabase.instance.client;
+                  final wingRes = await supabase
+                      .from('wing')
+                      .select('id')
+                      .eq('name', selectedWing)
+                      .single();
+                  final String wingId = wingRes['id'];
+
+                  final flatsRes = await supabase
+                      .from('flat')
+                      .select('id, number')
+                      .eq('wing_id', wingId)
+                      .order('number');
+
+                  if (flatsRes != null) {
+                    final List<Map<String, String>> loaded = [];
+                    for (var f in flatsRes) {
+                      loaded.add({
+                        'id': f['id']?.toString() ?? '',
+                        'number': f['number']?.toString() ?? '',
+                      });
+                    }
+                    setDialogState(() {
+                      flatsList = loaded;
+                      if (flatsList.isNotEmpty) {
+                        selectedFlatId = flatsList.first['id'];
+                        selectedFlatNumber = flatsList.first['number']!;
+                      }
+                      isLoadingFlats = false;
+                    });
+                  }
+                } catch (e) {
+                  debugPrint('Error loading flats in dialog: $e');
+                  setDialogState(() => isLoadingFlats = false);
+                }
+              }
+            }
+
+            if (flatsList.isEmpty && isLoadingFlats) {
+              loadFlatsForWing();
+            }
+
+            return AlertDialog(
+              backgroundColor: DesignSystem.background,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              title: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: DesignSystem.accentCoral),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Delete Flat Entry',
+                    style: DesignSystem.headingStyle(fontSize: 18),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'CAUTION: This will permanently delete all resident profiles, accounts, and assignments associated with this flat.',
+                    style: DesignSystem.bodyStyle(fontSize: 12, color: DesignSystem.accentCoral, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  DropdownButtonFormField<String>(
+                    value: selectedWing,
+                    decoration: InputDecoration(
+                      labelText: 'Select Wing',
+                      labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    onChanged: (val) {
+                      if (val != null) {
+                        selectedWing = val;
+                        flatsList.clear();
+                        loadFlatsForWing();
+                      }
+                    },
+                    items: ['N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'].map((w) {
+                      return DropdownMenuItem(value: w, child: Text('Wing $w'));
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  isLoadingFlats
+                      ? const Center(child: Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: CircularProgressIndicator(),
+                        ))
+                      : DropdownButtonFormField<String>(
+                          value: selectedFlatId,
+                          decoration: InputDecoration(
+                            labelText: 'Select Flat Number',
+                            labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          onChanged: (val) {
+                            if (val != null) {
+                              final matched = flatsList.firstWhere((element) => element['id'] == val);
+                              setDialogState(() {
+                                selectedFlatId = val;
+                                selectedFlatNumber = matched['number']!;
+                              });
+                            }
+                          },
+                          items: flatsList.map((flat) {
+                            return DropdownMenuItem(
+                              value: flat['id'],
+                              child: Text('Flat ${flat['number']}'),
+                            );
+                          }).toList(),
+                        ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'CANCEL',
+                    style: DesignSystem.headingStyle(fontSize: 12, color: DesignSystem.textMuted),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: selectedFlatId == null
+                      ? null
+                      : () {
+                          Navigator.pop(context);
+                          _confirmDeleteFlat(selectedWing, selectedFlatNumber, selectedFlatId!);
+                        },
+                  style: DesignSystem.buttonStyle(color: DesignSystem.accentCoral),
+                  child: Text(
+                    'DELETE ENTRY',
+                    style: DesignSystem.headingStyle(fontSize: 12, color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteFlat(String wing, String flatNumber, String flatId) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: DesignSystem.background,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          title: Text(
+            'Confirm Permanent Deletion',
+            style: DesignSystem.headingStyle(fontSize: 18, color: DesignSystem.accentCoral),
+          ),
+          content: Text(
+            'Are you absolutely sure you want to delete all resident data for Flat $wing-$flatNumber? This action is completely irreversible and will wipe out all logins, profiles, and active registrations for this flat.',
+            style: DesignSystem.bodyStyle(fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'CANCEL',
+                style: DesignSystem.headingStyle(fontSize: 12, color: DesignSystem.textMuted),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                setState(() => _isLoading = true);
+
+                final appState = Provider.of<AppState>(context, listen: false);
+
+                if (appState.activeSeasonId == 'demo-season-id') {
+                  await Future.delayed(const Duration(milliseconds: 600));
+                  appState.deleteFlatEntryInDemo(wing, flatNumber);
+                  setState(() => _isLoading = false);
+                  _showSnackbar('Flat $wing-$flatNumber entry deleted in demo mode.', DesignSystem.accentCoral);
+                } else {
+                  try {
+                    final supabase = Supabase.instance.client;
+                    await supabase.rpc('delete_flat_entry', params: {
+                      'p_flat_id': flatId,
+                    });
+                    setState(() => _isLoading = false);
+                    _showSnackbar('Flat $wing-$flatNumber entry permanently deleted.', DesignSystem.accentCoral);
+                  } catch (e) {
+                    setState(() => _isLoading = false);
+                    _showSnackbar('Deletion failed: ${e.toString()}', DesignSystem.accentCoral);
+                  }
+                }
+              },
+              style: DesignSystem.buttonStyle(color: DesignSystem.accentCoral),
+              child: Text(
+                'YES, DELETE',
+                style: DesignSystem.headingStyle(fontSize: 12, color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
+

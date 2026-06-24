@@ -44,6 +44,64 @@ class AppState extends ChangeNotifier {
     },
   ];
 
+  // --- Registration Requests Mocks ---
+  final List<Map<String, dynamic>> demoPendingRegistrations = [
+    {
+      'id': 'req-mock-1',
+      'username': 'smith_family',
+      'mobile': '+919876543212',
+      'wing': 'N',
+      'flat': '104',
+      'flat_id': 'demo-flat-N-104',
+      'pin': '1234',
+      'members': [
+        {'name': 'Carol Smith', 'gender': 'FEMALE', 'age_group': 'OVER_18'},
+        {'name': 'Timmy Smith', 'gender': 'MALE', 'age_group': 'UNDER_12'},
+      ],
+      'status': 'PENDING',
+      'date': 'Recent'
+    }
+  ];
+
+  // --- Hashed Credentials Accounts Mocks ---
+  final Map<String, Map<String, dynamic>> demoResidentAccounts = {
+    'john_doe': {
+      'pin': '1234',
+      'role': 'HOME_CHIEF',
+      'name': 'John Doe',
+      'flat': '102',
+      'wing': 'N',
+      'flat_id': 'demo-flat-N-102',
+      'resident_id': 'res-john-id'
+    },
+    'jane_doe': {
+      'pin': '1234',
+      'role': 'HOME_MEMBER',
+      'name': 'Jane Doe',
+      'flat': '102',
+      'wing': 'N',
+      'flat_id': 'demo-flat-N-102',
+      'resident_id': 'res-jane-id'
+    }
+  };
+
+  // --- Coordinator pre-seeded accounts ---
+  final Map<String, Map<String, dynamic>> demoCoordinatorAccounts = {
+    'dave_miller': {
+      'pin': '1234',
+      'role': 'SCOT_ADMIN',
+      'name': 'Dave Miller',
+      'member_id': 'mem-dave-id',
+    },
+    'jack_commander': {
+      'pin': '1234',
+      'role': 'WING_COMMANDER',
+      'name': 'Jack Commander',
+      'wing_id': 'N',
+      'member_id': 'mem-jack-id',
+    }
+  };
+
   // --- Live Registrations Mocks ---
   final Set<String> demoRegisteredEvents = {};
 
@@ -140,6 +198,90 @@ class AppState extends ChangeNotifier {
   void addQuoteInDemo(Map<String, dynamic> quote) {
     demoQuotes.insert(0, quote);
     notifyListeners();
+  }
+
+  void addPendingRegistrationInDemo(Map<String, dynamic> req) {
+    demoPendingRegistrations.add(req);
+    notifyListeners();
+  }
+
+  void approveRegistrationRequestInDemo(String requestId) {
+    final idx = demoPendingRegistrations.indexWhere((element) => element['id'] == requestId);
+    if (idx != -1) {
+      final req = demoPendingRegistrations[idx];
+      
+      // Add primary resident account
+      demoResidentAccounts[req['username']] = {
+        'pin': req['pin'],
+        'role': 'HOME_CHIEF',
+        'name': req['username'],
+        'flat': req['flat'],
+        'wing': req['wing'],
+        'flat_id': req['flat_id'] ?? 'demo-flat-${req['wing']}-${req['flat']}',
+        'resident_id': 'res-gen-${req['username']}',
+      };
+
+      // Add family roster members
+      final members = req['members'] as List<dynamic>?;
+      if (members != null) {
+        for (var m in members) {
+          final mName = m['name'] as String;
+          final mUsername = mName.replaceAll(' ', '_').toLowerCase();
+          demoResidentAccounts[mUsername] = {
+            'pin': req['pin'],
+            'role': 'HOME_MEMBER',
+            'name': mName,
+            'flat': req['flat'],
+            'wing': req['wing'],
+            'flat_id': req['flat_id'] ?? 'demo-flat-${req['wing']}-${req['flat']}',
+            'resident_id': 'res-gen-$mUsername',
+          };
+        }
+      }
+
+      demoPendingRegistrations.removeAt(idx);
+      notifyListeners();
+    }
+  }
+
+  void deleteFlatEntryInDemo(String wingName, String flatNumber) {
+    demoResidentAccounts.removeWhere((key, value) => value['flat'] == flatNumber && value['wing'] == wingName);
+    demoPaidFlats.remove(flatNumber);
+    notifyListeners();
+  }
+
+  Map<String, dynamic> authenticateUserInDemo(String username, String pin) {
+    // Check resident accounts
+    if (demoResidentAccounts.containsKey(username)) {
+      final acc = demoResidentAccounts[username]!;
+      if (acc['pin'] == pin) {
+        userRole = acc['role'];
+        userResidentId = acc['resident_id'];
+        userMemberId = '';
+        userWingId = acc['wing'];
+        userFlatId = acc['flat_id'];
+        activeSeasonId = 'demo-season-id';
+        notifyListeners();
+        return {'success': true, 'type': 'RESIDENT', 'role': userRole, 'name': acc['name']};
+      }
+    }
+
+    // Check coordinator accounts
+    if (demoCoordinatorAccounts.containsKey(username)) {
+      final acc = demoCoordinatorAccounts[username]!;
+      if (acc['pin'] == pin) {
+        userRole = acc['role'];
+        userResidentId = acc['member_id'];
+        userMemberId = acc['member_id'];
+        userWingId = acc['wing_id'] ?? 'N';
+        userFlatId = 'demo-flat-id';
+        activeSeasonId = 'demo-season-id';
+        notifyListeners();
+        return {'success': true, 'type': 'COORDINATOR', 'role': userRole, 'name': acc['name']};
+      }
+    }
+
+    return {'success': false, 'message': 'Invalid username or PIN'};
   }
 
   void setLoading(bool val) {
