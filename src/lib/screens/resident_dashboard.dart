@@ -68,7 +68,10 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
         }
 
         // 3. Fetch Maintenance status for active season
-        if (appState.activeSeasonId != null && appState.activeSeasonId!.isNotEmpty) {
+        if (appState.activeSeasonId == 'demo-season-id') {
+          _isPaid = appState.isFlatPaidInDemo(_flatNumber);
+          _balanceDue = _isPaid ? 0.0 : 5000.0;
+        } else if (appState.activeSeasonId != null && appState.activeSeasonId!.isNotEmpty) {
           final summaryData = await supabase
               .from('flat_annual_summary')
               .select('balance_due, is_paid')

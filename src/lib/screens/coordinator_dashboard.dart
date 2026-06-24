@@ -7,6 +7,9 @@ import '../theme/design_system.dart';
 import 'login_screen.dart';
 import 'admin_onboarding_screen.dart';
 import 'resident_onboarding_screen.dart';
+import 'record_payment_screen.dart';
+import 'approve_expenses_screen.dart';
+import 'record_score_screen.dart';
 
 class CoordinatorDashboard extends StatefulWidget {
   const CoordinatorDashboard({super.key});
@@ -32,6 +35,16 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
   Future<void> _fetchCoordinatorDetails() async {
     final supabase = Supabase.instance.client;
     final appState = Provider.of<AppState>(context, listen: false);
+
+    if (appState.activeSeasonId == 'demo-season-id') {
+      setState(() {
+        _coordName = 'Coordinator';
+        _coordRole = (appState.userRole ?? 'MEMBER').replaceAll('_', ' ');
+        _pendingApprovals = appState.demoPendingApprovals;
+        _isLoading = false;
+      });
+      return;
+    }
 
     if (appState.userResidentId == null || appState.userResidentId!.isEmpty) {
       setState(() {
@@ -158,6 +171,9 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
+    final pendingCount = appState.activeSeasonId == 'demo-season-id'
+        ? appState.demoPendingApprovals
+        : _pendingApprovals;
     return Scaffold(
       backgroundColor: DesignSystem.background,
       appBar: AppBar(
@@ -258,7 +274,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                   const SizedBox(height: 24),
 
                   // Pending Actions Alerts Bar
-                  if (_pendingApprovals > 0) ...[
+                  if (pendingCount > 0) ...[
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: DesignSystem.cardDecoration(
@@ -272,7 +288,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'You have $_pendingApprovals pending approvals.',
+                              'You have $pendingCount pending approvals.',
                               style: DesignSystem.bodyStyle(
                                 fontSize: 13,
                                 color: DesignSystem.accentCoral,
@@ -281,7 +297,12 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                             ),
                           ),
                           ElevatedButton(
-                            onPressed: _runApproveExpense,
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const ApproveExpensesScreen()),
+                              ).then((_) => _fetchCoordinatorDetails());
+                            },
                             style: DesignSystem.buttonStyle(
                               color: DesignSystem.accentCoral,
                             ).copyWith(
@@ -344,14 +365,24 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                     title: 'Approve Pending Expenses',
                     subtitle: 'Trigger finance threshold approval checks',
                     color: DesignSystem.primary,
-                    onTap: _runApproveExpense,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ApproveExpensesScreen()),
+                      ).then((_) => _fetchCoordinatorDetails());
+                    },
                   ),
                   _buildConsoleTile(
                     icon: Icons.add_card_outlined,
                     title: 'Record Flat Contribution',
                     subtitle: 'Call record_payment DB procedure',
                     color: DesignSystem.secondary,
-                    onTap: _runRecordPayment,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const RecordPaymentScreen()),
+                      ).then((_) => _fetchCoordinatorDetails());
+                    },
                   ),
                   _buildConsoleTile(
                     icon: Icons.sports_score_outlined,
@@ -359,7 +390,12 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                     subtitle: 'Log game result and update leaderboard',
                     color: DesignSystem.accentYellow,
                     iconColorOverride: const Color(0xFFD4AF37),
-                    onTap: () => _showSnackbar('Score Recording ready!', DesignSystem.primary),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const RecordScoreScreen()),
+                      ).then((_) => _fetchCoordinatorDetails());
+                    },
                   ),
                   _buildConsoleTile(
                     icon: Icons.person_add_alt_1_outlined,
