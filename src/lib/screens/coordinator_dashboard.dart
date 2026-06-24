@@ -6,6 +6,7 @@ import '../app_state.dart';
 import '../theme/design_system.dart';
 import 'login_screen.dart';
 import 'admin_onboarding_screen.dart';
+import 'resident_onboarding_screen.dart';
 
 class CoordinatorDashboard extends StatefulWidget {
   const CoordinatorDashboard({super.key});
@@ -365,7 +366,12 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                     title: 'Register Resident',
                     subtitle: 'Onboard new user to event rosters',
                     color: DesignSystem.accentPurple,
-                    onTap: () => _showSnackbar('Resident Registration ready!', DesignSystem.primary),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ResidentOnboardingScreen()),
+                      );
+                    },
                   ),
                 ],
               ),
