@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../app_state.dart';
+import '../theme/design_system.dart';
 import 'resident_dashboard.dart';
 import 'coordinator_dashboard.dart';
 
@@ -172,224 +173,305 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 40),
-              // App Logo & Header
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.lock_person_outlined,
-                    size: 64,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                ),
+      backgroundColor: DesignSystem.background,
+      body: Stack(
+        children: [
+          // Background playful decorative shapes
+          Positioned(
+            top: -100,
+            left: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                color: DesignSystem.secondary.withOpacity(0.15),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(height: 24),
-              Text(
-                'S C O T',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 4,
-                  color: Colors.white,
-                ),
+            ),
+          ),
+          Positioned(
+            bottom: -50,
+            right: -50,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                color: DesignSystem.accentCoral.withOpacity(0.1),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Community Operations Platform',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[400],
-                ),
+            ),
+          ),
+          Positioned(
+            top: 250,
+            right: -80,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                color: DesignSystem.accentYellow.withOpacity(0.2),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(height: 48),
-
-              // Glassmorphic Input Card
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A1D2E), // Surface color
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.05),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    )
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      _otpSent ? 'Enter OTP' : 'Login with Mobile',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+            ),
+          ),
+          // Scrollable login content
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 30),
+                  // App Logo & Header
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
                         color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Phone Input
-                    TextField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      enabled: !_otpSent,
-                      decoration: InputDecoration(
-                        labelText: 'Phone Number',
-                        prefixIcon: const Icon(Icons.phone_outlined),
-                        hintText: '+919999988888',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFF0F111A),
-                      ),
-                    ),
-
-                    if (_otpSent) ...[
-                      const SizedBox(height: 16),
-                      // OTP Input
-                      TextField(
-                        controller: _otpController,
-                        keyboardType: TextInputType.number,
-                        maxLength: 6,
-                        decoration: InputDecoration(
-                          labelText: 'Verification Code',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          hintText: '123456',
-                          counterText: '',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: DesignSystem.primary.withOpacity(0.12),
+                            blurRadius: 24,
+                            offset: const Offset(0, 10),
                           ),
-                          filled: true,
-                          fillColor: const Color(0xFF0F111A),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(70),
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          height: 140,
+                          width: 140,
+                          fit: BoxFit.cover,
                         ),
                       ),
-                    ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'SCOT TOPAZ',
+                    textAlign: TextAlign.center,
+                    style: DesignSystem.headingStyle(
+                      fontSize: 32,
+                      color: DesignSystem.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Community Operations Platform',
+                    textAlign: TextAlign.center,
+                    style: DesignSystem.bodyStyle(
+                      fontSize: 16,
+                      color: DesignSystem.textMuted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
 
-                    const SizedBox(height: 24),
-
-                    // Submit Button
-                    ElevatedButton(
-                      onPressed: _isLoading
-                          ? null
-                          : (_otpSent ? _verifyOtp : _sendOtp),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).primaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                  // Playful Input Card
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: DesignSystem.cardDecoration(
+                      borderAccentColor: DesignSystem.primary,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          _otpSent ? 'Enter Verification Code' : 'Welcome to the Neighborhood!',
+                          style: DesignSystem.headingStyle(
+                            fontSize: 18,
+                            color: DesignSystem.textPrimary,
+                          ),
                         ),
-                        elevation: 4,
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation(Colors.white),
+                        const SizedBox(height: 16),
+
+                        // Phone Input
+                        TextField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          enabled: !_otpSent,
+                          style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
+                          decoration: InputDecoration(
+                            labelText: 'Phone Number',
+                            labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted),
+                            prefixIcon: const Icon(Icons.phone_outlined, color: DesignSystem.primary),
+                            hintText: '+919999988888',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: BorderSide(color: DesignSystem.primary.withOpacity(0.3), width: 1.5),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                        ),
+
+                        if (_otpSent) ...[
+                          const SizedBox(height: 16),
+                          // OTP Input
+                          TextField(
+                            controller: _otpController,
+                            keyboardType: TextInputType.number,
+                            maxLength: 6,
+                            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                            decoration: InputDecoration(
+                              labelText: 'Verification Code',
+                              labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted),
+                              prefixIcon: const Icon(Icons.lock_outline, color: DesignSystem.primary),
+                              hintText: '123456',
+                              counterText: '',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
                               ),
-                            )
-                          : Text(
-                              _otpSent ? 'VERIFY CODE' : 'SEND OTP CODE',
-                              style: const TextStyle(
-                                fontSize: 16,
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide(color: DesignSystem.primary.withOpacity(0.3), width: 1.5),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                            ),
+                          ),
+                        ],
+
+                        const SizedBox(height: 24),
+
+                        // Submit Button
+                        ElevatedButton(
+                          onPressed: _isLoading
+                              ? null
+                              : (_otpSent ? _verifyOtp : _sendOtp),
+                          style: DesignSystem.buttonStyle(color: DesignSystem.primary),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                                  ),
+                                )
+                              : Text(
+                                  _otpSent ? 'VERIFY CODE' : 'GET STARTED',
+                                  style: DesignSystem.headingStyle(
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+
+                        if (_otpSent) ...[
+                          const SizedBox(height: 12),
+                          TextButton(
+                            onPressed: () => setState(() {
+                              _otpSent = false;
+                              _otpController.clear();
+                            }),
+                            child: Text(
+                              'Change Phone Number',
+                              style: DesignSystem.bodyStyle(
+                                color: DesignSystem.primary,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
                               ),
                             ),
+                          )
+                        ]
+                      ],
                     ),
+                  ),
 
-                    if (_otpSent) ...[
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () => setState(() {
-                          _otpSent = false;
-                          _otpController.clear();
-                        }),
-                        child: const Text('Change Phone Number'),
-                      )
-                    ]
-                  ],
-                ),
+                  const SizedBox(height: 40),
+
+                  // Quick Test Accounts Panel
+                  Text(
+                    'QUICK TEST ACCOUNTS',
+                    textAlign: TextAlign.center,
+                    style: DesignSystem.headingStyle(
+                      fontSize: 12,
+                      color: DesignSystem.textMuted,
+                      fontWeight: FontWeight.bold,
+                    ).copyWith(letterSpacing: 2),
+                  ),
+                  const SizedBox(height: 16),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _testAccounts.length,
+                    itemBuilder: (context, index) {
+                      final acc = _testAccounts[index];
+                      final Color cardColor = acc['role'] == 'CORE_TEAM'
+                          ? DesignSystem.accentCoral
+                          : (acc['role'] == 'WING_COMMANDER'
+                              ? DesignSystem.primary
+                              : DesignSystem.secondary);
+                      return Card(
+                        color: Colors.white,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: cardColor.withOpacity(0.3),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: ListTile(
+                          onTap: () {
+                            setState(() {
+                              _phoneController.text = acc['phone']!;
+                              _otpSent = false;
+                              _otpController.clear();
+                            });
+                          },
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: cardColor.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              acc['role'] == 'CORE_TEAM' || acc['role'] == 'WING_COMMANDER'
+                                  ? Icons.admin_panel_settings_rounded
+                                  : Icons.home_rounded,
+                              color: cardColor,
+                            ),
+                          ),
+                          title: Text(
+                            acc['name']!,
+                            style: DesignSystem.bodyStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'Tap to autofill ${acc['phone']}',
+                            style: DesignSystem.bodyStyle(
+                              color: DesignSystem.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
+                          trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: cardColor),
+                        ),
+                      );
+                    },
+                  )
+                ],
               ),
-
-              const SizedBox(height: 40),
-
-              // Quick Test Accounts Panel
-              Text(
-                'QUICK TEST ACCOUNTS',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                  color: Colors.grey[500],
-                ),
-              ),
-              const SizedBox(height: 12),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _testAccounts.length,
-                itemBuilder: (context, index) {
-                  final acc = _testAccounts[index];
-                  return Card(
-                    color: const Color(0xFF161925),
-                    margin: const EdgeInsets.only(bottom: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ListTile(
-                      onTap: () {
-                        setState(() {
-                          _phoneController.text = acc['phone']!;
-                          _otpSent = false;
-                          _otpController.clear();
-                        });
-                      },
-                      leading: Icon(
-                        acc['role'] == 'CORE_TEAM' || acc['role'] == 'WING_COMMANDER'
-                            ? Icons.admin_panel_settings_outlined
-                            : Icons.home_outlined,
-                        color: acc['role'] == 'CORE_TEAM'
-                            ? Colors.redAccent
-                            : Theme.of(context).primaryColor,
-                      ),
-                      title: Text(
-                        acc['name']!,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        'Tap to autofill ${acc['phone']}',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                      ),
-                      trailing: const Icon(Icons.arrow_forward_ios_outlined, size: 12),
-                    ),
-                  );
-                },
-              )
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

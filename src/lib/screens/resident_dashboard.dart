@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../app_state.dart';
+import '../theme/design_system.dart';
 import 'login_screen.dart';
 
 class ResidentDashboard extends StatefulWidget {
@@ -116,17 +117,19 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     final appState = Provider.of<AppState>(context);
 
     return Scaffold(
+      backgroundColor: DesignSystem.background,
       appBar: AppBar(
         title: Text(
-          'Resident Workspace',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+          'TOPAZ Resident Hub',
+          style: DesignSystem.headingStyle(fontSize: 20),
         ),
-        backgroundColor: const Color(0xFF1A1D2E),
+        backgroundColor: DesignSystem.background,
         elevation: 0,
+        iconTheme: const IconThemeData(color: DesignSystem.textPrimary),
         actions: [
           IconButton(
             onPressed: _handleLogout,
-            icon: const Icon(Icons.logout_outlined, color: Colors.redAccent),
+            icon: const Icon(Icons.logout_rounded, color: DesignSystem.accentCoral),
             tooltip: 'Logout',
           ),
         ],
@@ -134,7 +137,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
       body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
               ),
             )
           : SingleChildScrollView(
@@ -147,13 +150,12 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                     children: [
                       CircleAvatar(
                         radius: 28,
-                        backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                        backgroundColor: DesignSystem.primary.withOpacity(0.1),
                         child: Text(
                           _residentName.isNotEmpty ? _residentName[0].toUpperCase() : 'R',
-                          style: TextStyle(
+                          style: DesignSystem.headingStyle(
                             fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).primaryColor,
+                            color: DesignSystem.primary,
                           ),
                         ),
                       ),
@@ -164,22 +166,21 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                           children: [
                             Text(
                               'Welcome back,',
-                              style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                              style: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13, fontWeight: FontWeight.bold),
                             ),
                             Text(
                               _residentName,
-                              style: const TextStyle(
+                              style: DesignSystem.headingStyle(
                                 fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: DesignSystem.textPrimary,
                               ),
                             ),
                             Text(
                               'Wing $_wingName • Flat $_flatNumber',
-                              style: TextStyle(
+                              style: DesignSystem.bodyStyle(
                                 fontSize: 13,
-                                color: Theme.of(context).colorScheme.secondary,
-                                fontWeight: FontWeight.w600,
+                                color: DesignSystem.primary,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],
@@ -189,25 +190,13 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Maintenance Payment Status Card
+                  // Maintenance Payment Status Card (Playful & Light)
                   Container(
                     padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: _isPaid
-                            ? [const Color(0xFF0F2C24), const Color(0xFF064E3B)]
-                            : [const Color(0xFF3B1E1E), const Color(0xFF5C1E1E)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (_isPaid ? const Color(0xFF10B981) : Colors.redAccent).withOpacity(0.1),
-                          blurRadius: 16,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
+                    decoration: DesignSystem.cardDecoration(
+                      borderAccentColor: _isPaid ? DesignSystem.successGreen : DesignSystem.accentCoral,
+                    ).copyWith(
+                      color: _isPaid ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,26 +204,23 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'MAINTENANCE STATUS',
-                              style: TextStyle(
+                              style: DesignSystem.headingStyle(
                                 fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 2,
-                                color: Colors.white70,
-                              ),
-                            ),
+                                color: _isPaid ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
+                              ).copyWith(letterSpacing: 1.5),
+                        ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.15),
+                                color: _isPaid ? DesignSystem.successGreen : DesignSystem.accentCoral,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
                                 _isPaid ? 'PAID' : 'PENDING',
-                                style: const TextStyle(
+                                style: DesignSystem.headingStyle(
                                   fontSize: 10,
-                                  fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
                               ),
@@ -244,10 +230,9 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                         const SizedBox(height: 16),
                         Text(
                           _isPaid ? 'All Settled' : '₹${_balanceDue.toStringAsFixed(0)} Due',
-                          style: GoogleFonts.outfit(
+                          style: DesignSystem.headingStyle(
                             fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: _isPaid ? const Color(0xFF1B5E20) : const Color(0xFFB71C1C),
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -255,7 +240,11 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                           _isPaid
                               ? 'Thank you for your active support!'
                               : 'Annual Maintenance contribution is pending action.',
-                          style: const TextStyle(fontSize: 13, color: Colors.white70),
+                          style: DesignSystem.bodyStyle(
+                            fontSize: 13,
+                            color: _isPaid ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -265,12 +254,11 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                   // Quick Actions Grid Title
                   Text(
                     'QUICK ACTIONS',
-                    style: TextStyle(
+                    style: DesignSystem.headingStyle(
                       fontSize: 12,
+                      color: DesignSystem.textMuted,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                      color: Colors.grey[500],
-                    ),
+                    ).copyWith(letterSpacing: 2),
                   ),
                   const SizedBox(height: 16),
 
@@ -285,34 +273,35 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                     children: [
                       _buildActionCard(
                         context: context,
-                        icon: Icons.event_available_outlined,
+                        icon: Icons.event_available_rounded,
                         title: 'Register Event',
                         subtitle: 'Sign up for matches',
-                        color: Colors.blueAccent,
+                        color: DesignSystem.primary,
                         onTap: () => _showMockFeature('Event Registration'),
                       ),
                       _buildActionCard(
                         context: context,
-                        icon: Icons.sports_score_outlined,
+                        icon: Icons.emoji_events_rounded,
                         title: 'Match Scores',
                         subtitle: 'View active fixtures',
-                        color: Colors.orangeAccent,
+                        color: DesignSystem.accentYellow,
+                        iconColorOverride: const Color(0xFFD4AF37), // Darker yellow/gold for visibility
                         onTap: () => _showMockFeature('Live Scoring'),
                       ),
                       _buildActionCard(
                         context: context,
-                        icon: Icons.payment_outlined,
+                        icon: Icons.payment_rounded,
                         title: 'Record Payment',
                         subtitle: 'Submit contributions',
-                        color: const Color(0xFF10B981),
+                        color: DesignSystem.successGreen,
                         onTap: () => _showMockFeature('Maintenance Log'),
                       ),
                       _buildActionCard(
                         context: context,
-                        icon: Icons.receipt_long_outlined,
+                        icon: Icons.receipt_long_rounded,
                         title: 'My Receipts',
                         subtitle: 'Download past records',
-                        color: Colors.purpleAccent,
+                        color: DesignSystem.accentPurple,
                         onTap: () => _showMockFeature('Receipt Explorer'),
                       ),
                     ],
@@ -329,18 +318,16 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     required String title,
     required String subtitle,
     required Color color,
+    Color? iconColorOverride,
     required VoidCallback onTap,
   }) {
+    final finalIconColor = iconColorOverride ?? color;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1D2E),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.04)),
-        ),
+        decoration: DesignSystem.cardDecoration(borderAccentColor: color),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -348,28 +335,28 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: finalIconColor.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: color, size: 24),
+              child: Icon(icon, color: finalIconColor, size: 24),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: DesignSystem.headingStyle(
                     fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: DesignSystem.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: TextStyle(
+                  style: DesignSystem.bodyStyle(
                     fontSize: 11,
-                    color: Colors.grey[500],
+                    color: DesignSystem.textMuted,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
@@ -378,5 +365,6 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
         ),
       ),
     );
+  }
   }
 }

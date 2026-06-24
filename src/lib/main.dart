@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app_state.dart';
+import 'theme/design_system.dart';
 import 'screens/login_screen.dart';
 import 'screens/resident_dashboard.dart';
 import 'screens/coordinator_dashboard.dart';
@@ -42,21 +43,21 @@ class ScotApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SCOT Platform',
+      title: 'SCOT TOPAZ',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F111A), // Deep rich slate dark
-        primaryColor: const Color(0xFF6366F1), // Modern Indigo
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF6366F1),
-          secondary: Color(0xFF10B981), // Emerald Green accent
-          surface: Color(0xFF1A1D2E), // Card backgrounds
-          background: Color(0xFF0F111A),
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: DesignSystem.background,
+        primaryColor: DesignSystem.primary,
+        colorScheme: const ColorScheme.light(
+          primary: DesignSystem.primary,
+          secondary: DesignSystem.secondary,
+          surface: DesignSystem.surface,
+          background: DesignSystem.background,
           error: Color(0xFFEF4444),
         ),
-        textTheme: GoogleFonts.outfitTextTheme(
-          ThemeData.dark().textTheme,
+        textTheme: GoogleFonts.nunitoTextTheme(
+          ThemeData.light().textTheme,
         ),
       ),
       home: const AuthGate(),
@@ -120,7 +121,7 @@ class _AuthGateState extends State<AuthGate> {
     return const Scaffold(
       body: Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+          valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
         ),
       ),
     );

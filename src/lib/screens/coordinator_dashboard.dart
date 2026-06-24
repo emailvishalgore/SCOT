@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../app_state.dart';
+import '../theme/design_system.dart';
 import 'login_screen.dart';
 
 class CoordinatorDashboard extends StatefulWidget {
@@ -111,11 +112,11 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
         'target_expense_id': '00000000-0000-0000-0000-000000000000', // Mock/Placeholder UUID
         'approver_member_id': appState.userMemberId!,
       });
-      _showSnackbar('Expense approved successfully!', const Color(0xFF10B981));
+      _showSnackbar('Expense approved successfully!', DesignSystem.successGreen);
     } catch (e) {
       // Since target_expense_id is mock, it might throw a record not found error,
       // but the RPC call itself went through and was validated!
-      _showSnackbar('Action processed (RPC validation OK)', const Color(0xFF10B981));
+      _showSnackbar('Action processed (RPC validation OK)', DesignSystem.successGreen);
     } finally {
       setState(() {
         _isLoading = false;
@@ -134,9 +135,9 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
         'payment_amount': 5000.0,
         'recorder_member_id': appState.userMemberId ?? '00000000-0000-0000-0000-000000000000',
       });
-      _showSnackbar('Payment recorded successfully!', const Color(0xFF10B981));
+      _showSnackbar('Payment recorded successfully!', DesignSystem.successGreen);
     } catch (e) {
-      _showSnackbar('Action processed (RPC validation OK)', const Color(0xFF10B981));
+      _showSnackbar('Action processed (RPC validation OK)', DesignSystem.successGreen);
     } finally {
       setState(() => _isLoading = false);
     }
@@ -155,17 +156,19 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: DesignSystem.background,
       appBar: AppBar(
         title: Text(
-          'Operations Console',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+          'TOPAZ Coordinator Hub',
+          style: DesignSystem.headingStyle(fontSize: 20),
         ),
-        backgroundColor: const Color(0xFF1A1D2E),
+        backgroundColor: DesignSystem.background,
         elevation: 0,
+        iconTheme: const IconThemeData(color: DesignSystem.textPrimary),
         actions: [
           IconButton(
             onPressed: _handleLogout,
-            icon: const Icon(Icons.logout_outlined, color: Colors.redAccent),
+            icon: const Icon(Icons.logout_rounded, color: DesignSystem.accentCoral),
             tooltip: 'Logout',
           ),
         ],
@@ -173,7 +176,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
       body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
               ),
             )
           : SingleChildScrollView(
@@ -184,23 +187,18 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                   // Profile Summary Panel
                   Container(
                     padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1A1D2E),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withOpacity(0.04)),
+                    decoration: DesignSystem.cardDecoration(
+                      borderAccentColor: DesignSystem.secondary,
                     ),
                     child: Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
+                        CircleAvatar(
+                          radius: 28,
+                          backgroundColor: DesignSystem.secondary.withOpacity(0.1),
                           child: const Icon(
-                            Icons.admin_panel_settings_outlined,
-                            color: Colors.redAccent,
-                            size: 32,
+                            Icons.admin_panel_settings_rounded,
+                            color: DesignSystem.secondary,
+                            size: 28,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -210,21 +208,19 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                             children: [
                               Text(
                                 _coordName,
-                                style: const TextStyle(
+                                style: DesignSystem.headingStyle(
                                   fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                  color: DesignSystem.textPrimary,
                                 ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 _coordRole,
-                                style: TextStyle(
+                                style: DesignSystem.bodyStyle(
                                   fontSize: 12,
+                                  color: DesignSystem.secondary,
                                   fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).primaryColor,
-                                  letterSpacing: 1.5,
-                                ),
+                                ).copyWith(letterSpacing: 1.5),
                               ),
                             ],
                           ),
@@ -242,7 +238,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                           title: 'COLLECTIONS',
                           value: '₹${_totalCollections.toStringAsFixed(0)}',
                           icon: Icons.currency_rupee,
-                          color: const Color(0xFF10B981),
+                          color: DesignSystem.successGreen,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -251,7 +247,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                           title: 'RESIDENTS',
                           value: '$_registeredResidentsCount',
                           icon: Icons.people_outline,
-                          color: Colors.blueAccent,
+                          color: DesignSystem.primary,
                         ),
                       ),
                     ],
@@ -259,56 +255,58 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                   const SizedBox(height: 24),
 
                   // Pending Actions Alerts Bar
-                  if (_pendingApprovals > 0)
+                  if (_pendingApprovals > 0) ...[
                     Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3B2E1E), // Soft warn background
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.orangeAccent.withOpacity(0.2)),
+                      decoration: DesignSystem.cardDecoration(
+                        borderAccentColor: DesignSystem.accentCoral,
+                      ).copyWith(
+                        color: const Color(0xFFFFEBEE), // Soft red/coral background
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.warning_amber_outlined, color: Colors.orangeAccent),
+                          const Icon(Icons.warning_amber_rounded, color: DesignSystem.accentCoral),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'You have $_pendingApprovals pending expense approvals.',
-                              style: const TextStyle(
+                              'You have $_pendingApprovals pending approvals.',
+                              style: DesignSystem.bodyStyle(
                                 fontSize: 13,
-                                color: Colors.orangeAccent,
+                                color: DesignSystem.accentCoral,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                          TextButton(
+                          ElevatedButton(
                             onPressed: _runApproveExpense,
-                            style: TextButton.styleFrom(
-                              backgroundColor: Colors.orangeAccent.withOpacity(0.2),
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                            style: DesignSystem.buttonStyle(
+                              color: DesignSystem.accentCoral,
+                            ).copyWith(
+                              padding: MaterialStateProperty.all(
+                                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                               ),
                             ),
-                            child: const Text(
+                            child: Text(
                               'APPROVE',
-                              style: TextStyle(color: Colors.orangeAccent, fontSize: 11),
+                              style: DesignSystem.headingStyle(
+                                fontSize: 11,
+                                color: Colors.white,
+                              ),
                             ),
                           )
                         ],
                       ),
                     ),
-                  const SizedBox(height: 32),
+                    const SizedBox(height: 24),
+                  ],
 
                   // Operations Title
                   Text(
                     'COORDINATOR CONSOLE',
-                    style: TextStyle(
+                    style: DesignSystem.headingStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                      color: Colors.grey[500],
-                    ),
+                      color: DesignSystem.textMuted,
+                    ).copyWith(letterSpacing: 2),
                   ),
                   const SizedBox(height: 16),
 
@@ -317,28 +315,30 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                     icon: Icons.done_all_outlined,
                     title: 'Approve Pending Expenses',
                     subtitle: 'Trigger finance threshold approval checks',
+                    color: DesignSystem.primary,
                     onTap: _runApproveExpense,
                   ),
-                  const SizedBox(height: 12),
                   _buildConsoleTile(
                     icon: Icons.add_card_outlined,
                     title: 'Record Flat Contribution',
                     subtitle: 'Call record_payment DB procedure',
+                    color: DesignSystem.secondary,
                     onTap: _runRecordPayment,
                   ),
-                  const SizedBox(height: 12),
                   _buildConsoleTile(
                     icon: Icons.sports_score_outlined,
                     title: 'Record Match Score',
                     subtitle: 'Log game result and update leaderboard',
-                    onTap: () => _showSnackbar('Score Recording ready!', Theme.of(context).primaryColor),
+                    color: DesignSystem.accentYellow,
+                    iconColorOverride: const Color(0xFFD4AF37),
+                    onTap: () => _showSnackbar('Score Recording ready!', DesignSystem.primary),
                   ),
-                  const SizedBox(height: 12),
                   _buildConsoleTile(
                     icon: Icons.person_add_alt_1_outlined,
                     title: 'Register Resident',
                     subtitle: 'Onboard new user to event rosters',
-                    onTap: () => _showSnackbar('Resident Registration ready!', Theme.of(context).primaryColor),
+                    color: DesignSystem.accentPurple,
+                    onTap: () => _showSnackbar('Resident Registration ready!', DesignSystem.primary),
                   ),
                 ],
               ),
@@ -354,11 +354,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
   }) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1D2E),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.04)),
-      ),
+      decoration: DesignSystem.cardDecoration(borderAccentColor: color),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -367,12 +363,10 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
             children: [
               Text(
                 title,
-                style: TextStyle(
+                style: DesignSystem.headingStyle(
                   fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
-                  color: Colors.grey[400],
-                ),
+                  color: DesignSystem.textMuted,
+                ).copyWith(letterSpacing: 1.5),
               ),
               Icon(icon, color: color, size: 18),
             ],
@@ -380,10 +374,9 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           const SizedBox(height: 12),
           Text(
             value,
-            style: GoogleFonts.outfit(
+            style: DesignSystem.headingStyle(
               fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: DesignSystem.textPrimary,
             ),
           ),
         ],
@@ -395,34 +388,44 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     required IconData icon,
     required String title,
     required String subtitle,
+    required Color color,
+    Color? iconColorOverride,
     required VoidCallback onTap,
   }) {
-    return Card(
-      color: const Color(0xFF1A1D2E),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.white.withOpacity(0.04)),
-      ),
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Theme.of(context).primaryColor.withOpacity(0.1),
-            shape: BoxShape.circle,
+    final finalIconColor = iconColorOverride ?? color;
+    return Container(
+      decoration: DesignSystem.cardDecoration(borderAccentColor: color),
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          onTap: onTap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
           ),
-          child: Icon(icon, color: Theme.of(context).primaryColor),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: finalIconColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: finalIconColor),
+          ),
+          title: Text(
+            title,
+            style: DesignSystem.headingStyle(fontSize: 14),
+          ),
+          subtitle: Text(
+            subtitle,
+            style: DesignSystem.bodyStyle(
+              fontSize: 11,
+              color: DesignSystem.textMuted,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: color),
         ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(color: Colors.grey[400], fontSize: 11),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios_outlined, size: 14),
       ),
     );
   }
