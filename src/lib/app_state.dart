@@ -11,6 +11,13 @@ class AppState extends ChangeNotifier {
   String? userMemberId;
   bool isLoading = false;
 
+  final List<Map<String, String>> customTestAccounts = [];
+
+  void addCustomTestAccount(Map<String, String> account) {
+    customTestAccounts.add(account);
+    notifyListeners();
+  }
+
   void setLoading(bool val) {
     isLoading = val;
     notifyListeners();

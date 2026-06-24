@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../app_state.dart';
 import '../theme/design_system.dart';
 import 'login_screen.dart';
+import 'admin_onboarding_screen.dart';
 
 class CoordinatorDashboard extends StatefulWidget {
   const CoordinatorDashboard({super.key});
@@ -155,6 +156,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
     return Scaffold(
       backgroundColor: DesignSystem.background,
       appBar: AppBar(
@@ -296,6 +298,31 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                           )
                         ],
                       ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Admin panel section if role is SCOT_ADMIN
+                  if (appState.userRole == 'SCOT_ADMIN') ...[
+                    Text(
+                      'ADMINISTRATOR CONTROLS',
+                      style: DesignSystem.headingStyle(
+                        fontSize: 12,
+                        color: DesignSystem.textMuted,
+                      ).copyWith(letterSpacing: 2),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildConsoleTile(
+                      icon: Icons.admin_panel_settings_rounded,
+                      title: 'Onboard Committee Organizer',
+                      subtitle: 'Register Core Team, Wing Commanders, Wing Captains, or Event Champions',
+                      color: DesignSystem.primary,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AdminOnboardingScreen()),
+                        );
+                      },
                     ),
                     const SizedBox(height: 24),
                   ],

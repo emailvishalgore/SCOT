@@ -22,6 +22,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final List<Map<String, String>> _testAccounts = [
     {
+      'name': 'Dave Miller (SCOT Admin)',
+      'phone': '+919999988884',
+      'role': 'SCOT_ADMIN'
+    },
+    {
       'name': 'John Doe (Wing Commander & Champion)',
       'phone': '+919999988888',
       'role': 'WING_COMMANDER'
@@ -58,7 +63,8 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _otpSent = true);
       _showSuccess('OTP Sent to $phone (Test code is 123456)');
     } catch (e) {
-      final isTest = _testAccounts.any((element) => element['phone'] == phone);
+      final allTestAccounts = [..._testAccounts, ...Provider.of<AppState>(context, listen: false).customTestAccounts];
+      final isTest = allTestAccounts.any((element) => element['phone'] == phone);
       if (isTest) {
         setState(() => _otpSent = true);
         _showWarning('SMS API provider disabled. Switched to offline demo mode. Enter 123456.');
@@ -99,16 +105,17 @@ class _LoginScreenState extends State<LoginScreen> {
         _showError('Verification failed. Session is empty.');
       }
     } catch (e) {
-      final isTest = _testAccounts.any((element) => element['phone'] == phone);
+      final allTestAccounts = [..._testAccounts, ...Provider.of<AppState>(context, listen: false).customTestAccounts];
+      final isTest = allTestAccounts.any((element) => element['phone'] == phone);
       if (isTest && otp == '123456') {
         final appState = Provider.of<AppState>(context, listen: false);
-        final acc = _testAccounts.firstWhere((element) => element['phone'] == phone);
+        final acc = allTestAccounts.firstWhere((element) => element['phone'] == phone);
         
         appState.userRole = acc['role'];
         appState.userResidentId = 'demo-resident-id';
         appState.userMemberId = 'demo-member-id';
-        appState.userWingId = 'N';
-        appState.userFlatId = 'demo-flat-id';
+        appState.userWingId = acc['wing_id'] ?? 'N';
+        appState.userFlatId = acc['flat_id'] ?? 'demo-flat-id';
         appState.activeSeasonId = 'demo-season-id';
         appState.notifyListeners();
 
@@ -404,18 +411,27 @@ class _LoginScreenState extends State<LoginScreen> {
                       fontWeight: FontWeight.bold,
                     ).copyWith(letterSpacing: 2),
                   ),
-                  const SizedBox(height: 16),
+                   const SizedBox(height: 16),
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _testAccounts.length,
+                    itemCount: [..._testAccounts, ...Provider.of<AppState>(context).customTestAccounts].length,
                     itemBuilder: (context, index) {
-                      final acc = _testAccounts[index];
-                      final Color cardColor = acc['role'] == 'CORE_TEAM'
-                          ? DesignSystem.accentCoral
-                          : (acc['role'] == 'WING_COMMANDER'
-                              ? DesignSystem.primary
-                              : DesignSystem.secondary);
+                      final allTestAccounts = [..._testAccounts, ...Provider.of<AppState>(context, listen: false).customTestAccounts];
+                      final acc = allTestAccounts[index];
+                      final role = acc['role'];
+                      final Color cardColor = role == 'SCOT_ADMIN'
+                          ? DesignSystem.primary
+                          : (role == 'CORE_TEAM'
+                              ? DesignSystem.accentCoral
+                              : (role == 'WING_COMMANDER' || role == 'WING_CAPTAIN'
+                                  ? DesignSystem.secondary
+                                  : DesignSystem.accentPurple));
+                      final isOrganizer = role == 'SCOT_ADMIN' ||
+                          role == 'CORE_TEAM' ||
+                          role == 'WING_COMMANDER' ||
+                          role == 'WING_CAPTAIN' ||
+                          role == 'EVENT_CHAMPION';
                       return Card(
                         color: Colors.white,
                         margin: const EdgeInsets.only(bottom: 12),
