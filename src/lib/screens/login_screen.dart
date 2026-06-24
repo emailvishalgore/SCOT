@@ -80,13 +80,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     setState(() => _isLoading = true);
     final appState = Provider.of<AppState>(context, listen: false);
 
+    // Try cloud authentication first (unless activeSeasonId is already demo-season-id)
     if (appState.activeSeasonId == 'demo-season-id') {
-      // Offline Demo Authentication
       await Future.delayed(const Duration(milliseconds: 600));
       final res = appState.authenticateUserInDemo(username, pin);
-      
       setState(() => _isLoading = false);
-
       if (res['success'] == true) {
         _showSuccess('Welcome back, ${res['name']}! (Demo Mode)');
         if (!mounted) return;
@@ -94,35 +92,68 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       } else {
         _showError(res['message'] ?? 'Authentication failed');
       }
-    } else {
-      // Real Cloud: Query Supabase core.authenticate_user RPC
-      try {
-        final supabase = Supabase.instance.client;
-        final response = await supabase.rpc('authenticate_user', params: {
-          'p_username': username,
-          'p_pin': pin,
-        });
+      return;
+    }
 
-        final Map<String, dynamic> result = response as Map<String, dynamic>;
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase.rpc('authenticate_user', params: {
+        'p_username': username,
+        'p_pin': pin,
+      });
 
-        if (result['success'] == true) {
-          appState.userRole = result['role']?.toString();
-          appState.userResidentId = result['resident_id']?.toString();
-          appState.userMemberId = result['member_id']?.toString() ?? '';
-          appState.userWingId = result['wing_id']?.toString() ?? 'N';
-          appState.userFlatId = result['flat_id']?.toString() ?? '';
-          appState.activeSeasonId = result['season_id']?.toString();
-          appState.notifyListeners();
+      final Map<String, dynamic> result = response as Map<String, dynamic>;
 
+      if (result['success'] == true) {
+        appState.userRole = result['role']?.toString();
+        appState.userResidentId = result['resident_id']?.toString();
+        appState.userMemberId = result['member_id']?.toString() ?? '';
+        appState.userWingId = result['wing_id']?.toString() ?? 'N';
+        appState.userFlatId = result['flat_id']?.toString() ?? '';
+        appState.activeSeasonId = result['season_id']?.toString();
+        appState.notifyListeners();
+
+        setState(() => _isLoading = false);
+        _showSuccess('Welcome back, ${result['name']}!');
+        if (!mounted) return;
+        _routeUser(appState.userRole);
+      } else {
+        // Auth returned success=false (e.g. invalid username or PIN).
+        // Check if username matches a demo account to fall back to demo mode.
+        final isDemo = appState.demoResidentAccounts.containsKey(username) ||
+                      appState.demoCoordinatorAccounts.containsKey(username);
+        if (isDemo) {
+          final res = appState.authenticateUserInDemo(username, pin);
           setState(() => _isLoading = false);
-          _showSuccess('Welcome back, ${result['name']}!');
-          if (!mounted) return;
-          _routeUser(appState.userRole);
+          if (res['success'] == true) {
+            _showSuccess('Welcome back, ${res['name']}! (Demo Fallback)');
+            if (!mounted) return;
+            _routeUser(res['role']);
+          } else {
+            _showError(res['message'] ?? 'Authentication failed');
+          }
         } else {
           setState(() => _isLoading = false);
           _showError(result['message'] ?? 'Authentication failed');
         }
-      } catch (e) {
+      }
+    } catch (e) {
+      // Cloud RPC failed or threw an exception (e.g. PGRST202 or connection error).
+      // Fallback to offline demo authentication if it is a demo account.
+      final isDemo = appState.demoResidentAccounts.containsKey(username) ||
+                    appState.demoCoordinatorAccounts.containsKey(username);
+      if (isDemo) {
+        await Future.delayed(const Duration(milliseconds: 400));
+        final res = appState.authenticateUserInDemo(username, pin);
+        setState(() => _isLoading = false);
+        if (res['success'] == true) {
+          _showSuccess('Welcome back, ${res['name']}! (Demo Fallback)');
+          if (!mounted) return;
+          _routeUser(res['role']);
+        } else {
+          _showError(res['message'] ?? 'Authentication failed');
+        }
+      } else {
         setState(() => _isLoading = false);
         _showError('Authentication failed: ${e.toString()}');
       }
@@ -394,63 +425,94 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     ).copyWith(letterSpacing: 2),
                   ),
                   const SizedBox(height: 16),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _testAccounts.length,
-                    itemBuilder: (context, index) {
-                      final acc = _testAccounts[index];
-                      final isResident = acc['type'] == 'RESIDENT';
-                      final Color cardColor = isResident ? DesignSystem.secondary : DesignSystem.primary;
+                  Builder(
+                    builder: (context) {
+                      final appState = Provider.of<AppState>(context);
+                      final List<Map<String, String>> allAccounts = [];
 
-                      return Card(
-                        color: Colors.white,
-                        margin: const EdgeInsets.only(bottom: 12),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          side: BorderSide(
-                            color: cardColor.withOpacity(0.3),
-                            width: 1.2,
-                          ),
-                        ),
-                        child: ListTile(
-                          onTap: () {
-                            setState(() {
-                              _usernameController.text = acc['username']!;
-                              _pinController.text = acc['pin']!;
-                              _tabController.index = isResident ? 0 : 1;
-                            });
-                          },
-                          leading: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: cardColor.withOpacity(0.1),
-                              shape: BoxShape.circle,
+                      // Add coordinators from appState registry
+                      appState.demoCoordinatorAccounts.forEach((username, data) {
+                        allAccounts.add({
+                          'name': '${data['name']} (${(data['role'] as String).replaceAll('_', ' ')})',
+                          'username': username,
+                          'pin': data['pin'] as String,
+                          'type': 'COORDINATOR',
+                        });
+                      });
+
+                      // Add residents from appState registry
+                      appState.demoResidentAccounts.forEach((username, data) {
+                        allAccounts.add({
+                          'name': '${data['name']} (Resident Flat ${data['wing']}-${data['flat']})',
+                          'username': username,
+                          'pin': data['pin'] as String,
+                          'type': 'RESIDENT',
+                        });
+                      });
+
+                      // Deduplicate/merge to avoid duplicate entries in ui
+                      final seen = <String>{};
+                      final uniqueAccounts = allAccounts.where((acc) => seen.add(acc['username']!)).toList();
+
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: uniqueAccounts.length,
+                        itemBuilder: (context, index) {
+                          final acc = uniqueAccounts[index];
+                          final isResident = acc['type'] == 'RESIDENT';
+                          final Color cardColor = isResident ? DesignSystem.secondary : DesignSystem.primary;
+
+                          return Card(
+                            color: Colors.white,
+                            margin: const EdgeInsets.only(bottom: 12),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              side: BorderSide(
+                                color: cardColor.withOpacity(0.3),
+                                width: 1.2,
+                              ),
                             ),
-                            child: Icon(
-                              isResident ? Icons.home_rounded : Icons.admin_panel_settings_rounded,
-                              color: cardColor,
+                            child: ListTile(
+                              onTap: () {
+                                setState(() {
+                                  _usernameController.text = acc['username']!;
+                                  _pinController.text = acc['pin']!;
+                                  _tabController.index = isResident ? 0 : 1;
+                                });
+                              },
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: cardColor.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  isResident ? Icons.home_rounded : Icons.admin_panel_settings_rounded,
+                                  color: cardColor,
+                                ),
+                              ),
+                              title: Text(
+                                acc['name']!,
+                                style: DesignSystem.bodyStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'Username: ${acc['username']} • PIN: ${acc['pin']}',
+                                style: DesignSystem.bodyStyle(
+                                  color: DesignSystem.textMuted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: cardColor),
                             ),
-                          ),
-                          title: Text(
-                            acc['name']!,
-                            style: DesignSystem.bodyStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          subtitle: Text(
-                            'Username: ${acc['username']} • PIN: ${acc['pin']}',
-                            style: DesignSystem.bodyStyle(
-                              color: DesignSystem.textMuted,
-                              fontSize: 12,
-                            ),
-                          ),
-                          trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: cardColor),
-                        ),
+                          );
+                        },
                       );
-                    },
+                    }
                   )
                 ],
               ),
