@@ -297,8 +297,8 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
                                   color: _receiptSelected ? DesignSystem.successGreen : DesignSystem.secondary.withOpacity(0.3),
-                                  width: 1.5,
-                                  style: _receiptSelected ? BorderStyle.solid : BorderStyle.dashed,
+                                  width: _receiptSelected ? 2.0 : 1.5,
+                                  style: BorderStyle.solid,
                                 ),
                               ),
                               child: Center(
