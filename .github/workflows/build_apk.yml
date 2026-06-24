@@ -42,7 +42,7 @@ jobs:
       # 5. Build Android release APK
       - name: Build APK
         working-directory: src
-        run: flutter build apk --release
+        run: flutter build apk --release --android-skip-build-dependency-validation
 
       # 6. Upload APK as Action Artifact
       - name: Upload APK Artifact
