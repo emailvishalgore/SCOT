@@ -57,7 +57,7 @@ jobs:
       # 7. Build Flutter Web
       - name: Build Web
         working-directory: src
-        run: flutter build web --release --base-href "/SCOT/"
+        run: flutter build web --release --base-href "/SCOT/" --pwa-strategy=none
 
 
 
