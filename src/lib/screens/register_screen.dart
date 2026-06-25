@@ -5,7 +5,8 @@ import '../app_state.dart';
 import '../theme/design_system.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final bool initialIsOrganizer;
+  const RegisterScreen({super.key, this.initialIsOrganizer = false});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -15,6 +16,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   int _currentStep = 0;
   bool _isSubmitting = false;
+  late bool _isOrganizer;
+  String _selectedRole = 'CORE_TEAM';
 
   // Step 1: Credentials & Flat
   final _usernameController = TextEditingController();
@@ -35,6 +38,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
+    _isOrganizer = widget.initialIsOrganizer;
     _loadFlatsForWing();
   }
 
@@ -176,7 +180,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final appState = Provider.of<AppState>(context, listen: false);
 
     final username = _usernameController.text.trim();
-    final mobile = _mobileController.text.trim();
     final pin = _pinController.text.trim();
 
     if (appState.activeSeasonId == 'demo-season-id') {
@@ -186,7 +189,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final Map<String, dynamic> newRequest = {
         'id': 'req-${DateTime.now().millisecondsSinceEpoch}',
         'username': username,
-        'mobile': mobile,
         'wing': _selectedWingName,
         'flat': _selectedFlatNumber,
         'flat_id': _selectedFlatId,
@@ -216,7 +218,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
         await supabase.rpc('submit_registration_request', params: {
           'p_username': username,
-          'p_mobile': mobile,
           'p_wing_id': wingId,
           'p_flat_id': _selectedFlatId!,
           'p_pin': pin,
@@ -230,7 +231,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         final Map<String, dynamic> newRequest = {
           'id': 'req-${DateTime.now().millisecondsSinceEpoch}',
           'username': username,
-          'mobile': mobile,
           'wing': _selectedWingName,
           'flat': _selectedFlatNumber,
           'flat_id': _selectedFlatId,
@@ -240,6 +240,76 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'date': 'Just Now'
         };
         appState.addPendingRegistrationInDemo(newRequest);
+        appState.activeSeasonId = 'demo-season-id';
+        appState.notifyListeners();
+
+        setState(() => _isSubmitting = false);
+        _showPendingApprovalDialog();
+      }
+    }
+  }
+
+  void _submitOrganizerRegistration() async {
+    setState(() => _isSubmitting = true);
+    final appState = Provider.of<AppState>(context, listen: false);
+
+    final username = _usernameController.text.trim();
+    final pin = _pinController.text.trim();
+    final role = _selectedRole;
+    final isWingRequired = role == 'WING_COMMANDER' || role == 'WING_CAPTAIN';
+
+    if (appState.activeSeasonId == 'demo-season-id') {
+      await Future.delayed(const Duration(milliseconds: 1200));
+
+      final Map<String, dynamic> newRequest = {
+        'id': 'org-req-${DateTime.now().millisecondsSinceEpoch}',
+        'username': username,
+        'pin': pin,
+        'role': role,
+        'wing': isWingRequired ? _selectedWingName : '',
+        'wing_id': isWingRequired ? 'demo-wing-$_selectedWingName-id' : null,
+        'status': 'PENDING',
+        'date': 'Just Now'
+      };
+
+      appState.addPendingOrganizerRegistrationInDemo(newRequest);
+      setState(() => _isSubmitting = false);
+      _showPendingApprovalDialog();
+    } else {
+      try {
+        final supabase = Supabase.instance.client;
+        String? wingId;
+        if (isWingRequired) {
+          final wingRes = await supabase
+              .from('wing')
+              .select('id')
+              .eq('name', _selectedWingName)
+              .single();
+          wingId = wingRes['id'];
+        }
+
+        await supabase.rpc('submit_organizer_registration_request', params: {
+          'p_username': username,
+          'p_role': role,
+          'p_wing_id': wingId,
+          'p_pin': pin,
+        });
+
+        setState(() => _isSubmitting = false);
+        _showPendingApprovalDialog();
+      } catch (e) {
+        debugPrint('Failed to submit organizer registration to cloud: $e. Falling back to offline.');
+        final Map<String, dynamic> newRequest = {
+          'id': 'org-req-${DateTime.now().millisecondsSinceEpoch}',
+          'username': username,
+          'pin': pin,
+          'role': role,
+          'wing': isWingRequired ? _selectedWingName : '',
+          'wing_id': isWingRequired ? 'demo-wing-$_selectedWingName-id' : null,
+          'status': 'PENDING',
+          'date': 'Just Now'
+        };
+        appState.addPendingOrganizerRegistrationInDemo(newRequest);
         appState.activeSeasonId = 'demo-season-id';
         appState.notifyListeners();
 
@@ -278,7 +348,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Your flat self-registration has been successfully sent to the SCOT Core Team. Your login PIN is secured. Once verified and approved, you can log in immediately.',
+                _isOrganizer
+                    ? 'Your organizer self-registration request has been successfully sent to the main SCOT Admin. Once approved, you can log in immediately.'
+                    : 'Your flat self-registration has been successfully sent to the SCOT Core Team. Your login PIN is secured. Once verified and approved, you can log in immediately.',
                 textAlign: TextAlign.center,
                 style: DesignSystem.bodyStyle(fontSize: 13, color: DesignSystem.textMuted),
               ),
@@ -308,7 +380,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       backgroundColor: DesignSystem.background,
       appBar: AppBar(
         title: Text(
-          'Flat Registration',
+          _isOrganizer ? 'SCOT Team Registration' : 'Flat Registration',
           style: DesignSystem.headingStyle(fontSize: 20),
         ),
         backgroundColor: DesignSystem.background,
@@ -324,7 +396,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
                   ),
                   SizedBox(height: 16),
-                  Text('Submitting credentials and roster...'),
+                  Text('Submitting credentials...'),
                 ],
               ),
             )
@@ -335,24 +407,148 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Steps indicators
-                    Row(
-                      children: [
-                        _buildStepIndicator(0, 'Flat Details'),
-                        const SizedBox(width: 8),
-                        Expanded(child: Container(height: 2, color: DesignSystem.secondary.withOpacity(0.3))),
-                        const SizedBox(width: 8),
-                        _buildStepIndicator(1, 'Family Roster'),
-                      ],
-                    ),
-                    const SizedBox(height: 28),
+                    if (!_isOrganizer) ...[
+                      // Steps indicators
+                      Row(
+                        children: [
+                          _buildStepIndicator(0, 'Flat Details'),
+                          const SizedBox(width: 8),
+                          Expanded(child: Container(height: 2, color: DesignSystem.secondary.withOpacity(0.3))),
+                          const SizedBox(width: 8),
+                          _buildStepIndicator(1, 'Family Roster'),
+                        ],
+                      ),
+                      const SizedBox(height: 28),
+                    ],
 
-                    if (_currentStep == 0) _buildStep1FlatDetails(),
-                    if (_currentStep == 1) _buildStep2FamilyRoster(),
+                    if (_isOrganizer)
+                      _buildOrganizerDetailsForm()
+                    else ...[
+                      if (_currentStep == 0) _buildStep1FlatDetails(),
+                      if (_currentStep == 1) _buildStep2FamilyRoster(),
+                    ],
                   ],
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildOrganizerDetailsForm() {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.primary),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'ORGANIZER CREDENTIALS',
+            style: DesignSystem.headingStyle(fontSize: 12, color: DesignSystem.textMuted).copyWith(letterSpacing: 1.5),
+          ),
+          const SizedBox(height: 16),
+
+          // Username
+          TextFormField(
+            controller: _usernameController,
+            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
+            decoration: InputDecoration(
+              labelText: 'Account Username (for login)',
+              labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) return 'Enter a username';
+              if (value.trim().length < 3) return 'Username too short';
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // login PIN
+          TextFormField(
+            controller: _pinController,
+            keyboardType: TextInputType.number,
+            obscureText: true,
+            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
+            maxLength: 4,
+            decoration: InputDecoration(
+              labelText: 'Create 4-Digit Login PIN',
+              labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              counterText: '',
+            ),
+            validator: (value) {
+              if (value == null || value.trim().length != 4 || int.tryParse(value) == null) {
+                return 'Please enter a 4-digit numeric PIN';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Team Dropdown
+          DropdownButtonFormField<String>(
+            value: _selectedRole,
+            decoration: InputDecoration(
+              labelText: 'Select Your SCOT Team',
+              labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            onChanged: (val) {
+              if (val != null) {
+                setState(() {
+                  _selectedRole = val;
+                });
+              }
+            },
+            items: const [
+              DropdownMenuItem(value: 'CORE_TEAM', child: Text('Core Team')),
+              DropdownMenuItem(value: 'EVENT_CHAMPION', child: Text('Event Champion')),
+              DropdownMenuItem(value: 'WING_COMMANDER', child: Text('Wing Commander')),
+              DropdownMenuItem(value: 'WING_CAPTAIN', child: Text('Wing Captain')),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Wing Selection (shown only if Wing Commander or Wing Captain is selected)
+          if (_selectedRole == 'WING_COMMANDER' || _selectedRole == 'WING_CAPTAIN') ...[
+            DropdownButtonFormField<String>(
+              value: _selectedWingName,
+              decoration: InputDecoration(
+                labelText: 'Select Assigned Wing',
+                labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() {
+                    _selectedWingName = val;
+                  });
+                }
+              },
+              items: ['N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'].map((w) {
+                return DropdownMenuItem(value: w, child: Text('Wing $w'));
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          const SizedBox(height: 24),
+
+          ElevatedButton(
+            onPressed: () {
+              if (_formKey.currentState!.validate()) {
+                _submitOrganizerRegistration();
+              }
+            },
+            style: DesignSystem.buttonStyle(color: DesignSystem.primary),
+            child: Text(
+              'SUBMIT REGISTRATION',
+              style: DesignSystem.headingStyle(fontSize: 14, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -469,22 +665,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Mobile Number
-          TextFormField(
-            controller: _mobileController,
-            keyboardType: TextInputType.phone,
-            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
-            decoration: InputDecoration(
-              labelText: 'Mobile Phone Number',
-              labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-            ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) return 'Enter mobile number';
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
+
 
           // login PIN
           TextFormField(

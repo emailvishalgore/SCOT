@@ -23,28 +23,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   final List<Map<String, String>> _testAccounts = [
     {
-      'name': 'Dave Miller (SCOT Admin)',
-      'username': 'dave_miller',
-      'pin': '1234',
+      'name': 'SCOT Admin 1 (SCOT Admin)',
+      'username': 'SCOTAdmin1',
+      'pin': '0122',
       'type': 'COORDINATOR'
     },
     {
-      'name': 'Jack Commander (Wing N Commander)',
-      'username': 'jack_commander',
-      'pin': '1234',
+      'name': 'SCOT Admin 2 (SCOT Admin)',
+      'username': 'SCOTAdmin2',
+      'pin': '0133',
       'type': 'COORDINATOR'
-    },
-    {
-      'name': 'John Doe (Resident Flat 102)',
-      'username': 'john_doe',
-      'pin': '1234',
-      'type': 'RESIDENT'
-    },
-    {
-      'name': 'Jane Doe (Family Member Flat 102)',
-      'username': 'jane_doe',
-      'pin': '1234',
-      'type': 'RESIDENT'
     },
   ];
 
@@ -69,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   Future<void> _handleLogin() async {
-    final username = _usernameController.text.trim();
+    final username = _usernameController.text.trim().toLowerCase();
     final pin = _pinController.text.trim();
 
     if (username.isEmpty || pin.isEmpty) {
@@ -371,42 +359,43 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 ),
                         ),
 
-                        // Register Gating Link (Resident login tab only)
+                        // Register Gating Link
                         AnimatedBuilder(
                           animation: _tabController,
                           builder: (context, child) {
-                            if (_tabController.index == 0) {
-                              return Column(
-                                children: [
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        'New to Topaz? ',
-                                        style: DesignSystem.bodyStyle(fontSize: 13, color: DesignSystem.textMuted),
-                                      ),
-                                      InkWell(
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                                          );
-                                        },
-                                        child: Text(
-                                          'Register Flat',
-                                          style: DesignSystem.headingStyle(
-                                            fontSize: 13,
-                                            color: DesignSystem.secondary,
+                            return Column(
+                              children: [
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      _tabController.index == 0 ? 'New to Topaz? ' : 'New Organizer? ',
+                                      style: DesignSystem.bodyStyle(fontSize: 13, color: DesignSystem.textMuted),
+                                    ),
+                                    InkWell(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => RegisterScreen(
+                                              initialIsOrganizer: _tabController.index == 1,
+                                            ),
                                           ),
+                                        );
+                                      },
+                                      child: Text(
+                                        _tabController.index == 0 ? 'Register Flat' : 'Register Organizer',
+                                        style: DesignSystem.headingStyle(
+                                          fontSize: 13,
+                                          color: _tabController.index == 0 ? DesignSystem.secondary : DesignSystem.primary,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ],
-                              );
-                            }
-                            return const SizedBox.shrink();
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            );
                           },
                         ),
                       ],

@@ -63,42 +63,25 @@ class AppState extends ChangeNotifier {
     }
   ];
 
+  // --- Organizer/Coordinator Registration Requests Mocks ---
+  final List<Map<String, dynamic>> demoPendingCoordinators = [];
+
   // --- Hashed Credentials Accounts Mocks ---
-  final Map<String, Map<String, dynamic>> demoResidentAccounts = {
-    'john_doe': {
-      'pin': '1234',
-      'role': 'HOME_CHIEF',
-      'name': 'John Doe',
-      'flat': '102',
-      'wing': 'N',
-      'flat_id': 'demo-flat-N-102',
-      'resident_id': 'res-john-id'
-    },
-    'jane_doe': {
-      'pin': '1234',
-      'role': 'HOME_MEMBER',
-      'name': 'Jane Doe',
-      'flat': '102',
-      'wing': 'N',
-      'flat_id': 'demo-flat-N-102',
-      'resident_id': 'res-jane-id'
-    }
-  };
+  final Map<String, Map<String, dynamic>> demoResidentAccounts = {};
 
   // --- Coordinator pre-seeded accounts ---
   final Map<String, Map<String, dynamic>> demoCoordinatorAccounts = {
-    'dave_miller': {
-      'pin': '1234',
+    'scotadmin1': {
+      'pin': '0122',
       'role': 'SCOT_ADMIN',
-      'name': 'Dave Miller',
-      'member_id': 'mem-dave-id',
+      'name': 'SCOT Admin 1',
+      'member_id': 'mem-admin1-id',
     },
-    'jack_commander': {
-      'pin': '1234',
-      'role': 'WING_COMMANDER',
-      'name': 'Jack Commander',
-      'wing_id': 'N',
-      'member_id': 'mem-jack-id',
+    'scotadmin2': {
+      'pin': '0133',
+      'role': 'SCOT_ADMIN',
+      'name': 'SCOT Admin 2',
+      'member_id': 'mem-admin2-id',
     }
   };
 
@@ -209,9 +192,10 @@ class AppState extends ChangeNotifier {
     final idx = demoPendingRegistrations.indexWhere((element) => element['id'] == requestId);
     if (idx != -1) {
       final req = demoPendingRegistrations[idx];
+      final String lowerUsername = (req['username'] as String).toLowerCase();
       
       // Add primary resident account
-      demoResidentAccounts[req['username']] = {
+      demoResidentAccounts[lowerUsername] = {
         'pin': req['pin'],
         'role': 'HOME_CHIEF',
         'name': req['username'],
@@ -244,6 +228,29 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  void addPendingOrganizerRegistrationInDemo(Map<String, dynamic> req) {
+    demoPendingCoordinators.add(req);
+    notifyListeners();
+  }
+
+  void approveOrganizerRegistrationRequestInDemo(String requestId) {
+    final idx = demoPendingCoordinators.indexWhere((element) => element['id'] == requestId);
+    if (idx != -1) {
+      final req = demoPendingCoordinators[idx];
+      final String lowerUsername = (req['username'] as String).toLowerCase();
+      
+      demoCoordinatorAccounts[lowerUsername] = {
+        'pin': req['pin'],
+        'role': req['role'],
+        'name': req['username'],
+        'wing_id': req['wing_id'] ?? 'N',
+        'member_id': 'mem-gen-${req['username']}',
+      };
+      demoPendingCoordinators.removeAt(idx);
+      notifyListeners();
+    }
+  }
+
   void deleteFlatEntryInDemo(String wingName, String flatNumber) {
     demoResidentAccounts.removeWhere((key, value) => value['flat'] == flatNumber && value['wing'] == wingName);
     demoPaidFlats.remove(flatNumber);
@@ -251,9 +258,10 @@ class AppState extends ChangeNotifier {
   }
 
   Map<String, dynamic> authenticateUserInDemo(String username, String pin) {
+    final lowerUsername = username.trim().toLowerCase();
     // Check resident accounts
-    if (demoResidentAccounts.containsKey(username)) {
-      final acc = demoResidentAccounts[username]!;
+    if (demoResidentAccounts.containsKey(lowerUsername)) {
+      final acc = demoResidentAccounts[lowerUsername]!;
       if (acc['pin'] == pin) {
         userRole = acc['role'];
         userResidentId = acc['resident_id'];
@@ -267,8 +275,8 @@ class AppState extends ChangeNotifier {
     }
 
     // Check coordinator accounts
-    if (demoCoordinatorAccounts.containsKey(username)) {
-      final acc = demoCoordinatorAccounts[username]!;
+    if (demoCoordinatorAccounts.containsKey(lowerUsername)) {
+      final acc = demoCoordinatorAccounts[lowerUsername]!;
       if (acc['pin'] == pin) {
         userRole = acc['role'];
         userResidentId = acc['member_id'];
