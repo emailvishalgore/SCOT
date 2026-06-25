@@ -1024,7 +1024,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Text('Vendor: ${item['vendor']}', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white74)),
+                          Text('Vendor: ${item['vendor']}', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white70)),
                           const SizedBox(height: 12),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,

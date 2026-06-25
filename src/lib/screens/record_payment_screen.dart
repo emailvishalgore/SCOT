@@ -479,6 +479,8 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
   }
 
   String get selectedFlatPrefix {
-    return isCoreOrAdmin ? '' : '';
+    final appState = Provider.of<AppState>(context, listen: false);
+    final isCoreOrAdmin = appState.userRole == 'CORE_TEAM' || appState.userRole == 'SCOT_ADMIN';
+    return isCoreOrAdmin ? '$_selectedWingName-' : '';
   }
 }
