@@ -11,6 +11,9 @@ on:
       - master
   workflow_dispatch: # Allows manual trigger from GitHub Actions tab
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -50,3 +53,16 @@ jobs:
         with:
           name: scot-platform-release-apk
           path: src/build/app/outputs/flutter-apk/app-release.apk
+
+      # 7. Build Flutter Web
+      - name: Build Web
+        working-directory: src
+        run: flutter build web --release --base-href "/SCOT/"
+
+      # 8. Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'push'
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: src/build/web
+          branch: gh-pages
