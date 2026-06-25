@@ -15,9 +15,14 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController(text: '5000');
 
+  String? _selectedWingId;
+  String _selectedWingName = 'N';
+  List<Map<String, String>> _wings = [];
+
   String? _selectedFlatId;
   String _selectedFlatNumber = '';
   List<Map<String, String>> _flats = [];
+  
   bool _isFetchingFlats = true;
   bool _isLoading = false;
   bool _receiptSelected = false;
@@ -25,7 +30,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
   @override
   void initState() {
     super.initState();
-    _loadFlats();
+    _loadWingsAndFlats();
   }
 
   @override
@@ -34,20 +39,77 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
     super.dispose();
   }
 
-  Future<void> _loadFlats() async {
+  Future<void> _loadWingsAndFlats() async {
     final appState = Provider.of<AppState>(context, listen: false);
-    final wingId = appState.userWingId ?? 'N';
+    final isCoreOrAdmin = appState.userRole == 'CORE_TEAM' || appState.userRole == 'SCOT_ADMIN';
 
-    final isUuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(wingId);
+    if (appState.activeSeasonId == 'demo-season-id') {
+      // Offline Demo Mode
+      if (isCoreOrAdmin) {
+        final List<Map<String, String>> mockWings = ['N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'].map((w) {
+          return {'id': w, 'name': 'Wing $w'};
+        }).toList();
 
-    if (!isUuid) {
-      // Offline Demo Mode: Generate 28 mock flats (numbered 101 to 704)
+        setState(() {
+          _wings = mockWings;
+          _selectedWingId = 'N';
+          _selectedWingName = 'N';
+        });
+      } else {
+        setState(() {
+          _selectedWingId = appState.userWingId ?? 'N';
+          _selectedWingName = appState.userWingId ?? 'N';
+        });
+      }
+      await _loadFlatsForWing(_selectedWingId!);
+    } else {
+      // Real Cloud Mode
+      try {
+        final supabase = Supabase.instance.client;
+        if (isCoreOrAdmin) {
+          final wingRes = await supabase.from('wing').select('id, name').order('name');
+          if (wingRes != null) {
+            final List<Map<String, String>> loadedWings = [];
+            for (var w in wingRes) {
+              loadedWings.add({
+                'id': w['id']?.toString() ?? '',
+                'name': 'Wing ${w['name']}',
+              });
+            }
+            setState(() {
+              _wings = loadedWings;
+              if (_wings.isNotEmpty) {
+                _selectedWingId = _wings.first['id'];
+                final matched = wingRes.first;
+                _selectedWingName = matched['name']?.toString() ?? 'N';
+              }
+            });
+          }
+        } else {
+          final wingId = appState.userWingId ?? '';
+          setState(() {
+            _selectedWingId = wingId;
+          });
+        }
+        await _loadFlatsForWing(_selectedWingId!);
+      } catch (e) {
+        debugPrint('Error loading wings: $e');
+        setState(() => _isFetchingFlats = false);
+      }
+    }
+  }
+
+  Future<void> _loadFlatsForWing(String wingId) async {
+    setState(() => _isFetchingFlats = true);
+    final appState = Provider.of<AppState>(context, listen: false);
+
+    if (appState.activeSeasonId == 'demo-season-id') {
       final List<Map<String, String>> mockFlats = [];
       for (int floor = 1; floor <= 7; floor++) {
         for (int flatNum = 1; flatNum <= 4; flatNum++) {
           final number = '$floor${flatNum.toString().padLeft(2, '0')}';
           mockFlats.add({
-            'id': 'demo-flat-$number',
+            'id': 'demo-flat-$wingId-$number',
             'number': number,
           });
         }
@@ -57,11 +119,13 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
         if (_flats.isNotEmpty) {
           _selectedFlatId = _flats.first['id'];
           _selectedFlatNumber = _flats.first['number']!;
+        } else {
+          _selectedFlatId = null;
+          _selectedFlatNumber = '';
         }
         _isFetchingFlats = false;
       });
     } else {
-      // Real Cloud Mode: Query Supabase flats
       try {
         final supabase = Supabase.instance.client;
         final response = await supabase
@@ -83,6 +147,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
             if (_flats.isNotEmpty) {
               _selectedFlatId = _flats.first['id'];
               _selectedFlatNumber = _flats.first['number']!;
+            } else {
+              _selectedFlatId = null;
+              _selectedFlatNumber = '';
             }
           });
         }
@@ -103,7 +170,6 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
     final appState = Provider.of<AppState>(context, listen: false);
 
     if (appState.activeSeasonId == 'demo-season-id') {
-      // Offline Demo Mode: Mark flat as paid in state
       await Future.delayed(const Duration(milliseconds: 600));
       appState.markFlatAsPaidInDemo(_selectedFlatNumber);
       
@@ -111,7 +177,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Contribution logged successfully for Flat $_selectedFlatNumber! (Demo Mode)'),
+            content: Text('Contribution logged successfully for Flat $_selectedWingName-$_selectedFlatNumber! (Demo Mode)'),
             backgroundColor: DesignSystem.successGreen,
             behavior: SnackBarBehavior.floating,
           ),
@@ -119,7 +185,6 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
         Navigator.pop(context);
       }
     } else {
-      // Real Cloud Mode: Invoke record_payment RPC database procedure
       try {
         final supabase = Supabase.instance.client;
         await supabase.rpc('record_payment', params: {
@@ -133,7 +198,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Contribution recorded successfully for Flat $_selectedFlatNumber!'),
+              content: Text('Contribution recorded successfully for Flat $_selectedWingName-$_selectedFlatNumber!'),
               backgroundColor: DesignSystem.successGreen,
               behavior: SnackBarBehavior.floating,
             ),
@@ -157,6 +222,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final isCoreOrAdmin = appState.userRole == 'CORE_TEAM' || appState.userRole == 'SCOT_ADMIN';
+
     return Scaffold(
       backgroundColor: DesignSystem.background,
       appBar: AppBar(
@@ -179,7 +247,6 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Form Container Card
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.secondary),
@@ -194,6 +261,52 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                           ),
                           const SizedBox(height: 20),
 
+                          // Wing Selector dropdown (Visible to Core / Admin)
+                          if (isCoreOrAdmin) ...[
+                            Text(
+                              'SELECT WING',
+                              style: DesignSystem.headingStyle(fontSize: 12, color: DesignSystem.textMuted),
+                            ),
+                            const SizedBox(height: 8),
+                            _wings.isEmpty
+                                ? Text(
+                                    'No wings loaded.',
+                                    style: DesignSystem.bodyStyle(color: DesignSystem.accentCoral, fontWeight: FontWeight.bold),
+                                  )
+                                : Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: DesignSystem.secondary.withOpacity(0.3), width: 1.5),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: _selectedWingId,
+                                        isExpanded: true,
+                                        style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
+                                        onChanged: (value) {
+                                          if (value != null) {
+                                            setState(() {
+                                              _selectedWingId = value;
+                                              final matched = _wings.firstWhere((w) => w['id'] == value, orElse: () => {'name': 'Wing N'});
+                                              _selectedWingName = matched['name']!.replaceAll('Wing ', '');
+                                            });
+                                            _loadFlatsForWing(value);
+                                          }
+                                        },
+                                        items: _wings.map((w) {
+                                          return DropdownMenuItem<String>(
+                                            value: w['id'],
+                                            child: Text(w['name']!),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  ),
+                            const SizedBox(height: 20),
+                          ],
+
                           // Flat Selector dropdown
                           Text(
                             'SELECT FLAT NUMBER',
@@ -202,7 +315,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                           const SizedBox(height: 8),
                           _flats.isEmpty
                               ? Text(
-                                  'No flats found in your Wing.',
+                                  'No flats found in the selected Wing.',
                                   style: DesignSystem.bodyStyle(color: DesignSystem.accentCoral, fontWeight: FontWeight.bold),
                                 )
                               : Container(
@@ -229,7 +342,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                                       items: _flats.map((flat) {
                                         return DropdownMenuItem<String>(
                                           value: flat['id'],
-                                          child: Text('Flat ${flat['number']}'),
+                                          child: Text('Flat $selectedFlatPrefix${flat['number']}'),
                                         );
                                       }).toList(),
                                     ),
@@ -363,5 +476,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
               ),
             ),
     );
+  }
+
+  String get selectedFlatPrefix {
+    return isCoreOrAdmin ? '' : '';
   }
 }

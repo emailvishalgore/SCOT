@@ -37,10 +37,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     final appState = Provider.of<AppState>(context, listen: false);
 
     if (appState.activeSeasonId == 'demo-season-id') {
-      // In demo mode, load info from accounts
-      // Username is resolved based on resident_id or mock name
       final String userResId = appState.userResidentId ?? '';
-      // Find account matching resident_id
       String matchedName = 'Resident';
       String matchedFlat = '102';
       String matchedWing = 'N';
@@ -75,7 +72,6 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     }
 
     try {
-      // 1. Fetch Resident Profile Name
       final resData = await supabase
           .from('resident')
           .select('full_name')
@@ -86,7 +82,6 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
         _residentName = resData['full_name'] ?? 'Resident';
       }
 
-      // 2. Fetch Flat & Wing info
       if (appState.userFlatId != null && appState.userFlatId!.isNotEmpty) {
         final flatData = await supabase
             .from('flat')
@@ -102,7 +97,6 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
           }
         }
 
-        // 3. Fetch Maintenance status for active season
         if (appState.activeSeasonId != null && appState.activeSeasonId!.isNotEmpty) {
           final summaryData = await supabase
               .from('flat_annual_summary')
@@ -208,7 +202,6 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
           ),
           child: Stack(
             children: [
-              // Glowing background blur blobs
               Positioned(
                 top: -150,
                 left: -100,
@@ -233,10 +226,9 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                 child: GlowBlob(
                   width: 200,
                   height: 200,
-                  color: theme.accentColor,
+                  color: theme.primaryLight,
                 ),
               ),
-              // Main content
               SafeArea(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -258,14 +250,13 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     );
   }
 
-  // --- HEADER & TAB BAR ---
-
   Widget _buildHeaderWidget(AppState appState, ResidentTheme theme) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: GlassCard(
         baseColor: theme.glassBaseColor,
+        borderColor: theme.primaryColor.withOpacity(0.3),
         padding: const EdgeInsets.all(16),
         fillOpacity: 0.12,
         child: Row(
@@ -299,9 +290,9 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: theme.primaryColor.withOpacity(0.3),
+                          gradient: LinearGradient(colors: [theme.primaryColor, theme.secondaryColor]),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: theme.primaryColor.withOpacity(0.5)),
+                          border: Border.all(color: Colors.white24),
                         ),
                         child: Text(
                           appState.userRole == 'HOME_CHIEF' ? 'FLAT HEAD' : 'FAMILY MEMBER',
@@ -330,7 +321,8 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
               onPressed: _handleLogout,
               icon: FreshIcon(
                 icon: Icons.logout_rounded,
-                color: Colors.white,
+                primaryColor: Colors.white,
+                secondaryColor: theme.secondaryColor,
                 size: 20,
               ),
               tooltip: 'Logout',
@@ -346,6 +338,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: GlassCard(
         baseColor: theme.glassBaseColor,
+        borderColor: theme.secondaryColor.withOpacity(0.2),
         padding: EdgeInsets.zero,
         borderRadius: 16,
         fillOpacity: 0.08,
@@ -356,8 +349,10 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
           indicatorSize: TabBarIndicatorSize.tab,
           indicator: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: theme.primaryColor.withOpacity(0.35),
-            border: Border.all(color: theme.primaryColor.withOpacity(0.5)),
+            gradient: LinearGradient(
+              colors: [theme.primaryColor.withOpacity(0.5), theme.secondaryColor.withOpacity(0.3)],
+            ),
+            border: Border.all(color: theme.primaryColor.withOpacity(0.4)),
           ),
           tabs: tabLabels,
           labelStyle: DesignSystem.headingStyle(fontSize: 13),
@@ -367,10 +362,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     );
   }
 
-  // --- HOME CHIEF RESIDENT TABS ---
-
   Widget _buildMyFlatHubTab(AppState appState, ResidentTheme theme) {
-    // Get list of family members for this flat
     final List<Map<String, dynamic>> familyMembers = [];
     appState.demoResidentAccounts.forEach((k, v) {
       if (v['flat'] == _flatNumber && v['wing'] == _wingName && v['role'] == 'HOME_MEMBER') {
@@ -382,14 +374,13 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
       }
     });
 
-    final totalFlatsMembers = familyMembers.length + 1; // family + head
+    final totalFlatsMembers = familyMembers.length + 1;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Banner Image
           _buildBannerImage(
             'https://images.unsplash.com/photo-1543269865-cbf427effbad?w=800&auto=format&fit=crop&q=80',
             'FLAT COOP CENTER',
@@ -398,11 +389,10 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
           ),
           const SizedBox(height: 16),
 
-          // Maintenance Fee Status Card
           GlassCard(
             baseColor: theme.glassBaseColor,
+            borderColor: _isPaid ? Colors.green.withOpacity(0.4) : Colors.redAccent.withOpacity(0.4),
             fillOpacity: _isPaid ? 0.12 : 0.08,
-            borderOpacity: _isPaid ? 0.35 : 0.15,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -456,7 +446,6 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
           ),
           const SizedBox(height: 24),
 
-          // Roster Builder Panel
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -484,7 +473,6 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
           ),
           const SizedBox(height: 12),
 
-          // List Roster
           familyMembers.isEmpty
               ? _buildEmptyState('No family members registered yet', Icons.people_outline_rounded)
               : ListView.builder(
@@ -495,6 +483,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                     final member = familyMembers[index];
                     return GlassCard(
                       baseColor: theme.glassBaseColor,
+                      borderColor: theme.secondaryColor.withOpacity(0.2),
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       child: Row(
@@ -566,7 +555,6 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
               onPressed: () {
                 final name = nameCtrl.text.trim();
                 if (name.isNotEmpty) {
-                  // Find head pin
                   String headPin = '1234';
                   appState.demoResidentAccounts.forEach((k, v) {
                     if (v['resident_id'] == appState.userResidentId) {
@@ -589,7 +577,6 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     );
   }
 
-  // 2. Fiesta Registration Tab
   Widget _buildFiestaRegistrationTab(AppState appState, ResidentTheme theme, {required bool isChief}) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -606,13 +593,14 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
 
           GlassCard(
             baseColor: theme.glassBaseColor,
+            borderColor: theme.secondaryColor.withOpacity(0.25),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Register for Matches', style: DesignSystem.headingStyle(fontSize: 16, color: Colors.white)),
-                    FreshIcon(icon: Icons.emoji_events_rounded, color: theme.secondaryColor),
+                    FreshIconContainer(icon: Icons.emoji_events_rounded, primaryColor: theme.primaryColor, secondaryColor: theme.secondaryColor),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -666,9 +654,10 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
 
                     return GlassCard(
                       baseColor: theme.glassBaseColor,
+                      borderColor: theme.primaryColor.withOpacity(0.2),
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
-                        leading: FreshIcon(icon: Icons.check_circle_rounded, color: Colors.greenAccent),
+                        leading: FreshIcon(icon: Icons.check_circle_rounded, primaryColor: Colors.greenAccent, secondaryColor: theme.secondaryColor),
                         title: Text(evtName, style: DesignSystem.headingStyle(fontSize: 14, color: Colors.white)),
                         subtitle: Text('Status: REGISTERED', style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white70)),
                       ),
@@ -680,16 +669,16 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     );
   }
 
-  // 3. Standings Tab
   Widget _buildStandingsTab(AppState appState, ResidentTheme theme) {
     return Center(
       child: GlassCard(
         baseColor: theme.glassBaseColor,
+        borderColor: theme.secondaryColor.withOpacity(0.25),
         margin: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            FreshIcon(icon: Icons.emoji_events_rounded, color: theme.secondaryColor, size: 48),
+            FreshIconContainer(icon: Icons.emoji_events_rounded, primaryColor: theme.primaryColor, secondaryColor: theme.secondaryColor, size: 48),
             const SizedBox(height: 16),
             Text('Leaderboards & Fixtures', style: DesignSystem.headingStyle(color: Colors.white, fontSize: 16)),
             const SizedBox(height: 8),
@@ -715,22 +704,21 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     );
   }
 
-  // 4. Notices & Gallery Tab
   Widget _buildNoticesAndGalleryTab(AppState appState, ResidentTheme theme) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Launch Gallery Card
           GlassCard(
             baseColor: theme.glassBaseColor,
+            borderColor: theme.primaryColor.withOpacity(0.2),
             child: Row(
               children: [
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: theme.secondaryColor.withOpacity(0.1),
-                  child: FreshIcon(icon: Icons.photo_library_rounded, color: theme.secondaryColor, size: 24),
+                  child: FreshIconContainer(icon: Icons.photo_library_rounded, primaryColor: theme.primaryColor, secondaryColor: theme.secondaryColor, size: 24),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -767,6 +755,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
               final ann = appState.demoAnnouncements[index];
               return GlassCard(
                 baseColor: theme.glassBaseColor,
+                borderColor: theme.primaryColor.withOpacity(0.2),
                 margin: const EdgeInsets.only(bottom: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -785,10 +774,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     );
   }
 
-  // --- FAMILY MEMBER SPECIFIC TABS ---
-
   Widget _buildFamilyProfileTab(AppState appState, ResidentTheme theme) {
-    // Look up flat head name
     String flatHeadName = 'Unknown';
     appState.demoResidentAccounts.forEach((k, v) {
       if (v['flat'] == _flatNumber && v['wing'] == _wingName && v['role'] == 'HOME_CHIEF') {
@@ -811,6 +797,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
 
           GlassCard(
             baseColor: theme.glassBaseColor,
+            borderColor: theme.primaryColor.withOpacity(0.2),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -841,8 +828,6 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
       ),
     );
   }
-
-  // --- REUSABLE UTILITIES CARD & ROW ITEMS ---
 
   Widget _buildBannerImage(String imageUrl, String title, String subtitle, ResidentTheme theme) {
     return ClipRRect(
@@ -916,19 +901,19 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
   }
 }
 
-// --- HELPER VISUAL WIDGETS ---
-
 class ResidentTheme {
   final Color primaryColor;
   final Color secondaryColor;
-  final Color accentColor;
+  final Color primaryLight;
+  final Color secondaryLight;
   final Color glassBaseColor;
   final List<Color> bgGradient;
 
   ResidentTheme({
     required this.primaryColor,
     required this.secondaryColor,
-    required this.accentColor,
+    required this.primaryLight,
+    required this.secondaryLight,
     required this.glassBaseColor,
     required this.bgGradient,
   });
@@ -936,10 +921,11 @@ class ResidentTheme {
   static ResidentTheme getTheme(String? role) {
     return ResidentTheme(
       primaryColor: const Color(0xFFD97706), // Warm Amber
-      secondaryColor: const Color(0xFFFF8A65), // Warm Orange Accent
-      accentColor: const Color(0xFFFFFDE7), // Cream Accent
+      secondaryColor: const Color(0xFFFB923C), // Warm Orange
+      primaryLight: const Color(0xFFFBBF24),
+      secondaryLight: const Color(0xFFFDBA74),
       glassBaseColor: Colors.white,
-      bgGradient: [const Color(0xFF451A03), const Color(0xFF0F172A)], // Warm Amber to dark slate
+      bgGradient: [const Color(0xFF451A03), const Color(0xFF0F172A)],
     );
   }
 }
@@ -986,6 +972,7 @@ class GlassCard extends StatelessWidget {
   final double fillOpacity;
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry? margin;
+  final Color? borderColor;
 
   const GlassCard({
     super.key,
@@ -996,6 +983,7 @@ class GlassCard extends StatelessWidget {
     this.fillOpacity = 0.06,
     this.padding = const EdgeInsets.all(20.0),
     this.margin,
+    this.borderColor,
   });
 
   @override
@@ -1012,7 +1000,7 @@ class GlassCard extends StatelessWidget {
               color: baseColor.withOpacity(fillOpacity),
               borderRadius: BorderRadius.circular(borderRadius),
               border: Border.all(
-                color: baseColor.withOpacity(borderOpacity),
+                color: borderColor ?? baseColor.withOpacity(borderOpacity),
                 width: 1.2,
               ),
             ),
@@ -1026,13 +1014,15 @@ class GlassCard extends StatelessWidget {
 
 class FreshIcon extends StatelessWidget {
   final IconData icon;
-  final Color color;
+  final Color primaryColor;
+  final Color secondaryColor;
   final double size;
 
   const FreshIcon({
     super.key,
     required this.icon,
-    required this.color,
+    required this.primaryColor,
+    required this.secondaryColor,
     this.size = 24.0,
   });
 
@@ -1046,16 +1036,59 @@ class FreshIcon extends StatelessWidget {
           top: 1.5,
           child: Icon(
             icon,
-            color: color.withOpacity(0.3),
+            color: secondaryColor.withOpacity(0.4),
             size: size,
           ),
         ),
         Icon(
           icon,
-          color: color,
+          color: primaryColor,
           size: size,
         ),
       ],
+    );
+  }
+}
+
+class FreshIconContainer extends StatelessWidget {
+  final IconData icon;
+  final Color primaryColor;
+  final Color secondaryColor;
+  final double size;
+
+  const FreshIconContainer({
+    super.key,
+    required this.icon,
+    required this.primaryColor,
+    required this.secondaryColor,
+    this.size = 20.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [
+            primaryColor.withOpacity(0.15),
+            secondaryColor.withOpacity(0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: primaryColor.withOpacity(0.25),
+          width: 1.2,
+        ),
+      ),
+      child: FreshIcon(
+        icon: icon,
+        primaryColor: primaryColor,
+        secondaryColor: secondaryColor,
+        size: size,
+      ),
     );
   }
 }

@@ -6,7 +6,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../app_state.dart';
 import '../theme/design_system.dart';
 import 'login_screen.dart';
-import 'admin_onboarding_screen.dart';
 import 'resident_onboarding_screen.dart';
 import 'record_payment_screen.dart';
 import 'approve_expenses_screen.dart';
@@ -32,6 +31,9 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
   double _totalCollections = 120000.0;
   bool _isLoading = true;
 
+  // Track which bills have been reviewed by the Core Member
+  final Set<String> _viewedBills = {};
+
   // Cloud/DB members directory for admin portfolio panel
   List<Map<String, dynamic>> _liveMembers = [];
 
@@ -48,7 +50,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     if (appState.activeSeasonId == 'demo-season-id') {
       setState(() {
         _coordName = 'Alice Core';
-        // Match name with role if possible
         if (appState.userRole == 'SCOT_ADMIN') {
           _coordName = 'SCOT Admin';
         } else if (appState.userRole == 'CORE_TEAM') {
@@ -68,7 +69,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     }
 
     try {
-      // 1. Fetch member details from DB
       if (appState.userMemberId != null && appState.userMemberId!.isNotEmpty) {
         final memberData = await supabase
             .from('member')
@@ -91,7 +91,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
 
       _coordRole = (appState.userRole ?? 'MEMBER').replaceAll('_', ' ');
 
-      // 2. Load metrics
       if (appState.activeSeasonId != null && appState.activeSeasonId!.isNotEmpty) {
         final paymentSum = await supabase
             .from('flat_annual_summary')
@@ -109,7 +108,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
         final residentCountRes = await supabase.from('resident').select('id');
         _registeredResidentsCount = residentCountRes.length;
 
-        // Fetch onboarded members list for admin panel
         if (appState.userRole == 'SCOT_ADMIN') {
           final membersResponse = await supabase
               .from('member')
@@ -117,7 +115,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           if (membersResponse != null) {
             final List<Map<String, dynamic>> members = [];
             for (var m in membersResponse) {
-              // Try to find role assignment
               final assignRes = await supabase
                   .from('member_season_assignment')
                   .select('role')
@@ -127,7 +124,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
               
               final role = assignRes != null ? assignRes['role']?.toString() : 'CORE_TEAM';
               
-              // Load portfolios
               List<String> ports = [];
               if (assignRes != null) {
                 final portsRes = await supabase
@@ -201,7 +197,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
       );
     }
 
-    // Determine tabs based on role & portfolios
     final List<Widget> tabLabels = [];
     final List<Widget> tabViews = [];
 
@@ -274,13 +269,11 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
       tabLabels.addAll([
         const Tab(text: 'Flats Registry'),
         const Tab(text: 'Ledger'),
-        const Tab(text: 'Expenses'),
         const Tab(text: 'Wing Notices'),
       ]);
       tabViews.addAll([
         _buildWingFlatsRegistryTab(appState, theme),
         _buildWingLedgerTab(appState, theme),
-        _buildWingExpensesTab(appState, theme),
         _buildWingNoticesTab(appState, theme),
       ]);
     } else if (appState.userRole == 'WING_CAPTAIN') {
@@ -292,18 +285,8 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
       tabViews.addAll([
         _buildWingFlatsRegistryTab(appState, theme, readOnly: true),
         _buildWingRegHelperTab(appState, theme),
-        _buildWingNoticesTab(appState, theme, readOnly: true),
+        _buildWingNoticesTab(appState, theme, readOnly: false), // Captains can now broadcast messages
       ]);
-    }
-
-    if (tabLabels.isEmpty) {
-      tabLabels.add(const Tab(text: 'Dashboard'));
-      tabViews.add(Center(
-        child: Text(
-          'No views configured for role: ${appState.userRole}',
-          style: DesignSystem.headingStyle(color: Colors.white, fontSize: 16),
-        ),
-      ));
     }
 
     return DefaultTabController(
@@ -319,7 +302,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           ),
           child: Stack(
             children: [
-              // Glowing background blur blobs
               Positioned(
                 top: -150,
                 left: -100,
@@ -344,10 +326,9 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                 child: GlowBlob(
                   width: 200,
                   height: 200,
-                  color: theme.accentColor,
+                  color: theme.primaryLight,
                 ),
               ),
-              // Main content
               SafeArea(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -369,14 +350,13 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     );
   }
 
-  // --- HEADER & NAVIGATION COMPONENT ---
-
   Widget _buildHeaderWidget(AppState appState, PersonaTheme theme) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: GlassCard(
         baseColor: theme.glassBaseColor,
+        borderColor: theme.primaryColor.withOpacity(0.3),
         padding: const EdgeInsets.all(16),
         fillOpacity: 0.12,
         child: Row(
@@ -384,10 +364,11 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
             CircleAvatar(
               radius: 28,
               backgroundColor: theme.primaryColor.withOpacity(0.2),
-              child: FreshIcon(
+              child: FreshIconContainer(
                 icon: Icons.admin_panel_settings_rounded,
-                color: theme.primaryColor,
-                size: 24,
+                primaryColor: theme.primaryColor,
+                secondaryColor: theme.secondaryColor,
+                size: 20,
               ),
             ),
             const SizedBox(width: 16),
@@ -408,9 +389,9 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: theme.primaryColor.withOpacity(0.3),
+                          gradient: LinearGradient(colors: [theme.primaryColor, theme.secondaryColor]),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: theme.primaryColor.withOpacity(0.5)),
+                          border: Border.all(color: Colors.white24),
                         ),
                         child: Text(
                           _coordRole.toUpperCase(),
@@ -441,7 +422,8 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
               onPressed: _handleLogout,
               icon: FreshIcon(
                 icon: Icons.logout_rounded,
-                color: Colors.white,
+                primaryColor: Colors.white,
+                secondaryColor: theme.secondaryColor,
                 size: 20,
               ),
               tooltip: 'Logout',
@@ -457,6 +439,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: GlassCard(
         baseColor: theme.glassBaseColor,
+        borderColor: theme.secondaryColor.withOpacity(0.2),
         padding: EdgeInsets.zero,
         borderRadius: 16,
         fillOpacity: 0.08,
@@ -467,8 +450,10 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           indicatorSize: TabBarIndicatorSize.tab,
           indicator: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: theme.primaryColor.withOpacity(0.35),
-            border: Border.all(color: theme.primaryColor.withOpacity(0.5)),
+            gradient: LinearGradient(
+              colors: [theme.primaryColor.withOpacity(0.5), theme.secondaryColor.withOpacity(0.3)],
+            ),
+            border: Border.all(color: theme.primaryColor.withOpacity(0.4)),
           ),
           tabs: tabLabels,
           labelStyle: DesignSystem.headingStyle(fontSize: 13),
@@ -478,8 +463,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     );
   }
 
-  // --- PERSONA dashboard TAB VIEWS ---
-
   // 1. SCOT Admin Overview Tab
   Widget _buildAdminOverviewTab(AppState appState, PersonaTheme theme) {
     return SingleChildScrollView(
@@ -487,7 +470,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Banner Image
           _buildBannerImage(
             'https://images.unsplash.com/photo-1543269865-cbf427effbad?w=800&auto=format&fit=crop&q=80',
             'SCOT ADMIN CENTER',
@@ -496,9 +478,9 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           ),
           const SizedBox(height: 16),
 
-          // Active Season Details Card
           GlassCard(
             baseColor: theme.glassBaseColor,
+            borderColor: theme.primaryColor.withOpacity(0.2),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -537,7 +519,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           ),
           const SizedBox(height: 16),
 
-          // Organized Events Summary
           Text('ORGANIZED EVENTS FOR THIS SEASON', style: DesignSystem.headingStyle(fontSize: 13, color: Colors.white70).copyWith(letterSpacing: 1.5)),
           const SizedBox(height: 12),
           _buildAdminEventRow('Football Cup', 'Sports', '48 Residents', Icons.sports_soccer_rounded, Colors.orangeAccent),
@@ -549,7 +530,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     );
   }
 
-  // 2. SCOT Admin Requests Tab (Approve registrations & coordinators)
+  // 2. SCOT Admin Requests Tab
   Widget _buildAdminRequestsTab(AppState appState, PersonaTheme theme) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -568,6 +549,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                     final req = appState.demoPendingRegistrations[index];
                     return GlassCard(
                       baseColor: theme.glassBaseColor,
+                      borderColor: theme.primaryColor.withOpacity(0.2),
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -618,6 +600,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                     final req = appState.demoPendingCoordinators[index];
                     return GlassCard(
                       baseColor: theme.glassBaseColor,
+                      borderColor: theme.secondaryColor.withOpacity(0.2),
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -665,20 +648,8 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Onboard Organizers Tile
-          _buildActionConsoleTile(
-            icon: Icons.person_add_alt_1_rounded,
-            title: 'Onboard Committee Organizer',
-            subtitle: 'Register Core Team, Wing Commanders, Wing Captains, or Event Champions',
-            color: theme.primaryColor,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AdminOnboardingScreen()),
-              );
-            },
-          ),
-          
+          // Onboard Organizers Tile (REMOVED - organizers register themselves)
+
           // Delete flat registry Tile
           _buildActionConsoleTile(
             icon: Icons.delete_sweep_rounded,
@@ -697,7 +668,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           Text('Assign portfolios to Core and Event Champions below:', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white54)),
           const SizedBox(height: 12),
 
-          // Render members list
           if (appState.activeSeasonId == 'demo-season-id') ...[
             _buildDemoMemberAssignmentTile('coremember1', 'Alice Core', 'CORE_TEAM', appState, theme),
             _buildDemoMemberAssignmentTile('eventchamp1', 'Bob Champion', 'EVENT_CHAMPION', appState, theme),
@@ -721,6 +691,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
 
     return GlassCard(
       baseColor: theme.glassBaseColor,
+      borderColor: theme.primaryColor.withOpacity(0.2),
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -767,6 +738,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
 
     return GlassCard(
       baseColor: theme.glassBaseColor,
+      borderColor: theme.primaryColor.withOpacity(0.2),
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -945,10 +917,11 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     return Center(
       child: GlassCard(
         baseColor: theme.glassBaseColor,
+        borderColor: theme.secondaryColor.withOpacity(0.2),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            FreshIcon(icon: Icons.shield_moon_rounded, color: theme.secondaryColor, size: 48),
+            FreshIconContainer(icon: Icons.shield_moon_rounded, primaryColor: theme.primaryColor, secondaryColor: theme.secondaryColor, size: 48),
             const SizedBox(height: 16),
             Text('No Portfolios Assigned', style: DesignSystem.headingStyle(color: Colors.white, fontSize: 18)),
             const SizedBox(height: 6),
@@ -980,13 +953,14 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           const SizedBox(height: 16),
           GlassCard(
             baseColor: theme.glassBaseColor,
+            borderColor: theme.primaryColor.withOpacity(0.25),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Record Payment', style: DesignSystem.headingStyle(fontSize: 16, color: Colors.white)),
-                    FreshIcon(icon: Icons.payments_rounded, color: theme.primaryColor),
+                    FreshIconContainer(icon: Icons.payments_rounded, primaryColor: theme.primaryColor, secondaryColor: theme.secondaryColor),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -1014,6 +988,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
   }
 
   Widget _buildExpenseApprovalsTab(AppState appState, PersonaTheme theme) {
+    final pendingExpenses = appState.demoExpenses.where((e) => e['status'] == 'PENDING').toList();
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1021,16 +996,20 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
         children: [
           Text('PENDING BUDGET EXPENDITURE', style: DesignSystem.headingStyle(fontSize: 15, color: Colors.white)),
           const SizedBox(height: 12),
-          appState.demoExpenses.where((e) => e['status'] == 'PENDING').isEmpty
+          pendingExpenses.isEmpty
               ? _buildEmptyState('No pending budget approvals', Icons.fact_check_rounded)
               : ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: appState.demoExpenses.where((e) => e['status'] == 'PENDING').length,
+                  itemCount: pendingExpenses.length,
                   itemBuilder: (context, index) {
-                    final item = appState.demoExpenses.where((e) => e['status'] == 'PENDING').toList()[index];
+                    final item = pendingExpenses[index];
+                    final billViewed = _viewedBills.contains(item['id']);
+                    final billUrl = item['bill_url'] ?? 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop&q=80';
+
                     return GlassCard(
                       baseColor: theme.glassBaseColor,
+                      borderColor: theme.secondaryColor.withOpacity(0.2),
                       margin: const EdgeInsets.only(bottom: 12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1038,23 +1017,47 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(item['title'], style: DesignSystem.headingStyle(fontSize: 15, color: Colors.white)),
+                              Expanded(
+                                child: Text(item['title'], style: DesignSystem.headingStyle(fontSize: 15, color: Colors.white)),
+                              ),
                               Text('₹${item['amount'].toStringAsFixed(0)}', style: DesignSystem.headingStyle(fontSize: 15, color: theme.secondaryColor)),
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Text('Vendor: ${item['vendor']}', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white70)),
+                          Text('Vendor: ${item['vendor']}', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white74)),
                           const SizedBox(height: 12),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              ElevatedButton(
+                              ElevatedButton.icon(
                                 onPressed: () {
-                                  appState.approveExpenseInDemo(item['id']);
-                                  _showSnackbar('Expense approved! (Demo Mode)', Colors.green);
+                                  _showBillDialog(item['title'], billUrl, item['id']);
                                 },
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                                child: Text('APPROVE', style: DesignSystem.headingStyle(fontSize: 11, color: Colors.white)),
+                                icon: Icon(billViewed ? Icons.visibility_rounded : Icons.visibility_off_rounded, size: 14, color: Colors.white),
+                                label: Text(billViewed ? 'BILL REVIEWED' : 'VIEW BILL', style: DesignSystem.headingStyle(fontSize: 11, color: Colors.white)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: billViewed ? Colors.blueGrey : theme.primaryColor,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: !billViewed
+                                    ? null
+                                    : () {
+                                        appState.approveExpenseInDemo(item['id']);
+                                        _showSnackbar('Expense approved! (Demo Mode)', Colors.green);
+                                      },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  disabledBackgroundColor: Colors.white12,
+                                ),
+                                child: Text(
+                                  'APPROVE',
+                                  style: DesignSystem.headingStyle(
+                                    fontSize: 11,
+                                    color: billViewed ? Colors.white : Colors.white24,
+                                  ),
+                                ),
                               ),
                             ],
                           )
@@ -1065,6 +1068,50 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                 ),
         ],
       ),
+    );
+  }
+
+  void _showBillDialog(String title, String imageUrl, String expenseId) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(title, style: DesignSystem.headingStyle(color: Colors.white, fontSize: 16)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(
+                  imageUrl,
+                  height: 200,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'This invoice is verified and loaded from the secure Google Drive storage repository.',
+                style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white70),
+              )
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                setState(() {
+                  _viewedBills.add(expenseId);
+                });
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: Text('MARK AS REVIEWED', style: DesignSystem.headingStyle(fontSize: 12, color: Colors.white)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1097,9 +1144,10 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
               final spon = appState.demoSponsors[index];
               return GlassCard(
                 baseColor: theme.glassBaseColor,
+                borderColor: theme.secondaryColor.withOpacity(0.2),
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
-                  leading: FreshIcon(icon: Icons.star_border_rounded, color: theme.secondaryColor),
+                  leading: FreshIconContainer(icon: Icons.star_border_rounded, primaryColor: theme.primaryColor, secondaryColor: theme.secondaryColor),
                   title: Text(spon['name'], style: DesignSystem.headingStyle(fontSize: 15, color: Colors.white)),
                   subtitle: Text('Tier: ${spon['tier']}', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white70)),
                   trailing: Text('₹${spon['amount'].toStringAsFixed(0)}', style: DesignSystem.headingStyle(fontSize: 15, color: theme.secondaryColor)),
@@ -1217,6 +1265,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
               final ann = appState.demoAnnouncements[index];
               return GlassCard(
                 baseColor: theme.glassBaseColor,
+                borderColor: theme.primaryColor.withOpacity(0.2),
                 margin: const EdgeInsets.only(bottom: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1300,10 +1349,11 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     return Center(
       child: GlassCard(
         baseColor: theme.glassBaseColor,
+        borderColor: theme.primaryColor.withOpacity(0.2),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            FreshIcon(icon: Icons.photo_library_rounded, color: theme.primaryColor, size: 48),
+            FreshIconContainer(icon: Icons.photo_library_rounded, primaryColor: theme.primaryColor, secondaryColor: theme.secondaryColor, size: 48),
             const SizedBox(height: 16),
             Text('Tournament Media Gallery', style: DesignSystem.headingStyle(color: Colors.white, fontSize: 16)),
             const SizedBox(height: 8),
@@ -1351,9 +1401,10 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
               final quote = appState.demoQuotes[index];
               return GlassCard(
                 baseColor: theme.glassBaseColor,
+                borderColor: theme.primaryColor.withOpacity(0.2),
                 margin: const EdgeInsets.only(bottom: 10),
                 child: ListTile(
-                  leading: FreshIcon(icon: Icons.feed_rounded, color: theme.secondaryColor),
+                  leading: FreshIconContainer(icon: Icons.feed_rounded, primaryColor: theme.primaryColor, secondaryColor: theme.secondaryColor),
                   title: Text(quote['vendor'], style: DesignSystem.headingStyle(fontSize: 15, color: Colors.white)),
                   subtitle: Text('Details: ${quote['description']}', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white70)),
                   trailing: Text('₹${quote['amount'].toStringAsFixed(0)}', style: DesignSystem.headingStyle(fontSize: 15, color: theme.secondaryColor)),
@@ -1441,6 +1492,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           const SizedBox(height: 12),
           GlassCard(
             baseColor: theme.glassBaseColor,
+            borderColor: theme.secondaryColor.withOpacity(0.2),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1571,7 +1623,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     );
   }
 
-  // Beautiful uploader tab for Event Champions
   Widget _buildPhotoGalleryUploaderTab(AppState appState, PersonaTheme theme) {
     final captionCtrl = TextEditingController();
     final descCtrl = TextEditingController();
@@ -1586,6 +1637,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           const SizedBox(height: 12),
           GlassCard(
             baseColor: theme.glassBaseColor,
+            borderColor: theme.primaryColor.withOpacity(0.2),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -1633,7 +1685,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                     
                     if (appState.activeSeasonId == 'demo-season-id') {
                       await Future.delayed(const Duration(milliseconds: 600));
-                      // In demo, we can just push success feedback
                       setState(() => _isLoading = false);
                       _showSnackbar('Photo registered and uploaded to gallery successfully!', Colors.green);
                       captionCtrl.clear();
@@ -1675,7 +1726,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
   // --- WING MANAGEMENT TABS ---
 
   Widget _buildWingFlatsRegistryTab(AppState appState, PersonaTheme theme, {bool readOnly = false}) {
-    // Generate list of flats in Wing
     final String wing = appState.userWingId ?? 'N';
     final List<String> flats = [];
     for (int floor = 1; floor <= 7; floor++) {
@@ -1697,11 +1747,10 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
             itemCount: flats.length,
             itemBuilder: (context, index) {
               final flatNum = flats[index];
-              // In demo mode, check if flat has chief accounts
-              final lowerUser = 'demo-flat-$wing-$flatNum';
               final paid = appState.isFlatPaidInDemo(flatNum);
               return GlassCard(
                 baseColor: theme.glassBaseColor,
+                borderColor: theme.secondaryColor.withOpacity(0.2),
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
@@ -1769,114 +1818,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     );
   }
 
-  Widget _buildWingExpensesTab(AppState appState, PersonaTheme theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('WING LEVEL EXPENSES', style: DesignSystem.headingStyle(fontSize: 15, color: Colors.white)),
-              ElevatedButton.icon(
-                onPressed: () {
-                  _showSubmitExpenseDialog(appState, theme);
-                },
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('SUBMIT CLAIM'),
-                style: ElevatedButton.styleFrom(backgroundColor: theme.primaryColor),
-              )
-            ],
-          ),
-          const SizedBox(height: 12),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: appState.demoExpenses.where((e) => e['requires_role'] == 'WING_COMMANDER').length,
-            itemBuilder: (context, index) {
-              final exp = appState.demoExpenses.where((e) => e['requires_role'] == 'WING_COMMANDER').toList()[index];
-              return GlassCard(
-                baseColor: theme.glassBaseColor,
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  title: Text(exp['title'], style: DesignSystem.headingStyle(fontSize: 15, color: Colors.white)),
-                  subtitle: Text('Status: ${exp['status']}', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white70)),
-                  trailing: Text('₹${exp['amount'].toStringAsFixed(0)}', style: DesignSystem.headingStyle(fontSize: 15, color: theme.secondaryColor)),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSubmitExpenseDialog(AppState appState, PersonaTheme theme) {
-    final titleCtrl = TextEditingController();
-    final amtCtrl = TextEditingController();
-    final vendCtrl = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('Claim Local Expense', style: DesignSystem.headingStyle(color: Colors.white, fontSize: 16)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleCtrl,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(labelText: 'Expense Title', labelStyle: TextStyle(color: Colors.white60)),
-              ),
-              TextField(
-                controller: amtCtrl,
-                style: const TextStyle(color: Colors.white),
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Amount (₹)', labelStyle: TextStyle(color: Colors.white60)),
-              ),
-              TextField(
-                controller: vendCtrl,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(labelText: 'Vendor Name', labelStyle: TextStyle(color: Colors.white60)),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('CANCEL', style: TextStyle(color: Colors.white60)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final title = titleCtrl.text.trim();
-                final amt = double.tryParse(amtCtrl.text) ?? 0.0;
-                final vendor = vendCtrl.text.trim();
-                if (title.isNotEmpty && amt > 0) {
-                  appState.demoExpenses.add({
-                    'id': 'exp-${DateTime.now().millisecondsSinceEpoch}',
-                    'title': title,
-                    'vendor': vendor,
-                    'amount': amt,
-                    'status': 'PENDING',
-                    'requires_role': 'WING_COMMANDER',
-                  });
-                  Navigator.pop(context);
-                  _showSnackbar('Wing local expense claim submitted!', Colors.green);
-                  setState(() {});
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: theme.primaryColor),
-              child: const Text('SUBMIT'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  // local Wing specific expenses removed as requested
 
   Widget _buildWingNoticesTab(AppState appState, PersonaTheme theme, {bool readOnly = false}) {
     final String wing = appState.userWingId ?? 'N';
@@ -1910,6 +1852,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
               final ann = appState.demoAnnouncements.where((a) => a['scope'] == 'WING').toList()[index];
               return GlassCard(
                 baseColor: theme.glassBaseColor,
+                borderColor: theme.primaryColor.withOpacity(0.2),
                 margin: const EdgeInsets.only(bottom: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2000,6 +1943,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           const SizedBox(height: 12),
           GlassCard(
             baseColor: theme.glassBaseColor,
+            borderColor: theme.primaryColor.withOpacity(0.2),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2016,7 +1960,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     );
   }
 
-  // --- REUSABLE UTILITIES CARD & ROW ITEMS ---
+  // --- REUSABLE WIDGETS ---
 
   Widget _buildBannerImage(String imageUrl, String title, String subtitle, PersonaTheme theme) {
     return ClipRRect(
@@ -2132,14 +2076,16 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
       margin: const EdgeInsets.only(bottom: 12),
       child: GlassCard(
         baseColor: Colors.white,
+        borderColor: color.withOpacity(0.25),
         padding: EdgeInsets.zero,
         child: ListTile(
           onTap: onTap,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          leading: CircleAvatar(
-            backgroundColor: color.withOpacity(0.12),
-            radius: 20,
-            child: FreshIcon(icon: icon, color: color, size: 20),
+          leading: FreshIconContainer(
+            icon: icon,
+            primaryColor: color,
+            secondaryColor: Colors.white,
+            size: 20,
           ),
           title: Text(title, style: DesignSystem.headingStyle(fontSize: 14, color: Colors.white)),
           subtitle: Text(subtitle, style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white54)),
@@ -2147,16 +2093,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
         ),
       ),
     );
-  }
-
-  Widget _buildActionConsoleTileRaw({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return _buildActionConsoleTile(icon: icon, title: title, subtitle: subtitle, color: color, onTap: onTap);
   }
 
   Widget _buildEmptyState(String message, IconData icon) {
@@ -2175,18 +2111,6 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
       ),
     );
   }
-
-  Widget _buildActionConsoleTileForDeletion({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return _buildActionConsoleTile(icon: icon, title: title, subtitle: subtitle, color: color, onTap: onTap);
-  }
-
-  // --- COPIED/RETAINED DELETE FLAT METHODS ---
 
   void _showDeleteFlatDialog() {
     String selectedWing = 'N';
@@ -2440,14 +2364,16 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
 class PersonaTheme {
   final Color primaryColor;
   final Color secondaryColor;
-  final Color accentColor;
+  final Color primaryLight;
+  final Color secondaryLight;
   final Color glassBaseColor;
   final List<Color> bgGradient;
 
   PersonaTheme({
     required this.primaryColor,
     required this.secondaryColor,
-    required this.accentColor,
+    required this.primaryLight,
+    required this.secondaryLight,
     required this.glassBaseColor,
     required this.bgGradient,
   });
@@ -2458,49 +2384,55 @@ class PersonaTheme {
         return PersonaTheme(
           primaryColor: const Color(0xFF8B5CF6), // Royal Purple
           secondaryColor: const Color(0xFFF59E0B), // Gold
-          accentColor: const Color(0xFFEC4899), // Pink Accent
+          primaryLight: const Color(0xFFC084FC),
+          secondaryLight: const Color(0xFFFBBF24),
           glassBaseColor: Colors.white,
-          bgGradient: [const Color(0xFF1E1B4B), const Color(0xFF0F172A)], // Purple midnight
+          bgGradient: [const Color(0xFF1E1B4B), const Color(0xFF0F172A)],
         );
       case 'CORE_TEAM':
         return PersonaTheme(
           primaryColor: const Color(0xFF10B981), // Emerald
           secondaryColor: const Color(0xFF06B6D4), // Cyan
-          accentColor: const Color(0xFF34D399), // Mint Green
+          primaryLight: const Color(0xFF34D399),
+          secondaryLight: const Color(0xFF22D3EE),
           glassBaseColor: Colors.white,
-          bgGradient: [const Color(0xFF064E3B), const Color(0xFF0F172A)], // Forest green night
+          bgGradient: [const Color(0xFF064E3B), const Color(0xFF0F172A)],
         );
       case 'EVENT_CHAMPION':
         return PersonaTheme(
           primaryColor: const Color(0xFFF97316), // Vibrant Orange
           secondaryColor: const Color(0xFFE11D48), // Rose
-          accentColor: const Color(0xFFF43F5E), // Coral
+          primaryLight: const Color(0xFFFB923C),
+          secondaryLight: const Color(0xFFFB7185),
           glassBaseColor: Colors.white,
-          bgGradient: [const Color(0xFF7C2D12), const Color(0xFF0F172A)], // Sunset orange night
+          bgGradient: [const Color(0xFF7C2D12), const Color(0xFF0F172A)],
         );
       case 'WING_COMMANDER':
         return PersonaTheme(
           primaryColor: const Color(0xFF3B82F6), // Cobalt Blue
           secondaryColor: const Color(0xFF06B6D4), // Cyan
-          accentColor: const Color(0xFF60A5FA), // Light Blue
+          primaryLight: const Color(0xFF60A5FA),
+          secondaryLight: const Color(0xFF22D3EE),
           glassBaseColor: Colors.white,
-          bgGradient: [const Color(0xFF1E3A8A), const Color(0xFF0F172A)], // Deep blue night
+          bgGradient: [const Color(0xFF1E3A8A), const Color(0xFF0F172A)],
         );
       case 'WING_CAPTAIN':
         return PersonaTheme(
           primaryColor: const Color(0xFF0D9488), // Teal
           secondaryColor: const Color(0xFF10B981), // Emerald
-          accentColor: const Color(0xFF2DD4BF), // Seafoam
+          primaryLight: const Color(0xFF2DD4BF),
+          secondaryLight: const Color(0xFF34D399),
           glassBaseColor: Colors.white,
-          bgGradient: [const Color(0xFF115E59), const Color(0xFF0F172A)], // Teal night
+          bgGradient: [const Color(0xFF115E59), const Color(0xFF0F172A)],
         );
       default:
         return PersonaTheme(
           primaryColor: const Color(0xFFD97706), // Warm Amber
-          secondaryColor: const Color(0xFFFB923C), // Honey Amber
-          accentColor: const Color(0xFFFDE68A), // Cream
+          secondaryColor: const Color(0xFFFB923C), // Warm Orange
+          primaryLight: const Color(0xFFFBBF24),
+          secondaryLight: const Color(0xFFFDBA74),
           glassBaseColor: Colors.white,
-          bgGradient: [const Color(0xFF78350F), const Color(0xFF0F172A)], // Cozy night
+          bgGradient: [const Color(0xFF78350F), const Color(0xFF0F172A)],
         );
     }
   }
@@ -2548,6 +2480,7 @@ class GlassCard extends StatelessWidget {
   final double fillOpacity;
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry? margin;
+  final Color? borderColor;
 
   const GlassCard({
     super.key,
@@ -2558,6 +2491,7 @@ class GlassCard extends StatelessWidget {
     this.fillOpacity = 0.06,
     this.padding = const EdgeInsets.all(20.0),
     this.margin,
+    this.borderColor,
   });
 
   @override
@@ -2574,7 +2508,7 @@ class GlassCard extends StatelessWidget {
               color: baseColor.withOpacity(fillOpacity),
               borderRadius: BorderRadius.circular(borderRadius),
               border: Border.all(
-                color: baseColor.withOpacity(borderOpacity),
+                color: borderColor ?? baseColor.withOpacity(borderOpacity),
                 width: 1.2,
               ),
             ),
@@ -2588,13 +2522,15 @@ class GlassCard extends StatelessWidget {
 
 class FreshIcon extends StatelessWidget {
   final IconData icon;
-  final Color color;
+  final Color primaryColor;
+  final Color secondaryColor;
   final double size;
 
   const FreshIcon({
     super.key,
     required this.icon,
-    required this.color,
+    required this.primaryColor,
+    required this.secondaryColor,
     this.size = 24.0,
   });
 
@@ -2608,16 +2544,59 @@ class FreshIcon extends StatelessWidget {
           top: 1.5,
           child: Icon(
             icon,
-            color: color.withOpacity(0.3),
+            color: secondaryColor.withOpacity(0.4),
             size: size,
           ),
         ),
         Icon(
           icon,
-          color: color,
+          color: primaryColor,
           size: size,
         ),
       ],
+    );
+  }
+}
+
+class FreshIconContainer extends StatelessWidget {
+  final IconData icon;
+  final Color primaryColor;
+  final Color secondaryColor;
+  final double size;
+
+  const FreshIconContainer({
+    super.key,
+    required this.icon,
+    required this.primaryColor,
+    required this.secondaryColor,
+    this.size = 20.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [
+            primaryColor.withOpacity(0.15),
+            secondaryColor.withOpacity(0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: primaryColor.withOpacity(0.25),
+          width: 1.2,
+        ),
+      ),
+      child: FreshIcon(
+        icon: icon,
+        primaryColor: primaryColor,
+        secondaryColor: secondaryColor,
+        size: size,
+      ),
     );
   }
 }
