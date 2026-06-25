@@ -1664,7 +1664,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                           tracks.isEmpty
                               ? Text(
                                   'No performance tracks uploaded yet.',
-                                  style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white38, fontStyle: FontStyle.italic),
+                                  style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white38).copyWith(fontStyle: FontStyle.italic),
                                 )
                               : Column(
                                   children: tracks.entries.map((entry) {
