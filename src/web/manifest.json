@@ -1,11 +1,11 @@
 {
-    "name": "flutter_app_empty_template",
-    "short_name": "flutter_app_empty_template",
+    "name": "SCOT TOPAZ",
+    "short_name": "SCOT TOPAZ",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#4F46E5",
+    "theme_color": "#4F46E5",
+    "description": "SCOT TOPAZ - Community Operations Platform",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

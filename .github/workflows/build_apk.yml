@@ -57,7 +57,8 @@ jobs:
       # 7. Build Flutter Web
       - name: Build Web
         working-directory: src
-        run: flutter build web --release --base-href "/SCOT/"
+        run: flutter build web --release --base-href "/SCOT/" --web-renderer html
+
 
       # 8. Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
