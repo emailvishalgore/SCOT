@@ -352,7 +352,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
         child: TabBar(
           isScrollable: true,
           labelColor: Colors.white,
-          unselectedLabelColor: Colors.white55,
+          unselectedLabelColor: Colors.white54,
           indicatorSize: TabBarIndicatorSize.tab,
           indicator: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
@@ -464,7 +464,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('FAMILY MEMBERS ROSTER', style: DesignSystem.headingStyle(fontSize: 14, color: Colors.white)),
-                  Text('$totalFlatsMembers / 7 registered (Max 7)', style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white55)),
+                  Text('$totalFlatsMembers / 7 registered (Max 7)', style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white54)),
                 ],
               ),
               if (totalFlatsMembers < 7) ...[
@@ -553,7 +553,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
               const SizedBox(height: 12),
               Text(
                 'Note: Registered members will use the flat PIN and their name as username to log in.',
-                style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white55),
+                style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white54),
               )
             ],
           ),
@@ -772,7 +772,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(ann['title'], style: DesignSystem.headingStyle(fontSize: 15, color: Colors.white)),
-                    Text('Date: ${ann['date']} • By: ${ann['author']}', style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white55)),
+                    Text('Date: ${ann['date']} • By: ${ann['author']}', style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white54)),
                     const Divider(color: Colors.white24, height: 16),
                     Text(ann['content'], style: DesignSystem.bodyStyle(fontSize: 13, color: Colors.white70)),
                   ],
@@ -814,10 +814,10 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Flat head (Home Chief)', style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white55, fontWeight: FontWeight.bold)),
+                Text('Flat head (Home Chief)', style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white54, fontWeight: FontWeight.bold)),
                 Text(flatHeadName, style: DesignSystem.headingStyle(fontSize: 18, color: Colors.white)),
                 const Divider(color: Colors.white24, height: 24),
-                Text('Wing and Unit Coordinates', style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white55, fontWeight: FontWeight.bold)),
+                Text('Wing and Unit Coordinates', style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white54, fontWeight: FontWeight.bold)),
                 Text('Wing $_wingName • Flat $_flatNumber', style: DesignSystem.headingStyle(fontSize: 16, color: theme.secondaryColor)),
                 const SizedBox(height: 16),
                 Row(
@@ -909,7 +909,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
         children: [
           Icon(icon, size: 36, color: Colors.white24),
           const SizedBox(height: 8),
-          Text(message, style: DesignSystem.bodyStyle(color: Colors.white55, fontSize: 13)),
+          Text(message, style: DesignSystem.bodyStyle(color: Colors.white54, fontSize: 13)),
         ],
       ),
     );

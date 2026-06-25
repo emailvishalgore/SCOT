@@ -463,7 +463,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
         child: TabBar(
           isScrollable: true,
           labelColor: Colors.white,
-          unselectedLabelColor: Colors.white55,
+          unselectedLabelColor: Colors.white54,
           indicatorSize: TabBarIndicatorSize.tab,
           indicator: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
@@ -576,7 +576,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text('Flat ${req['wing']}-${req['flat']}', style: DesignSystem.headingStyle(fontSize: 16, color: Colors.white)),
-                              Text('PIN: ${req['pin']}', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white55)),
+                              Text('PIN: ${req['pin']}', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white54)),
                             ],
                           ),
                           const SizedBox(height: 4),
@@ -585,7 +585,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                           Row(
                             children: [
                               Expanded(
-                                child: Text('Members: ${(req['members'] as List).length} onboarded', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white55)),
+                                child: Text('Members: ${(req['members'] as List).length} onboarded', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white54)),
                               ),
                               ElevatedButton(
                                 onPressed: () {
@@ -626,7 +626,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(req['username'], style: DesignSystem.headingStyle(fontSize: 16, color: Colors.white)),
-                              Text('PIN: ${req['pin']}', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white55)),
+                              Text('PIN: ${req['pin']}', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white54)),
                             ],
                           ),
                           const SizedBox(height: 4),
@@ -694,7 +694,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           // Portfolio Assignment Panel
           Text('PORTFOLIO PROVISIONING PANEL', style: DesignSystem.headingStyle(fontSize: 14, color: Colors.white)),
           const SizedBox(height: 4),
-          Text('Assign portfolios to Core and Event Champions below:', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white55)),
+          Text('Assign portfolios to Core and Event Champions below:', style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white54)),
           const SizedBox(height: 12),
 
           // Render members list
@@ -703,7 +703,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
             _buildDemoMemberAssignmentTile('eventchamp1', 'Bob Champion', 'EVENT_CHAMPION', appState, theme),
           ] else ...[
             _liveMembers.isEmpty
-                ? const Center(child: Text('No coordinators found in DB', style: TextStyle(color: Colors.white55)))
+                ? const Center(child: Text('No coordinators found in DB', style: TextStyle(color: Colors.white54)))
                 : Column(
                     children: _liveMembers.map((m) {
                       return _buildCloudMemberAssignmentTile(m, appState, theme);
@@ -1223,7 +1223,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                   children: [
                     Text(ann['title'], style: DesignSystem.headingStyle(fontSize: 15, color: Colors.white)),
                     const SizedBox(height: 2),
-                    Text('Date: ${ann['date']} • By: ${ann['author']}', style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white55)),
+                    Text('Date: ${ann['date']} • By: ${ann['author']}', style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white54)),
                     const Divider(color: Colors.white24, height: 16),
                     Text(ann['content'], style: DesignSystem.bodyStyle(fontSize: 13, color: Colors.white70)),
                   ],
@@ -1915,7 +1915,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(ann['title'], style: DesignSystem.headingStyle(fontSize: 15, color: Colors.white)),
-                    Text('Date: ${ann['date']} • By: ${ann['author']}', style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white55)),
+                    Text('Date: ${ann['date']} • By: ${ann['author']}', style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white54)),
                     const Divider(color: Colors.white24, height: 16),
                     Text(ann['content'], style: DesignSystem.bodyStyle(fontSize: 13, color: Colors.white70)),
                   ],
@@ -2080,7 +2080,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           children: [
             Icon(icon, color: accentColor, size: 14),
             const SizedBox(width: 4),
-            Text(label, style: DesignSystem.bodyStyle(fontSize: 10, color: Colors.white55, fontWeight: FontWeight.bold)),
+            Text(label, style: DesignSystem.bodyStyle(fontSize: 10, color: Colors.white54, fontWeight: FontWeight.bold)),
           ],
         ),
         const SizedBox(height: 4),
@@ -2111,7 +2111,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(name, style: DesignSystem.headingStyle(fontSize: 14, color: Colors.white)),
-                Text('Category: $cat', style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white55)),
+                Text('Category: $cat', style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white54)),
               ],
             ),
           ),
@@ -2142,7 +2142,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
             child: FreshIcon(icon: icon, color: color, size: 20),
           ),
           title: Text(title, style: DesignSystem.headingStyle(fontSize: 14, color: Colors.white)),
-          subtitle: Text(subtitle, style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white55)),
+          subtitle: Text(subtitle, style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white54)),
           trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: color),
         ),
       ),
@@ -2170,7 +2170,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
         children: [
           Icon(icon, size: 36, color: Colors.white24),
           const SizedBox(height: 8),
-          Text(message, style: DesignSystem.bodyStyle(color: Colors.white55, fontSize: 13)),
+          Text(message, style: DesignSystem.bodyStyle(color: Colors.white54, fontSize: 13)),
         ],
       ),
     );
