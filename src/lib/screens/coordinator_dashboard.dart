@@ -255,10 +255,8 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           tabViews.add(_buildSportsScoresTab(appState, theme));
         }
         if (portfolios.contains('Cultural events')) {
-          tabLabels.add(const Tab(text: 'Cultural Console'));
-          tabViews.add(_buildCulturalConsoleTab(appState, theme));
-          tabLabels.add(const Tab(text: 'Cultural Scores'));
-          tabViews.add(_buildCulturalScoresTab(appState, theme));
+          tabLabels.add(const Tab(text: 'Cultural Popularity'));
+          tabViews.add(_buildCulturalPopularityTab(appState, theme));
         }
         if (portfolios.contains('Sports events') || portfolios.contains('Cultural events')) {
           tabLabels.add(const Tab(text: 'Upload Media'));
@@ -1568,56 +1566,150 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
     );
   }
 
-  Widget _buildCulturalConsoleTab(AppState appState, PersonaTheme theme) {
+  Widget _buildCulturalPopularityTab(AppState appState, PersonaTheme theme) {
+    final List<Map<String, dynamic>> culturalSubs = [];
+    
+    if (appState.activeSeasonId == 'demo-season-id') {
+      for (var e in appState.demoEvents) {
+        final subs = e['sub_events'] ?? [];
+        for (var s in subs) {
+          if ((s['category']?.toString().toLowerCase() ?? 'sports') == 'cultural') {
+            culturalSubs.add(s);
+          }
+        }
+      }
+    } else {
+      // Cloud mode fallback
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildBannerImage(
-            'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&auto=format&fit=crop&q=80',
-            'CULTURAL EVENTS CONSOLE',
-            'Plan Stages, Time Slots, and Competitions',
+            'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=800&auto=format&fit=crop&q=80',
+            'CULTURAL POPULARITY BOARD',
+            'Resident Feedback and Audio Tracks Registry',
             theme,
           ),
           const SizedBox(height: 16),
-          _buildActionConsoleTile(
-            icon: Icons.palette_rounded,
-            title: 'Onboard Cultural Event',
-            subtitle: 'Create slots for Drawing, Dance, or Rangoli',
-            color: theme.primaryColor,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CreateCompetitionScreen()),
-              );
-            },
+          Text(
+            'POPULARITY RANKINGS',
+            style: DesignSystem.headingStyle(fontSize: 14, color: Colors.white70),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCulturalScoresTab(AppState appState, PersonaTheme theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('CULTURAL STANDINGS & JUDGE SCORES', style: DesignSystem.headingStyle(fontSize: 15, color: Colors.white)),
           const SizedBox(height: 12),
-          _buildActionConsoleTile(
-            icon: Icons.emoji_events_rounded,
-            title: 'Record Judge Scores',
-            subtitle: 'Input split points criteria & publish winners standings',
-            color: theme.secondaryColor,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const RecordScoreScreen()),
-              );
-            },
-          ),
+          culturalSubs.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Text('No active cultural events found.', style: DesignSystem.bodyStyle(color: Colors.white38)),
+                  ),
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: culturalSubs.length,
+                  itemBuilder: (context, index) {
+                    final sub = culturalSubs[index];
+                    final subId = sub['id'];
+                    final name = sub['name'];
+                    
+                    final popInfo = appState.getCulturalPopularity(subId);
+                    final int likes = popInfo['likes'];
+                    final int dislikes = popInfo['dislikes'];
+                    final double pct = popInfo['percentage'];
+                    
+                    final Map<String, String> tracks = appState.demoEventTracks[subId] ?? {};
+                    
+                    return GlassCard(
+                      baseColor: theme.glassBaseColor,
+                      borderColor: theme.secondaryColor.withOpacity(0.2),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(name, style: DesignSystem.headingStyle(fontSize: 16, color: Colors.white)),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: theme.secondaryColor.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${pct.toStringAsFixed(0)}% Likes',
+                                  style: DesignSystem.headingStyle(fontSize: 11, color: theme.secondaryColor),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '$likes Upvotes • $dislikes Downvotes',
+                            style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white60),
+                          ),
+                          const SizedBox(height: 12),
+                          const Divider(color: Colors.white24, height: 1),
+                          const SizedBox(height: 12),
+                          Text(
+                            'REGISTERED TRACKS (${tracks.length})',
+                            style: DesignSystem.headingStyle(fontSize: 11, color: Colors.white38),
+                          ),
+                          const SizedBox(height: 8),
+                          tracks.isEmpty
+                              ? Text(
+                                  'No performance tracks uploaded yet.',
+                                  style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white38, fontStyle: FontStyle.italic),
+                                )
+                              : Column(
+                                  children: tracks.entries.map((entry) {
+                                    final residentId = entry.key;
+                                    final trackFile = entry.value;
+                                    String residentName = 'Resident';
+                                    if (residentId == 'res-john-id') {
+                                      residentName = 'John Doe';
+                                    } else if (residentId == 'res-bob-id') {
+                                      residentName = 'Bob Smith';
+                                    } else if (residentId == 'res-jane-id') {
+                                      residentName = 'Jane Doe';
+                                    } else if (residentId == 'res-alice-id') {
+                                      residentName = 'Alice Cooper';
+                                    }
+                                    
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 6),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            residentName,
+                                            style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
+                                          ),
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.music_note_rounded, size: 14, color: Colors.white60),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                trackFile,
+                                                style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white60),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
         ],
       ),
     );

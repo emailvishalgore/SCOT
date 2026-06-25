@@ -19,6 +19,11 @@ class _EventsScreenState extends State<EventsScreen> {
 
   List<Map<String, dynamic>> _events = [];
 
+  // Maps subEventId -> isLike (for cloud mode)
+  final Map<String, bool> _cloudCulturalVotes = {};
+  // Maps subEventId -> Map of {likes: int, dislikes: int, percentage: double}
+  final Map<String, Map<String, dynamic>> _cloudPopularity = {};
+
   // Mock Events data for Offline Demo Mode
   final List<Map<String, dynamic>> _mockEvents = [
     {
@@ -93,7 +98,7 @@ class _EventsScreenState extends State<EventsScreen> {
       _isPaid = appState.isFlatPaidInDemo(_flatNumber.isNotEmpty ? _flatNumber : '102');
       
       setState(() {
-        _events = _mockEvents;
+        _events = appState.demoEvents;
         _isLoading = false;
       });
     } else {
@@ -127,7 +132,7 @@ class _EventsScreenState extends State<EventsScreen> {
         // Load active events & sub-events
         final response = await supabase
             .from('event')
-            .select('id, name, description, start_date, sub_event(id, name, type, description)')
+            .select('id, name, description, start_date, sub_event(id, name, type, category, description)')
             .eq('season_id', appState.activeSeasonId!)
             .order('start_date', ascending: true);
 
@@ -144,10 +149,46 @@ class _EventsScreenState extends State<EventsScreen> {
                 'id': s['id']?.toString() ?? '',
                 'name': s['name']?.toString() ?? '',
                 'type': s['type']?.toString() ?? 'INDIVIDUAL',
+                'category': s['category']?.toString() ?? 'Sports',
                 'description': s['description']?.toString() ?? '',
               }).toList(),
             });
           }
+
+          // Load feedback votes for current user
+          final feedbackRes = await supabase
+              .from('cultural_feedback')
+              .select('sub_event_id, is_like')
+              .eq('resident_id', appState.userResidentId!);
+              
+          if (feedbackRes != null) {
+            _cloudCulturalVotes.clear();
+            for (var f in feedbackRes) {
+              _cloudCulturalVotes[f['sub_event_id']] = f['is_like'];
+            }
+          }
+
+          // Load all feedback counts to aggregate popularity
+          final allFeedback = await supabase
+              .from('cultural_feedback')
+              .select('sub_event_id, is_like');
+              
+          if (allFeedback != null) {
+            _cloudPopularity.clear();
+            for (var f in allFeedback) {
+              final subId = f['sub_event_id'] as String;
+              final isLike = f['is_like'] as bool;
+              if (!_cloudPopularity.containsKey(subId)) {
+                _cloudPopularity[subId] = {'likes': 0, 'dislikes': 0};
+              }
+              if (isLike) {
+                _cloudPopularity[subId]!['likes'] = (_cloudPopularity[subId]!['likes'] ?? 0) + 1;
+              } else {
+                _cloudPopularity[subId]!['dislikes'] = (_cloudPopularity[subId]!['dislikes'] ?? 0) + 1;
+              }
+            }
+          }
+
           setState(() {
             _events = loadedEvents;
           });
@@ -160,14 +201,14 @@ class _EventsScreenState extends State<EventsScreen> {
     }
   }
 
-  void _registerForSubEvent(String subEventId, String subEventName) async {
+  void _registerForSubEvent(String subEventId, String subEventName, {String? trackUrl}) async {
     setState(() => _isRegistering = true);
     final appState = Provider.of<AppState>(context, listen: false);
 
     if (appState.activeSeasonId == 'demo-season-id') {
       // Offline Demo: Simulate registration API delay
       await Future.delayed(const Duration(milliseconds: 600));
-      appState.registerForEventInDemo(subEventId);
+      appState.registerForEventInDemo(subEventId, trackUrl: trackUrl, residentId: appState.userResidentId ?? 'demo-resident-id');
       
       setState(() => _isRegistering = false);
       _showSuccessRegistrationDialog(subEventName);
@@ -181,6 +222,7 @@ class _EventsScreenState extends State<EventsScreen> {
           'sub_event_id': subEventId,
           'resident_id': appState.userResidentId!,
           'status': 'REGISTERED',
+          'track_url': trackUrl,
         });
 
         setState(() => _isRegistering = false);
@@ -196,6 +238,228 @@ class _EventsScreenState extends State<EventsScreen> {
         );
       }
     }
+  }
+
+  String _getEventBannerImage(List<dynamic> subEvents) {
+    bool hasSports = subEvents.any((s) => (s['category']?.toString().toLowerCase() ?? 'sports') == 'sports');
+    bool hasCultural = subEvents.any((s) => (s['category']?.toString().toLowerCase() ?? 'sports') == 'cultural');
+    
+    if (hasSports && hasCultural) {
+      return 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&auto=format&fit=crop&q=80';
+    } else if (hasCultural) {
+      return 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=600&auto=format&fit=crop&q=80'; // stage/singing/dancing
+    } else {
+      return 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=600&auto=format&fit=crop&q=80'; // sports
+    }
+  }
+
+  void _showTrackSelectionDialog(String subId, String subName) {
+    String? chosenTrack;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: DesignSystem.background,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              title: Text('Upload Soundtrack', style: DesignSystem.headingStyle(fontSize: 18)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'If you are participating in a Dance or Karaoke event, upload your backing audio track.',
+                    style: DesignSystem.bodyStyle(fontSize: 13, color: DesignSystem.textMuted),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: DesignSystem.secondary.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: DesignSystem.secondary.withOpacity(0.1)),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.audiotrack_rounded, size: 36, color: DesignSystem.secondary),
+                        const SizedBox(height: 8),
+                        Text(
+                          chosenTrack ?? 'No track selected (Optional)',
+                          textAlign: TextAlign.center,
+                          style: DesignSystem.bodyStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: chosenTrack != null ? DesignSystem.successGreen : DesignSystem.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      final List<String> mockTracks = [
+                        'dance_remix_2026.mp3',
+                        'karaoke_backing_track.mp3',
+                        'instrumental_melody.wav',
+                        'group_dance_vocals.mp3'
+                      ];
+                      final nextIndex = chosenTrack == null
+                          ? 0
+                          : (mockTracks.indexOf(chosenTrack!) + 1) % mockTracks.length;
+                      setDialogState(() {
+                        chosenTrack = mockTracks[nextIndex];
+                      });
+                    },
+                    icon: const Icon(Icons.file_upload_outlined, size: 16),
+                    label: Text('CHOOSE FILE', style: DesignSystem.headingStyle(fontSize: 12)),
+                    style: DesignSystem.buttonStyle(color: DesignSystem.secondary),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('CANCEL', style: DesignSystem.headingStyle(fontSize: 13, color: DesignSystem.textMuted)),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _registerForSubEvent(subId, subName, trackUrl: chosenTrack);
+                  },
+                  style: DesignSystem.buttonStyle(color: DesignSystem.primary),
+                  child: Text('REGISTER', style: DesignSystem.headingStyle(fontSize: 13, color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _toggleCulturalVote(String subId, bool isLike) async {
+    final appState = Provider.of<AppState>(context, listen: false);
+    final residentId = appState.userResidentId ?? 'demo-resident-id';
+
+    if (appState.activeSeasonId == 'demo-season-id') {
+      appState.toggleCulturalVoteInDemo(subId, residentId, isLike);
+    } else {
+      try {
+        final supabase = Supabase.instance.client;
+        final currentVote = _cloudCulturalVotes[subId];
+        
+        if (currentVote == isLike) {
+          await supabase
+              .from('cultural_feedback')
+              .delete()
+              .eq('resident_id', residentId)
+              .eq('sub_event_id', subId);
+        } else {
+          await supabase.from('cultural_feedback').upsert({
+            'resident_id': residentId,
+            'sub_event_id': subId,
+            'is_like': isLike,
+          });
+        }
+        _loadDuesAndEvents();
+      } catch (e) {
+        debugPrint('Error voting: $e');
+      }
+    }
+  }
+
+  Widget _buildPopularityMeter(BuildContext context, AppState appState, String subId) {
+    int likes = 0;
+    int dislikes = 0;
+    double pct = 0.0;
+    bool? userVote;
+
+    if (appState.activeSeasonId == 'demo-season-id') {
+      final popInfo = appState.getCulturalPopularity(subId);
+      likes = popInfo['likes'];
+      dislikes = popInfo['dislikes'];
+      pct = popInfo['percentage'];
+      userVote = appState.getResidentCulturalVote(subId, appState.userResidentId ?? 'demo-resident-id');
+    } else {
+      final pop = _cloudPopularity[subId] ?? {'likes': 0, 'dislikes': 0};
+      likes = pop['likes'];
+      dislikes = pop['dislikes'];
+      final total = likes + dislikes;
+      pct = total == 0 ? 0.0 : (likes / total) * 100.0;
+      userVote = _cloudCulturalVotes[subId];
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Popularity: ${pct.toStringAsFixed(0)}%',
+              style: DesignSystem.headingStyle(fontSize: 12, color: DesignSystem.textPrimary),
+            ),
+            Text(
+              '$likes Likes • $dislikes Dislikes',
+              style: DesignSystem.bodyStyle(fontSize: 11, color: DesignSystem.textMuted),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Container(
+          height: 6,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(3),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Row(
+            children: [
+              if (likes > 0)
+                Expanded(
+                  flex: (pct * 100).toInt(),
+                  child: Container(color: DesignSystem.successGreen),
+                ),
+              if (dislikes > 0)
+                Expanded(
+                  flex: ((100 - pct) * 100).toInt(),
+                  child: Container(color: DesignSystem.accentCoral),
+                ),
+              if (likes == 0 && dislikes == 0)
+                Expanded(child: Container(color: Colors.grey.shade300)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            IconButton(
+              icon: Icon(
+                userVote == true ? Icons.thumb_up_rounded : Icons.thumb_up_outlined,
+                size: 20,
+                color: userVote == true ? DesignSystem.successGreen : DesignSystem.textMuted,
+              ),
+              onPressed: () {
+                _toggleCulturalVote(subId, true);
+              },
+            ),
+            IconButton(
+              icon: Icon(
+                userVote == false ? Icons.thumb_down_rounded : Icons.thumb_down_outlined,
+                size: 20,
+                color: userVote == false ? DesignSystem.accentCoral : DesignSystem.textMuted,
+              ),
+              onPressed: () {
+                _toggleCulturalVote(subId, false);
+              },
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   void _showSuccessRegistrationDialog(String subEventName) {
@@ -342,147 +606,189 @@ class _EventsScreenState extends State<EventsScreen> {
                             final event = _events[index];
                             final List<dynamic> subs = event['sub_events'] ?? [];
                             final startVal = event['start_date'];
+                            final bannerImg = _getEventBannerImage(subs);
 
                             return Container(
                               margin: const EdgeInsets.only(bottom: 24),
-                              padding: const EdgeInsets.all(22),
                               decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.secondary),
+                              clipBehavior: Clip.antiAlias,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          event['name'],
-                                          style: DesignSystem.headingStyle(fontSize: 18, color: DesignSystem.textPrimary),
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: DesignSystem.secondary.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Text(
-                                          'Starts: $startVal',
-                                          style: DesignSystem.headingStyle(fontSize: 9, color: DesignSystem.secondary),
-                                        ),
-                                      ),
-                                    ],
+                                  Image.network(
+                                    bannerImg,
+                                    height: 140,
+                                    fit: BoxFit.cover,
                                   ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    event['description'],
-                                    style: DesignSystem.bodyStyle(fontSize: 13, color: DesignSystem.textMuted),
-                                  ),
-                                  const SizedBox(height: 20),
-                                  const Divider(height: 1),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'TOURNAMENT CATEGORIES',
-                                    style: DesignSystem.headingStyle(fontSize: 11, color: DesignSystem.textMuted).copyWith(letterSpacing: 1),
-                                  ),
-                                  const SizedBox(height: 12),
-
-                                  // Sub-events listings
-                                  ...subs.map((sub) {
-                                    final String subId = sub['id'];
-                                    final String name = sub['name'];
-                                    final String type = sub['type'];
-                                    final String desc = sub['description'];
-
-                                    final isRegistered = appState.activeSeasonId == 'demo-season-id'
-                                        ? appState.isRegisteredInDemo(subId)
-                                        : false; // In cloud mode we'd query core.registration
-
-                                    return Container(
-                                      margin: const EdgeInsets.only(bottom: 12),
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(color: DesignSystem.secondary.withOpacity(0.2), width: 1.2),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  name,
-                                                  style: DesignSystem.headingStyle(fontSize: 14, color: DesignSystem.textPrimary),
-                                                ),
-                                              ),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                                decoration: BoxDecoration(
-                                                  color: (type == 'WING_BASED' ? DesignSystem.primary : DesignSystem.accentPurple).withOpacity(0.1),
-                                                  borderRadius: BorderRadius.circular(8),
-                                                ),
-                                                child: Text(
-                                                  type == 'WING_BASED' ? 'WING TEAM' : 'INDIVIDUAL',
-                                                  style: DesignSystem.headingStyle(
-                                                    fontSize: 8,
-                                                    color: type == 'WING_BASED' ? DesignSystem.primary : DesignSystem.accentPurple,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            desc,
-                                            style: DesignSystem.bodyStyle(fontSize: 12, color: DesignSystem.textMuted),
-                                          ),
-                                          const SizedBox(height: 14),
-                                          
-                                          // Sign Up trigger button
-                                          ElevatedButton(
-                                            onPressed: (!_isPaid || isRegistered || _isRegistering)
-                                                ? null
-                                                : () => _registerForSubEvent(subId, name),
-                                            style: DesignSystem.buttonStyle(
-                                              color: isRegistered ? DesignSystem.successGreen : DesignSystem.primary,
-                                            ).copyWith(
-                                              padding: MaterialStateProperty.all(
-                                                const EdgeInsets.symmetric(vertical: 10),
-                                              ),
-                                              shape: MaterialStateProperty.all(
-                                                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  Padding(
+                                    padding: const EdgeInsets.all(22),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                event['name'],
+                                                style: DesignSystem.headingStyle(fontSize: 18, color: DesignSystem.textPrimary),
                                               ),
                                             ),
-                                            child: _isRegistering
-                                                ? const SizedBox(
-                                                    height: 16,
-                                                    width: 16,
-                                                    child: CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      valueColor: AlwaysStoppedAnimation(Colors.white),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: DesignSystem.secondary.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              child: Text(
+                                                'Starts: $startVal',
+                                                style: DesignSystem.headingStyle(fontSize: 9, color: DesignSystem.secondary),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          event['description'],
+                                          style: DesignSystem.bodyStyle(fontSize: 13, color: DesignSystem.textMuted),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        const Divider(height: 1),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'TOURNAMENT CATEGORIES',
+                                          style: DesignSystem.headingStyle(fontSize: 11, color: DesignSystem.textMuted).copyWith(letterSpacing: 1),
+                                        ),
+                                        const SizedBox(height: 12),
+
+                                        // Sub-events listings
+                                        ...subs.map((sub) {
+                                          final String subId = sub['id'];
+                                          final String name = sub['name'];
+                                          final String type = sub['type'];
+                                          final String desc = sub['description'];
+                                          final String cat = sub['category'] ?? 'Sports';
+
+                                          final isRegistered = appState.activeSeasonId == 'demo-season-id'
+                                              ? appState.isRegisteredInDemo(subId)
+                                              : false; // In cloud mode we'd query core.registration
+
+                                          return Container(
+                                            margin: const EdgeInsets.only(bottom: 12),
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius: BorderRadius.circular(16),
+                                              border: Border.all(color: DesignSystem.secondary.withOpacity(0.2), width: 1.2),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                                              children: [
+                                                Row(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  children: [
+                                                    Expanded(
+                                                      child: Row(
+                                                        children: [
+                                                          Icon(
+                                                            cat.toLowerCase() == 'cultural'
+                                                                ? Icons.palette_rounded
+                                                                : Icons.sports_soccer_rounded,
+                                                            size: 18,
+                                                            color: cat.toLowerCase() == 'cultural'
+                                                                ? DesignSystem.accentCoral
+                                                                : DesignSystem.primary,
+                                                          ),
+                                                          const SizedBox(width: 8),
+                                                          Expanded(
+                                                            child: Text(
+                                                              name,
+                                                              style: DesignSystem.headingStyle(fontSize: 14, color: DesignSystem.textPrimary),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
                                                     ),
-                                                  )
-                                                : Text(
-                                                    isRegistered 
-                                                        ? '✓ REGISTERED' 
-                                                        : (!_isPaid ? 'GATED (UNPAID)' : 'REGISTER NOW'),
-                                                    style: DesignSystem.headingStyle(
-                                                      fontSize: 12,
-                                                      color: Colors.white,
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                      decoration: BoxDecoration(
+                                                        color: (type == 'WING_BASED' ? DesignSystem.primary : DesignSystem.accentPurple).withOpacity(0.1),
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                      child: Text(
+                                                        type == 'WING_BASED' ? 'WING TEAM' : 'INDIVIDUAL',
+                                                        style: DesignSystem.headingStyle(
+                                                          fontSize: 8,
+                                                          color: type == 'WING_BASED' ? DesignSystem.primary : DesignSystem.accentPurple,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  desc,
+                                                  style: DesignSystem.bodyStyle(fontSize: 12, color: DesignSystem.textMuted),
+                                                ),
+                                                const SizedBox(height: 14),
+                                                
+                                                // Sign Up trigger button
+                                                ElevatedButton(
+                                                  onPressed: (!_isPaid || isRegistered || _isRegistering)
+                                                      ? null
+                                                      : () {
+                                                          if (cat.toLowerCase() == 'cultural') {
+                                                            _showTrackSelectionDialog(subId, name);
+                                                          } else {
+                                                            _registerForSubEvent(subId, name);
+                                                          }
+                                                        },
+                                                  style: DesignSystem.buttonStyle(
+                                                    color: isRegistered ? DesignSystem.successGreen : DesignSystem.primary,
+                                                  ).copyWith(
+                                                    padding: MaterialStateProperty.all(
+                                                      const EdgeInsets.symmetric(vertical: 10),
+                                                    ),
+                                                    shape: MaterialStateProperty.all(
+                                                      RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                                     ),
                                                   ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
+                                                  child: _isRegistering
+                                                      ? const SizedBox(
+                                                          height: 16,
+                                                          width: 16,
+                                                          child: CircularProgressIndicator(
+                                                            strokeWidth: 2,
+                                                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                                                          ),
+                                                        )
+                                                      : Text(
+                                                          isRegistered 
+                                                              ? '✓ REGISTERED' 
+                                                              : (!_isPaid ? 'GATED (UNPAID)' : 'REGISTER NOW'),
+                                                          style: DesignSystem.headingStyle(
+                                                            fontSize: 12,
+                                                            color: Colors.white,
+                                                          ),
+                                                        ),
+                                                ),
+                                                if (cat.toLowerCase() == 'cultural') ...[
+                                                  const SizedBox(height: 14),
+                                                  const Divider(height: 1),
+                                                  const SizedBox(height: 12),
+                                                  _buildPopularityMeter(context, appState, subId),
+                                                ]
+                                              ],
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ],
+                                    ),
+                                  ),
                                 ],
-                              ),
-                            );
-                          },
-                        ),
+                              );
+                            },
+                          ),
                 ],
               ),
             ),

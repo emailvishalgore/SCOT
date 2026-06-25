@@ -119,6 +119,84 @@ class AppState extends ChangeNotifier {
   // --- Live Registrations Mocks ---
   final Set<String> demoRegisteredEvents = {};
 
+  // --- Events & Sub-Events Mocks ---
+  final List<Map<String, dynamic>> demoEvents = [
+    {
+      'id': 'evt-1',
+      'name': 'Topaz Sports Fiesta 2026',
+      'description': 'The annual society championship. Compete, represent your wing, and win the seasonal trophy!',
+      'start_date': '2026-07-10',
+      'sub_events': [
+        {
+          'id': 'sub-1',
+          'name': 'Inter-Wing Football Match',
+          'category': 'Sports',
+          'type': 'WING_BASED',
+          'description': '7-a-side football tournament. Minimum 1 WING_CAPTAIN in roster.',
+        },
+        {
+          'id': 'sub-2',
+          'name': 'Men\'s Singles Badminton',
+          'category': 'Sports',
+          'type': 'INDIVIDUAL',
+          'description': 'Individual knockout brackets. Single elimination.',
+        },
+        {
+          'id': 'sub-3',
+          'name': 'Inter-Wing Carrom',
+          'category': 'Sports',
+          'type': 'WING_BASED',
+          'description': 'Doubles match. Points split equally between wing participants.',
+        }
+      ]
+    },
+    {
+      'id': 'evt-2',
+      'name': 'Independence Day Tournament',
+      'description': 'Celebrating independence with friendly society games and arts.',
+      'start_date': '2026-08-15',
+      'sub_events': [
+        {
+          'id': 'sub-4',
+          'name': 'Women\'s Table Tennis',
+          'category': 'Sports',
+          'type': 'INDIVIDUAL',
+          'description': 'Best of 3 sets. Individual registration.',
+        },
+        {
+          'id': 'sub-5',
+          'name': 'Classical Singing Performance',
+          'category': 'Cultural',
+          'type': 'INDIVIDUAL',
+          'description': 'Solo vocal recital. Upload your soundtrack.',
+        },
+        {
+          'id': 'sub-6',
+          'name': 'Group Fusion Dance',
+          'category': 'Cultural',
+          'type': 'WING_BASED',
+          'description': 'Showcase your wing\'s choreography. Audio track upload required.',
+        }
+      ]
+    }
+  ];
+
+  // Track upload storage for mock demo mode: maps subEventId -> Map of (residentId -> trackName/URL)
+  final Map<String, Map<String, String>> demoEventTracks = {};
+
+  // Cultural votes for mock demo mode: maps subEventId -> Map of (residentId -> isLike)
+  final Map<String, Map<String, bool>> demoCulturalVotes = {
+    'sub-5': {
+      'res-john-id': true,
+      'res-bob-id': true,
+      'res-jane-id': false,
+    },
+    'sub-6': {
+      'res-john-id': true,
+      'res-bob-id': false,
+    }
+  };
+
   // --- Announcements Mocks ---
   final List<Map<String, dynamic>> demoAnnouncements = [
     {
@@ -190,13 +268,66 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void registerForEventInDemo(String subEventId) {
+  void registerForEventInDemo(String subEventId, {String? trackUrl, String? residentId}) {
     demoRegisteredEvents.add(subEventId);
+    if (trackUrl != null && residentId != null) {
+      if (!demoEventTracks.containsKey(subEventId)) {
+        demoEventTracks[subEventId] = {};
+      }
+      demoEventTracks[subEventId]![residentId] = trackUrl;
+    }
     notifyListeners();
   }
 
   bool isRegisteredInDemo(String subEventId) {
     return demoRegisteredEvents.contains(subEventId);
+  }
+
+  String? getDemoTrackUrl(String subEventId, String residentId) {
+    return demoEventTracks[subEventId]?[residentId];
+  }
+
+  void toggleCulturalVoteInDemo(String subEventId, String residentId, bool isLike) {
+    if (!demoCulturalVotes.containsKey(subEventId)) {
+      demoCulturalVotes[subEventId] = {};
+    }
+    final votes = demoCulturalVotes[subEventId]!;
+    if (votes[residentId] == isLike) {
+      // Toggle off if they tap the same vote
+      votes.remove(residentId);
+    } else {
+      votes[residentId] = isLike;
+    }
+    notifyListeners();
+  }
+
+  bool? getResidentCulturalVote(String subEventId, String residentId) {
+    return demoCulturalVotes[subEventId]?[residentId];
+  }
+
+  Map<String, dynamic> getCulturalPopularity(String subEventId) {
+    final votes = demoCulturalVotes[subEventId] ?? {};
+    int likes = 0;
+    int dislikes = 0;
+    votes.forEach((resId, isLike) {
+      if (isLike) {
+        likes++;
+      } else {
+        dislikes++;
+      }
+    });
+    final total = likes + dislikes;
+    final pct = total == 0 ? 0.0 : (likes / total) * 100.0;
+    return {
+      'likes': likes,
+      'dislikes': dislikes,
+      'percentage': pct,
+    };
+  }
+
+  void addEventInDemo(Map<String, dynamic> event) {
+    demoEvents.insert(0, event);
+    notifyListeners();
   }
 
   void addAnnouncementInDemo(Map<String, dynamic> ann) {
