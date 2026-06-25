@@ -209,7 +209,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
     final isCoordinator = appState.userRole == 'SCOT_ADMIN' ||
         appState.userRole == 'CORE_TEAM' ||
         appState.userRole == 'WING_COMMANDER' ||
-        appState.userRole == 'WING_CAPTAIN';
+        appState.userRole == 'WING_CAPTAIN' ||
+        (appState.userRole == 'EVENT_CHAMPION' &&
+            (appState.userPortfolios.contains('Sports events') ||
+             appState.userPortfolios.contains('Cultural events')));
 
     return Scaffold(
       backgroundColor: DesignSystem.background,

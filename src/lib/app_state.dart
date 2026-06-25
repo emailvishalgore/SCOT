@@ -9,6 +9,7 @@ class AppState extends ChangeNotifier {
   String? userFlatId;
   String? userResidentId;
   String? userMemberId;
+  List<String> userPortfolios = [];
   bool isLoading = false;
 
   final List<Map<String, String>> customTestAccounts = [];
@@ -76,12 +77,42 @@ class AppState extends ChangeNotifier {
       'role': 'SCOT_ADMIN',
       'name': 'SCOT Admin 1',
       'member_id': 'mem-admin1-id',
+      'portfolios': [],
     },
     'scotadmin2': {
       'pin': '0133',
       'role': 'SCOT_ADMIN',
       'name': 'SCOT Admin 2',
       'member_id': 'mem-admin2-id',
+      'portfolios': [],
+    },
+    'coremember1': {
+      'pin': '1111',
+      'role': 'CORE_TEAM',
+      'name': 'Alice Core',
+      'member_id': 'mem-core-alice-id',
+      'portfolios': ['Finance', 'Sponsorship'],
+    },
+    'eventchamp1': {
+      'pin': '2222',
+      'role': 'EVENT_CHAMPION',
+      'name': 'Bob Champion',
+      'member_id': 'mem-event-bob-id',
+      'portfolios': ['Sports events'],
+    },
+    'wingcomm1': {
+      'pin': '3333',
+      'role': 'WING_COMMANDER',
+      'name': 'Charlie Commander',
+      'member_id': 'mem-comm-charlie-id',
+      'wing_id': 'N',
+    },
+    'wingcapt1': {
+      'pin': '4444',
+      'role': 'WING_CAPTAIN',
+      'name': 'David Captain',
+      'member_id': 'mem-capt-david-id',
+      'wing_id': 'N',
     }
   };
 
@@ -283,6 +314,7 @@ class AppState extends ChangeNotifier {
         userMemberId = acc['member_id'];
         userWingId = acc['wing_id'] ?? 'N';
         userFlatId = 'demo-flat-id';
+        userPortfolios = List<String>.from(acc['portfolios'] ?? []);
         activeSeasonId = 'demo-season-id';
         notifyListeners();
         return {'success': true, 'type': 'COORDINATOR', 'role': userRole, 'name': acc['name']};
@@ -317,6 +349,13 @@ class AppState extends ChangeNotifier {
       userResidentId = metadata['resident_id'] ?? '';
       userMemberId = metadata['member_id'] ?? '';
 
+      final rawPorts = metadata['portfolios'];
+      if (rawPorts is List) {
+        userPortfolios = List<String>.from(rawPorts);
+      } else {
+        userPortfolios = [];
+      }
+
       notifyListeners();
     } catch (e) {
       debugPrint("Error decoding JWT: $e");
@@ -341,6 +380,33 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  void updateCoordinatorPortfoliosInDemo(String username, List<String> portfolios) {
+    final lowerUsername = username.trim().toLowerCase();
+    if (demoCoordinatorAccounts.containsKey(lowerUsername)) {
+      demoCoordinatorAccounts[lowerUsername]!['portfolios'] = portfolios;
+      notifyListeners();
+    }
+  }
+
+  void addFamilyMemberInDemo(String pin, String name, String flat, String wing, String flatId) {
+    final String lowerUsername = name.replaceAll(' ', '_').toLowerCase();
+    demoResidentAccounts[lowerUsername] = {
+      'pin': pin,
+      'role': 'HOME_MEMBER',
+      'name': name,
+      'flat': flat,
+      'wing': wing,
+      'flat_id': flatId,
+      'resident_id': 'res-gen-$lowerUsername',
+    };
+    notifyListeners();
+  }
+
+  void removeFamilyMemberInDemo(String username) {
+    demoResidentAccounts.remove(username.toLowerCase());
+    notifyListeners();
+  }
+
   /// Clears state on user logout
   void clear() {
     activeSeasonId = null;
@@ -349,6 +415,7 @@ class AppState extends ChangeNotifier {
     userFlatId = null;
     userResidentId = null;
     userMemberId = null;
+    userPortfolios = [];
     isLoading = false;
     notifyListeners();
   }

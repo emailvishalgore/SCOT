@@ -10,7 +10,18 @@ ALTER TABLE core.registration_request ALTER COLUMN mobile DROP NOT NULL;
 ALTER TABLE core.resident ALTER COLUMN phone DROP NOT NULL;
 ALTER TABLE core.resident DROP CONSTRAINT IF EXISTS resident_phone_key;
 
--- 3. Create organizer registration request table
+-- 3. Ensure Portfolios exist matching user specs
+INSERT INTO core.portfolio (name, description) VALUES
+('Finance', 'Monetary collections, budgets, payouts, and compliance audit reporting.'),
+('Sponsorship', 'Sponsorship outreach, vendor booths, and corporate collaborations.'),
+('Communication and Media', 'Draft notices, broadcast updates, and gallery albums management.'),
+('Vendor & Logistics', 'Quotations board audit, equipment rental loggers, and logistics.'),
+('Food & Stalls', 'Stall coordinate, food safety parameters, and vendor booths.'),
+('Sports events', 'Define sports fiesta brackets, fixture schedules, and record scores.'),
+('Cultural events', 'Create drawing/cultural contests, timelines, and judge scoreboard.')
+ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description;
+
+-- 4. Create organizer registration request table
 CREATE TABLE IF NOT EXISTS core.organizer_registration_request (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -21,7 +32,7 @@ CREATE TABLE IF NOT EXISTS core.organizer_registration_request (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. Stored Procedure: Submit Organizer Registration Request
+-- 5. Stored Procedure: Submit Organizer Registration Request
 CREATE OR REPLACE FUNCTION core.submit_organizer_registration_request(
     p_username VARCHAR(50),
     p_role VARCHAR(20),
@@ -50,7 +61,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 5. Stored Procedure: Approve Organizer Registration Request
+-- 6. Stored Procedure: Approve Organizer Registration Request
 CREATE OR REPLACE FUNCTION core.approve_organizer_registration_request(
     p_request_id UUID,
     p_approver_member_id UUID
@@ -101,7 +112,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 6. Stored Procedure: Submit Registration Request (redefined for no mobile field + case-insensitive usernames)
+-- 7. Stored Procedure: Submit Registration Request (redefined for no mobile field + case-insensitive usernames)
 CREATE OR REPLACE FUNCTION core.submit_registration_request(
     p_username VARCHAR(50),
     p_wing_id UUID,
@@ -144,7 +155,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 7. Stored Procedure: Approve Registration Request (redefined for no mobile phone field)
+-- 8. Stored Procedure: Approve Registration Request (redefined for no mobile phone field)
 CREATE OR REPLACE FUNCTION core.approve_registration_request(
     p_request_id UUID,
     p_approver_member_id UUID
@@ -195,7 +206,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 8. Stored Procedure: Authenticate User (redefined to be case-insensitive for usernames)
+-- 9. Stored Procedure: Authenticate User (redefined to be case-insensitive and return assigned portfolios)
 CREATE OR REPLACE FUNCTION core.authenticate_user(
     p_username VARCHAR(50),
     p_pin VARCHAR(20)
@@ -258,7 +269,14 @@ BEGIN
             'member_id', v_organizer_rec.mem_id,
             'resident_id', v_organizer_rec.mem_id,
             'wing_id', v_organizer_rec.assigned_wing_id,
-            'season_id', v_season_id
+            'season_id', v_season_id,
+            'portfolios', (
+                SELECT COALESCE(jsonb_agg(p.name), '[]'::jsonb)
+                FROM core.member_portfolio_assignment mpa
+                JOIN core.portfolio p ON p.id = mpa.portfolio_id
+                JOIN core.member_season_assignment msa_inner ON msa_inner.id = mpa.member_assignment_id
+                WHERE msa_inner.member_id = v_organizer_rec.mem_id AND msa_inner.season_id = v_season_id
+            )
         );
     END IF;
 
@@ -266,14 +284,55 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 9. Clean up test logins and Pre-seed Predefined Main SCOT Admins
+-- 10. Stored Procedure: Update Member Portfolios (Admin Console action)
+CREATE OR REPLACE FUNCTION core.update_member_portfolios(
+    p_member_id UUID,
+    p_role VARCHAR(20),
+    p_portfolio_names text[]
+) RETURNS VOID AS $$
+DECLARE
+    v_assignment_id UUID;
+    v_season_id UUID;
+    v_pname text;
+    v_pid UUID;
+BEGIN
+    SELECT id INTO v_season_id FROM core.season WHERE status = 'ACTIVE' LIMIT 1;
+    
+    -- Find member season assignment
+    SELECT id INTO v_assignment_id 
+    FROM core.member_season_assignment 
+    WHERE member_id = p_member_id AND season_id = v_season_id AND role = p_role LIMIT 1;
+    
+    IF v_assignment_id IS NULL THEN
+        -- Create assignment if not exists
+        INSERT INTO core.member_season_assignment (member_id, season_id, role)
+        VALUES (p_member_id, v_season_id, p_role)
+        RETURNING id INTO v_assignment_id;
+    END IF;
+    
+    -- Delete old assignments
+    DELETE FROM core.member_portfolio_assignment WHERE member_assignment_id = v_assignment_id;
+    
+    -- Insert new assignments
+    FOREACH v_pname IN ARRAY p_portfolio_names LOOP
+        SELECT id INTO v_pid FROM core.portfolio WHERE name = v_pname;
+        IF v_pid IS NOT NULL THEN
+            INSERT INTO core.member_portfolio_assignment (member_assignment_id, portfolio_id)
+            VALUES (v_assignment_id, v_pid)
+            ON CONFLICT (member_assignment_id, portfolio_id) DO NOTHING;
+        END IF;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 11. Clean up test logins and Pre-seed Predefined Main SCOT Admins
 DO $$
 DECLARE
     v_res_id UUID;
     v_mem_id UUID;
     v_active_season_id UUID;
 BEGIN
-    -- Cleanup Dave Miller account from 000007 migration (and any other potential test accounts)
+    -- Cleanup Dave Miller account from 000007 migration
     DELETE FROM core.organizer_account WHERE username = 'dave_miller';
     DELETE FROM core.member WHERE id IN (SELECT id FROM core.resident WHERE name = 'Dave Miller');
     DELETE FROM core.member_season_assignment WHERE member_id IN (SELECT id FROM core.resident WHERE name = 'Dave Miller');

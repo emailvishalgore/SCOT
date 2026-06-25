@@ -99,6 +99,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         appState.userWingId = result['wing_id']?.toString() ?? 'N';
         appState.userFlatId = result['flat_id']?.toString() ?? '';
         appState.activeSeasonId = result['season_id']?.toString();
+        
+        final rawPorts = result['portfolios'];
+        if (rawPorts is List) {
+          appState.userPortfolios = List<String>.from(rawPorts);
+        } else {
+          appState.userPortfolios = [];
+        }
+
         appState.notifyListeners();
 
         setState(() => _isLoading = false);
