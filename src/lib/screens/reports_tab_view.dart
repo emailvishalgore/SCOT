@@ -153,8 +153,8 @@ class _ReportsTabViewState extends State<ReportsTabView> {
         // 4. Fetch resident counts
         final resCountRes = await supabase
             .from('resident')
-            .select('id', const FetchOptions(count: CountOption.exact));
-        final resCount = resCountRes.count ?? 0;
+            .select('id');
+        final resCount = resCountRes != null ? resCountRes.length : 0;
 
         // 5. Fetch events and sub-events count
         final evRes = await supabase
@@ -214,7 +214,7 @@ class _ReportsTabViewState extends State<ReportsTabView> {
               border: pw.Border.all(color: PdfColors.grey400, width: 2),
             ),
             child: pw.Column(
-              cross: pw.CrossAxisAlignment.start,
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 // Header
                 pw.Text('SCOT COMMUNITY MANAGEMENT PLATFORM',
