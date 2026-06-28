@@ -24,15 +24,23 @@
 <body>
   <!-- Loading indicator shown while Flutter engine boots -->
   <style>
+    body { margin: 0; padding: 0; overflow: hidden; }
     .loading-container {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      height: 100vh;
       background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4f46e5 100%);
       font-family: 'Segoe UI', system-ui, sans-serif;
       color: white;
+      z-index: 99999;
+      transition: opacity 0.5s ease;
+    }
+    .loading-container.fade-out {
+      opacity: 0;
+      pointer-events: none;
     }
     .spinner {
       width: 48px; height: 48px;
@@ -49,13 +57,43 @@
     <div class="spinner"></div>
     <div class="loading-text">Loading SCOT TOPAZ...</div>
   </div>
+
   <script>
-    // Remove loading indicator once Flutter app is ready
-    window.addEventListener('flutter-first-frame', function() {
-      var loading = document.getElementById('loading');
-      if (loading) loading.remove();
+    // Hide loading spinner with fade animation
+    function hideLoading() {
+      var el = document.getElementById('loading');
+      if (el && !el.classList.contains('fade-out')) {
+        el.classList.add('fade-out');
+        setTimeout(function() { el.remove(); }, 600);
+      }
+    }
+
+    // Strategy 1: Watch for Flutter adding a <flt-glass-pane> or <flutter-view> to the DOM
+    var observer = new MutationObserver(function(mutations) {
+      for (var i = 0; i < mutations.length; i++) {
+        for (var j = 0; j < mutations[i].addedNodes.length; j++) {
+          var node = mutations[i].addedNodes[j];
+          if (node.tagName && (
+              node.tagName.startsWith('FLT-') ||
+              node.tagName === 'FLUTTER-VIEW' ||
+              node.tagName === 'FLUTTER-GLASS-PANE'
+          )) {
+            hideLoading();
+            observer.disconnect();
+            return;
+          }
+        }
+      }
     });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Strategy 2: Listen for flutter-first-frame (might work in some versions)
+    window.addEventListener('flutter-first-frame', hideLoading);
+
+    // Strategy 3: Fallback timeout - hide after 8 seconds no matter what
+    setTimeout(hideLoading, 8000);
   </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
