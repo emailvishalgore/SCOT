@@ -57,8 +57,11 @@ jobs:
       # 7. Build Flutter Web
       - name: Build Web
         working-directory: src
-        run: flutter build web --release --base-href "/SCOT/" --pwa-strategy=none
+        run: flutter build web --release --base-href "/SCOT/" --pwa-strategy=none --tree-shake-icons
 
+      # 7b. Remove local CanvasKit so Flutter loads it from Google CDN (much faster)
+      - name: Remove local CanvasKit (use CDN instead)
+        run: rm -rf src/build/web/canvaskit
 
 
       # 8. Deploy to GitHub Pages
