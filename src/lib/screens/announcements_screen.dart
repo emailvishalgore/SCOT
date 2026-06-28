@@ -314,96 +314,111 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
 
     return Scaffold(
       backgroundColor: DesignSystem.background,
-      appBar: AppBar(
-        title: Text(
-          'Society Bulletin Board',
-          style: DesignSystem.headingStyle(fontSize: 20),
-        ),
-        backgroundColor: DesignSystem.background,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: DesignSystem.textPrimary),
+      appBar: const ScotHeaderBar(
+        title: 'Society Bulletin Board',
+        showBackButton: true,
+        primaryColor: DesignSystem.primary,
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
-              ),
-            )
-          : _announcements.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.campaign_outlined, size: 64, color: DesignSystem.textMuted.withOpacity(0.3)),
-                      const SizedBox(height: 12),
-                      Text(
-                        'No announcements posted yet.',
-                        style: DesignSystem.headingStyle(fontSize: 16, color: DesignSystem.textMuted),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(24),
-                  itemCount: _announcements.length,
-                  itemBuilder: (context, index) {
-                    final ann = _announcements[index];
-                    final isGlobal = ann['scope'] == 'GLOBAL';
+      body: Stack(
+        children: [
+          // Background sports photo with dark overlay
+          Positioned.fill(
+            child: Image.network(
+              DesignSystem.imgGeneralSports,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              color: const Color(0xFF0F172A).withOpacity(0.92),
+            ),
+          ),
+          Positioned.fill(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
+                    ),
+                  )
+                : _announcements.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.campaign_outlined, size: 64, color: DesignSystem.textMuted.withOpacity(0.3)),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No announcements posted yet.',
+                              style: DesignSystem.headingStyle(fontSize: 16, color: DesignSystem.textMuted),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(24),
+                        itemCount: _announcements.length,
+                        itemBuilder: (context, index) {
+                          final ann = _announcements[index];
+                          final isGlobal = ann['scope'] == 'GLOBAL';
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(20),
-                      decoration: DesignSystem.cardDecoration(
-                        borderAccentColor: isGlobal ? DesignSystem.primary : DesignSystem.secondary,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: (isGlobal ? DesignSystem.primary : DesignSystem.secondary).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.all(20),
+                            decoration: DesignSystem.glassDecoration(
+                              borderAccentColor: isGlobal ? DesignSystem.primary : DesignSystem.secondary,
+                              fillOpacity: 0.12,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: (isGlobal ? DesignSystem.primary : DesignSystem.secondary).withOpacity(0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        isGlobal ? 'GLOBAL' : 'WING SPECIFIC',
+                                        style: DesignSystem.headingStyle(
+                                          fontSize: 8,
+                                          color: isGlobal ? DesignSystem.primary : DesignSystem.secondary,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      ann['date'],
+                                      style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
                                 ),
-                                child: Text(
-                                  isGlobal ? 'GLOBAL' : 'WING SPECIFIC',
-                                  style: DesignSystem.headingStyle(
-                                    fontSize: 8,
-                                    color: isGlobal ? DesignSystem.primary : DesignSystem.secondary,
-                                  ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  ann['title'],
+                                  style: DesignSystem.headingStyle(fontSize: 16, color: Colors.white),
                                 ),
-                              ),
-                              Text(
-                                ann['date'],
-                                style: DesignSystem.bodyStyle(fontSize: 11, color: DesignSystem.textMuted, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            ann['title'],
-                            style: DesignSystem.headingStyle(fontSize: 16, color: DesignSystem.textPrimary),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            ann['content'],
-                            style: DesignSystem.bodyStyle(fontSize: 13, color: DesignSystem.textPrimary),
-                          ),
-                          const SizedBox(height: 12),
-                          const Divider(height: 1),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Published by: ${ann['author']}',
-                            style: DesignSystem.bodyStyle(fontSize: 11, color: DesignSystem.textMuted, fontWeight: FontWeight.bold),
-                          ),
-                        ],
+                                const SizedBox(height: 8),
+                                Text(
+                                  ann['content'],
+                                  style: DesignSystem.bodyStyle(fontSize: 13, color: Colors.white70),
+                                ),
+                                const SizedBox(height: 12),
+                                const Divider(height: 1, color: Colors.white24),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Published by: ${ann['author']}',
+                                  style: DesignSystem.bodyStyle(fontSize: 11, color: Colors.white60, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
+          ),
+        ],
+      ),
       floatingActionButton: canDraft
           ? FloatingActionButton(
               onPressed: _showAddAnnouncementBottomSheet,

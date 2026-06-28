@@ -143,6 +143,7 @@ class _ResidentOnboardingScreenState extends State<ResidentOnboardingScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final isDemo = !RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
@@ -150,273 +151,290 @@ class _ResidentOnboardingScreenState extends State<ResidentOnboardingScreen> {
 
     return Scaffold(
       backgroundColor: DesignSystem.background,
-      appBar: AppBar(
-        title: Text(
-          'Onboard Resident',
-          style: DesignSystem.headingStyle(fontSize: 20),
-        ),
-        backgroundColor: DesignSystem.background,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: DesignSystem.textPrimary),
+      appBar: const ScotHeaderBar(
+        title: 'Onboard Resident',
+        showBackButton: true,
+        primaryColor: DesignSystem.secondary,
       ),
-      body: _isFetchingFlats
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
-              ),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Information Header Banner
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: DesignSystem.cardDecoration(
-                      borderAccentColor: DesignSystem.secondary,
-                    ).copyWith(
-                      color: DesignSystem.secondary.withOpacity(0.05),
+      body: Stack(
+        children: [
+          // Background sports photo with dark overlay
+          Positioned.fill(
+            child: Image.network(
+              DesignSystem.imgGeneralSports,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              color: const Color(0xFF0F172A).withOpacity(0.88),
+            ),
+          ),
+          Positioned.fill(
+            child: _isFetchingFlats
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.secondary),
                     ),
-                    child: Row(
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Icon(Icons.home_work_outlined, color: DesignSystem.secondary),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Registering a resident to your Wing. In production, residents complete registration via secure phone OTP and are auto-assigned to their flats.',
-                            style: DesignSystem.bodyStyle(
-                              fontSize: 13,
-                              color: DesignSystem.textPrimary,
-                              fontWeight: FontWeight.bold,
+                        // Information Header Banner
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: DesignSystem.glassDecoration(
+                            borderAccentColor: DesignSystem.secondary,
+                            fillOpacity: 0.1,
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.home_work_outlined, color: DesignSystem.secondary),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Registering a resident to your Wing. In production, residents complete registration via secure phone OTP and are auto-assigned to their flats.',
+                                  style: DesignSystem.bodyStyle(
+                                    fontSize: 13,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Onboarding Form
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: DesignSystem.glassDecoration(borderAccentColor: DesignSystem.secondary, fillOpacity: 0.12),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  'RESIDENT PROFILE',
+                                  style: DesignSystem.headingStyle(fontSize: 14, color: Colors.white70),
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Name Input
+                                TextFormField(
+                                  controller: _nameController,
+                                  style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.white.withOpacity(0.08),
+                                    labelText: 'Resident Name',
+                                    labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                                    prefixIcon: const Icon(Icons.person_outline_rounded, color: DesignSystem.secondary),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Please enter the resident name';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Phone Input
+                                TextFormField(
+                                  controller: _phoneController,
+                                  keyboardType: TextInputType.phone,
+                                  style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.white.withOpacity(0.08),
+                                    labelText: 'Phone Number',
+                                    labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                                    prefixIcon: const Icon(Icons.phone_outlined, color: DesignSystem.secondary),
+                                    hintText: '9999988887',
+                                    hintStyle: const TextStyle(color: Colors.white30),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Please enter the phone number';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Flat Selector
+                                Text(
+                                  'ASSIGNED FLAT',
+                                  style: DesignSystem.headingStyle(fontSize: 12, color: Colors.white70),
+                                ),
+                                const SizedBox(height: 8),
+                                _flats.isEmpty
+                                    ? Text(
+                                        'No flats found in your Wing.',
+                                        style: DesignSystem.bodyStyle(color: DesignSystem.accentCoral, fontWeight: FontWeight.bold),
+                                      )
+                                    : DropdownButtonFormField<String>(
+                                        value: _selectedFlatId,
+                                        dropdownColor: const Color(0xFF1E293B),
+                                        style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                        decoration: InputDecoration(
+                                          filled: true,
+                                          fillColor: Colors.white.withOpacity(0.08),
+                                          labelText: 'Select Flat Number',
+                                          labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                            borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                            borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                                          ),
+                                        ),
+                                        onChanged: (value) {
+                                          if (value != null) {
+                                            final matched = _flats.firstWhere((element) => element['id'] == value);
+                                            setState(() {
+                                              _selectedFlatId = value;
+                                              _selectedFlatNumber = matched['number']!;
+                                            });
+                                          }
+                                        },
+                                        items: _flats.map((flat) {
+                                          return DropdownMenuItem<String>(
+                                            value: flat['id'],
+                                            child: Text('Flat ${flat['number']}'),
+                                          );
+                                        }).toList(),
+                                      ),
+                                const SizedBox(height: 20),
+
+                                // Role Dropdown
+                                Text(
+                                  'FLAT OCCUPANCY ROLE',
+                                  style: DesignSystem.headingStyle(fontSize: 12, color: Colors.white70),
+                                ),
+                                const SizedBox(height: 8),
+                                DropdownButtonFormField<String>(
+                                  value: _selectedRole,
+                                  dropdownColor: const Color(0xFF1E293B),
+                                  style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.white.withOpacity(0.08),
+                                    labelText: 'Occupancy Role',
+                                    labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                                    ),
+                                  ),
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      setState(() => _selectedRole = value);
+                                    }
+                                  },
+                                  items: _roles.map((role) {
+                                    return DropdownMenuItem<String>(
+                                      value: role,
+                                      child: Text(role.replaceAll('_', ' ')),
+                                    );
+                                  }).toList(),
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Occupancy Type Dropdown
+                                Text(
+                                  'OCCUPANCY TYPE',
+                                  style: DesignSystem.headingStyle(fontSize: 12, color: Colors.white70),
+                                ),
+                                const SizedBox(height: 8),
+                                DropdownButtonFormField<String>(
+                                  value: _selectedOccupancy,
+                                  dropdownColor: const Color(0xFF1E293B),
+                                  style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.white.withOpacity(0.08),
+                                    labelText: 'Occupancy Type',
+                                    labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                                    ),
+                                  ),
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      setState(() => _selectedOccupancy = value);
+                                    }
+                                  },
+                                  items: _occupancyTypes.map((type) {
+                                    return DropdownMenuItem<String>(
+                                      value: type,
+                                      child: Text(type),
+                                    );
+                                  }).toList(),
+                                ),
+                                const SizedBox(height: 24),
+
+                                // Submit Button
+                                ElevatedButton(
+                                  onPressed: (_isLoading || _selectedFlatId == null) ? null : _submitOnboarding,
+                                  style: DesignSystem.buttonStyle(color: DesignSystem.secondary),
+                                  child: _isLoading
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                                          ),
+                                        )
+                                      : Text(
+                                          'ONBOARD RESIDENT',
+                                          style: DesignSystem.headingStyle(
+                                            fontSize: 16,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-
-                  // Onboarding Form
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.secondary),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'RESIDENT PROFILE',
-                            style: DesignSystem.headingStyle(fontSize: 14, color: DesignSystem.textMuted),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Name Input
-                          TextFormField(
-                            controller: _nameController,
-                            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
-                            decoration: InputDecoration(
-                              labelText: 'Resident Name',
-                              labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted),
-                              prefixIcon: const Icon(Icons.person_outline_rounded, color: DesignSystem.secondary),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                borderSide: BorderSide(color: DesignSystem.secondary.withOpacity(0.3), width: 1.5),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Please enter the resident name';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Phone Input
-                          TextFormField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
-                            decoration: InputDecoration(
-                              labelText: 'Phone Number',
-                              labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted),
-                              prefixIcon: const Icon(Icons.phone_outlined, color: DesignSystem.secondary),
-                              hintText: '9999988887',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                borderSide: BorderSide(color: DesignSystem.secondary.withOpacity(0.3), width: 1.5),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Please enter the phone number';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Flat Selector
-                          Text(
-                            'ASSIGNED FLAT',
-                            style: DesignSystem.headingStyle(fontSize: 12, color: DesignSystem.textMuted),
-                          ),
-                          const SizedBox(height: 8),
-                          _flats.isEmpty
-                              ? Text(
-                                  'No flats found in your Wing.',
-                                  style: DesignSystem.bodyStyle(color: DesignSystem.accentCoral, fontWeight: FontWeight.bold),
-                                )
-                              : Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: DesignSystem.secondary.withOpacity(0.3), width: 1.5),
-                                  ),
-                                  child: DropdownButtonHideUnderline(
-                                    child: DropdownButton<String>(
-                                      value: _selectedFlatId,
-                                      isExpanded: true,
-                                      style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
-                                      onChanged: (value) {
-                                        if (value != null) {
-                                          final matched = _flats.firstWhere((element) => element['id'] == value);
-                                          setState(() {
-                                            _selectedFlatId = value;
-                                            _selectedFlatNumber = matched['number']!;
-                                          });
-                                        }
-                                      },
-                                      items: _flats.map((flat) {
-                                        return DropdownMenuItem<String>(
-                                          value: flat['id'],
-                                          child: Text('Flat ${flat['number']}'),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ),
-                                ),
-                          const SizedBox(height: 20),
-
-                          // Role Dropdown
-                          Text(
-                            'FLAT OCCUPANCY ROLE',
-                            style: DesignSystem.headingStyle(fontSize: 12, color: DesignSystem.textMuted),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: DesignSystem.secondary.withOpacity(0.3), width: 1.5),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _selectedRole,
-                                isExpanded: true,
-                                style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    setState(() => _selectedRole = value);
-                                  }
-                                },
-                                items: _roles.map((role) {
-                                  return DropdownMenuItem<String>(
-                                    value: role,
-                                    child: Text(role.replaceAll('_', ' ')),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Occupancy Type Dropdown
-                          Text(
-                            'OCCUPANCY TYPE',
-                            style: DesignSystem.headingStyle(fontSize: 12, color: DesignSystem.textMuted),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: DesignSystem.secondary.withOpacity(0.3), width: 1.5),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _selectedOccupancy,
-                                isExpanded: true,
-                                style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    setState(() => _selectedOccupancy = value);
-                                  }
-                                },
-                                items: _occupancyTypes.map((type) {
-                                  return DropdownMenuItem<String>(
-                                    value: type,
-                                    child: Text(type),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Submit Button
-                          ElevatedButton(
-                            onPressed: (_isLoading || _selectedFlatId == null) ? null : _submitOnboarding,
-                            style: DesignSystem.buttonStyle(color: DesignSystem.secondary),
-                            child: _isLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      valueColor: AlwaysStoppedAnimation(Colors.white),
-                                    ),
-                                  )
-                                : Text(
-                                    'ONBOARD RESIDENT',
-                                    style: DesignSystem.headingStyle(
-                                      fontSize: 16,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          ),
+        ],
+      ),
     );
-  }
 }

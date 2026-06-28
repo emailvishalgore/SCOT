@@ -132,46 +132,69 @@ class _ApproveExpensesScreenState extends State<ApproveExpensesScreen> {
       length: 2,
       child: Scaffold(
         backgroundColor: DesignSystem.background,
-        appBar: AppBar(
-          title: Text(
-            'Expense Approvals Board',
-            style: DesignSystem.headingStyle(fontSize: 20),
-          ),
-          backgroundColor: DesignSystem.background,
-          elevation: 0,
-          iconTheme: const IconThemeData(color: DesignSystem.textPrimary),
-          bottom: TabBar(
-            labelColor: DesignSystem.primary,
-            unselectedLabelColor: DesignSystem.textMuted,
-            indicatorColor: DesignSystem.primary,
-            indicatorWeight: 3,
-            labelStyle: DesignSystem.headingStyle(fontSize: 14),
-            tabs: [
-              Tab(text: 'Pending ($pendingCount)'),
-              Tab(text: 'History'),
-            ],
-          ),
+        appBar: const ScotHeaderBar(
+          title: 'Expense Approvals Board',
+          showBackButton: true,
+          primaryColor: DesignSystem.primary,
         ),
-        body: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
-                ),
-              )
-            : TabBarView(
-                children: [
-                  // Tab 1: Pending Approvals
-                  _buildExpensesList(
-                    _expenses.where((element) => element['status'] == 'PENDING').toList(),
-                    isHistory: false,
-                  ),
-                  // Tab 2: Approved History
-                  _buildExpensesList(
-                    _expenses.where((element) => element['status'] == 'APPROVED').toList(),
-                    isHistory: true,
-                  ),
-                ],
+        body: Stack(
+          children: [
+            // Background sports photo with dark overlay
+            Positioned.fill(
+              child: Image.network(
+                DesignSystem.imgGeneralSports,
+                fit: BoxFit.cover,
               ),
+            ),
+            Positioned.fill(
+              child: Container(
+                color: const Color(0xFF0F172A).withOpacity(0.92),
+              ),
+            ),
+            Positioned.fill(
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: TabBar(
+                            labelColor: DesignSystem.secondary,
+                            unselectedLabelColor: DesignSystem.textMuted,
+                            indicatorColor: DesignSystem.secondary,
+                            indicatorWeight: 3,
+                            labelStyle: DesignSystem.headingStyle(fontSize: 14),
+                            tabs: [
+                              Tab(text: 'Pending ($pendingCount)'),
+                              Tab(text: 'History'),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: TabBarView(
+                            children: [
+                              // Tab 1: Pending Approvals
+                              _buildExpensesList(
+                                _expenses.where((element) => element['status'] == 'PENDING').toList(),
+                                isHistory: false,
+                              ),
+                              // Tab 2: Approved History
+                              _buildExpensesList(
+                                _expenses.where((element) => element['status'] == 'APPROVED').toList(),
+                                isHistory: true,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -211,8 +234,9 @@ class _ApproveExpensesScreenState extends State<ApproveExpensesScreen> {
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(20),
-          decoration: DesignSystem.cardDecoration(
+          decoration: DesignSystem.glassDecoration(
             borderAccentColor: isHistory ? DesignSystem.successGreen : DesignSystem.accentCoral,
+            fillOpacity: 0.12,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -223,7 +247,7 @@ class _ApproveExpensesScreenState extends State<ApproveExpensesScreen> {
                   Expanded(
                     child: Text(
                       title,
-                      style: DesignSystem.headingStyle(fontSize: 16, color: DesignSystem.textPrimary),
+                      style: DesignSystem.headingStyle(fontSize: 16, color: Colors.white),
                     ),
                   ),
                   Text(

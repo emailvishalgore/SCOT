@@ -371,343 +371,373 @@ class _RecordScoreScreenState extends State<RecordScoreScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: DesignSystem.background,
-      appBar: AppBar(
-        title: Text(
-          'Record Match Score',
-          style: DesignSystem.headingStyle(fontSize: 20),
-        ),
-        backgroundColor: DesignSystem.background,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: DesignSystem.textPrimary),
+      appBar: const ScotHeaderBar(
+        title: 'Record Match Score',
+        showBackButton: true,
+        primaryColor: DesignSystem.primary,
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
-              ),
-            )
-          : _fixtures.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.sports_score_rounded,
-                        size: 64,
-                        color: DesignSystem.textMuted.withOpacity(0.3),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'No fixtures scheduled at the moment.',
-                        style: DesignSystem.headingStyle(fontSize: 16, color: DesignSystem.textMuted),
-                      ),
-                    ],
-                  ),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Header Card
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.accentYellow),
+      body: Stack(
+        children: [
+          // Background sports photo with dark overlay
+          Positioned.fill(
+            child: Image.network(
+              DesignSystem.imgGeneralSports,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              color: const Color(0xFF0F172A).withOpacity(0.92),
+            ),
+          ),
+          Positioned.fill(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
+                    ),
+                  )
+                : _fixtures.isEmpty
+                    ? Center(
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              'SELECT ACTIVE FIXTURE',
-                              style: DesignSystem.headingStyle(fontSize: 12, color: DesignSystem.textMuted),
+                            Icon(
+                              Icons.sports_score_rounded,
+                              size: 64,
+                              color: DesignSystem.textMuted.withOpacity(0.3),
                             ),
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: DesignSystem.accentYellow.withOpacity(0.5), width: 1.5),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<Map<String, dynamic>>(
-                                  value: _selectedFixture,
-                                  isExpanded: true,
-                                  style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
-                                  onChanged: (value) {
-                                    if (value != null) {
-                                      _selectFixture(value);
-                                    }
-                                  },
-                                  items: _fixtures.map((fix) {
-                                    return DropdownMenuItem<Map<String, dynamic>>(
-                                      value: fix,
-                                      child: Text(
-                                        '${fix['name']} (${fix['competition_name']})',
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No fixtures scheduled at the moment.',
+                              style: DesignSystem.headingStyle(fontSize: 16, color: DesignSystem.textMuted),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Score Entry Card
-                      if (_selectedFixture != null && _participants.isNotEmpty) ...[
-                        Form(
-                          key: _formKey,
-                          child: Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.primary),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'MATCH SCOREBOARD',
-                                      style: DesignSystem.headingStyle(fontSize: 14, color: DesignSystem.textMuted),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: DesignSystem.primary.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(12),
+                      )
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Header Card
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: DesignSystem.glassDecoration(borderAccentColor: DesignSystem.accentYellow, fillOpacity: 0.12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'SELECT ACTIVE FIXTURE',
+                                    style: DesignSystem.headingStyle(fontSize: 12, color: Colors.white70),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  DropdownButtonFormField<Map<String, dynamic>>(
+                                    value: _selectedFixture,
+                                    dropdownColor: const Color(0xFF1E293B),
+                                    style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: Colors.white.withOpacity(0.08),
+                                      labelText: 'Fixture',
+                                      labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
                                       ),
-                                      child: Text(
-                                        _selectedFixture!['type'] == 'WING_BASED' ? 'WING VS WING' : 'INDIVIDUALS',
-                                        style: DesignSystem.headingStyle(fontSize: 9, color: DesignSystem.primary),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: const BorderSide(color: DesignSystem.accentYellow, width: 2),
                                       ),
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 24),
-
-                                // Walkover Switch Row
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.outlined_flag_rounded, color: DesignSystem.accentCoral),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Walkover Match?',
-                                          style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
+                                    onChanged: (value) {
+                                      if (value != null) {
+                                        _selectFixture(value);
+                                      }
+                                    },
+                                    items: _fixtures.map((fix) {
+                                      return DropdownMenuItem<Map<String, dynamic>>(
+                                        value: fix,
+                                        child: Text(
+                                          '${fix['name']} (${fix['competition_name']})',
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                      ],
-                                    ),
-                                    Switch(
-                                      value: _isWalkover,
-                                      activeColor: DesignSystem.accentCoral,
-                                      onChanged: (val) {
-                                        setState(() {
-                                          _isWalkover = val;
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                ),
-
-                                if (_isWalkover) ...[
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'SELECT ABSENT (FORFEITING) PARTY',
-                                    style: DesignSystem.headingStyle(fontSize: 11, color: DesignSystem.textMuted),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: DesignSystem.accentCoral.withOpacity(0.4), width: 1.5),
-                                    ),
-                                    child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<String>(
-                                        value: _walkoverAbsentParticipantId,
-                                        isExpanded: true,
-                                        style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
-                                        onChanged: (value) {
-                                          if (value != null) {
-                                            setState(() {
-                                              _walkoverAbsentParticipantId = value;
-                                            });
-                                          }
-                                        },
-                                        items: _participants.map((part) {
-                                          return DropdownMenuItem<String>(
-                                            value: part['id'] as String,
-                                            child: Text(part['name'] as String),
-                                          );
-                                        }).toList(),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'The selected absent participant will score 0, and their attendance will be logged as ABSENT. The present participant will win the points.',
-                                    style: DesignSystem.bodyStyle(fontSize: 12, color: DesignSystem.textMuted),
+                                      );
+                                    }).toList(),
                                   ),
                                 ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
 
-                                const SizedBox(height: 24),
-                                const Divider(height: 1),
-                                const SizedBox(height: 24),
-
-                                // Score & placement fields for each participant
-                                ListView.builder(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: _participants.length,
-                                  itemBuilder: (context, index) {
-                                    final part = _participants[index];
-                                    final pid = part['id'] as String;
-                                    final name = part['name'] as String;
-
-                                    final isAbsentInWalkover = _isWalkover && pid == _walkoverAbsentParticipantId;
-
-                                    return Container(
-                                      margin: const EdgeInsets.only(bottom: 20),
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: isAbsentInWalkover ? Colors.red.withOpacity(0.02) : Colors.white,
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color: isAbsentInWalkover 
-                                              ? DesignSystem.accentCoral.withOpacity(0.3) 
-                                              : DesignSystem.primary.withOpacity(0.15),
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                            // Score Entry Card
+                            if (_selectedFixture != null && _participants.isNotEmpty) ...[
+                              Form(
+                                key: _formKey,
+                                child: Container(
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: DesignSystem.glassDecoration(borderAccentColor: DesignSystem.primary, fillOpacity: 0.12),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  name,
-                                                  style: DesignSystem.headingStyle(fontSize: 16, color: DesignSystem.textPrimary),
-                                                ),
-                                              ),
-                                              if (isAbsentInWalkover)
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                                  decoration: BoxDecoration(
-                                                    color: DesignSystem.accentCoral.withOpacity(0.1),
-                                                    borderRadius: BorderRadius.circular(10),
-                                                  ),
-                                                  child: Text(
-                                                    'FORFEIT (ABSENT)',
-                                                    style: DesignSystem.headingStyle(fontSize: 8, color: DesignSystem.accentCoral),
-                                                  ),
-                                                ),
-                                            ],
+                                          Text(
+                                            'MATCH SCOREBOARD',
+                                            style: DesignSystem.headingStyle(fontSize: 14, color: Colors.white70),
                                           ),
-                                          const SizedBox(height: 16),
-                                          Row(
-                                            children: [
-                                              // Score Input
-                                              Expanded(
-                                                flex: 2,
-                                                child: TextFormField(
-                                                  controller: _scoreControllers[pid],
-                                                  enabled: !isAbsentInWalkover,
-                                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                  style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
-                                                  decoration: InputDecoration(
-                                                    labelText: 'Score',
-                                                    labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-                                                    border: OutlineInputBorder(
-                                                      borderRadius: BorderRadius.circular(16),
-                                                    ),
-                                                    filled: true,
-                                                    fillColor: isAbsentInWalkover ? Colors.grey.withOpacity(0.1) : Colors.white,
-                                                  ),
-                                                  validator: (value) {
-                                                    if (isAbsentInWalkover) return null;
-                                                    if (value == null || value.trim().isEmpty) {
-                                                      return 'Enter score';
-                                                    }
-                                                    if (double.tryParse(value) == null) {
-                                                      return 'Invalid number';
-                                                    }
-                                                    return null;
-                                                  },
-                                                ),
-                                              ),
-                                              const SizedBox(width: 16),
-
-                                              // Placement Dropdown
-                                              Expanded(
-                                                flex: 2,
-                                                child: DropdownButtonFormField<int>(
-                                                  value: isAbsentInWalkover ? 2 : (_selectedPlacements[pid] ?? 1),
-                                                  decoration: InputDecoration(
-                                                    labelText: 'Placement',
-                                                    labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-                                                    border: OutlineInputBorder(
-                                                      borderRadius: BorderRadius.circular(16),
-                                                    ),
-                                                  ),
-                                                  onChanged: isAbsentInWalkover
-                                                      ? null
-                                                      : (val) {
-                                                          if (val != null) {
-                                                            setState(() {
-                                                              _selectedPlacements[pid] = val;
-                                                            });
-                                                          }
-                                                        },
-                                                  items: const [
-                                                    DropdownMenuItem(value: 1, child: Text('1st Place')),
-                                                    DropdownMenuItem(value: 2, child: Text('2nd Place')),
-                                                    DropdownMenuItem(value: 3, child: Text('3rd Place')),
-                                                    DropdownMenuItem(value: 4, child: Text('4th Place')),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: DesignSystem.primary.withOpacity(0.15),
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              _selectedFixture!['type'] == 'WING_BASED' ? 'WING VS WING' : 'INDIVIDUALS',
+                                              style: DesignSystem.headingStyle(fontSize: 9, color: Colors.white),
+                                            ),
                                           ),
                                         ],
                                       ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 16),
+                                      const SizedBox(height: 24),
 
-                                // Action Button
-                                ElevatedButton(
-                                  onPressed: _isSaving ? null : _submitScore,
-                                  style: DesignSystem.buttonStyle(color: DesignSystem.primary),
-                                  child: _isSaving
-                                      ? const SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                                      // Walkover Switch Row
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.outlined_flag_rounded, color: DesignSystem.accentCoral),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'Walkover Match?',
+                                                style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                                              ),
+                                            ],
                                           ),
-                                        )
-                                      : Text(
-                                          'RECORD MATCH RESULTS',
-                                          style: DesignSystem.headingStyle(fontSize: 16, color: Colors.white),
+                                          Switch(
+                                            value: _isWalkover,
+                                            activeColor: DesignSystem.accentCoral,
+                                            onChanged: (val) {
+                                              setState(() {
+                                                _isWalkover = val;
+                                              });
+                                            },
+                                          ),
+                                        ],
+                                      ),
+
+                                      if (_isWalkover) ...[
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'SELECT ABSENT (FORFEITING) PARTY',
+                                          style: DesignSystem.headingStyle(fontSize: 11, color: Colors.white70),
                                         ),
+                                        const SizedBox(height: 8),
+                                        DropdownButtonFormField<String>(
+                                          value: _walkoverAbsentParticipantId,
+                                          dropdownColor: const Color(0xFF1E293B),
+                                          style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                          decoration: InputDecoration(
+                                            filled: true,
+                                            fillColor: Colors.white.withOpacity(0.08),
+                                            labelText: 'Forfeiting Party',
+                                            labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(16),
+                                              borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(16),
+                                              borderSide: const BorderSide(color: DesignSystem.accentCoral, width: 2),
+                                            ),
+                                          ),
+                                          onChanged: (value) {
+                                            if (value != null) {
+                                              setState(() {
+                                                _walkoverAbsentParticipantId = value;
+                                              });
+                                            }
+                                          },
+                                          items: _participants.map((part) {
+                                            return DropdownMenuItem<String>(
+                                              value: part['id'] as String,
+                                              child: Text(part['name'] as String),
+                                            );
+                                          }).toList(),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'The selected absent participant will score 0, and their attendance will be logged as ABSENT. The present participant will win the points.',
+                                          style: DesignSystem.bodyStyle(fontSize: 12, color: Colors.white60),
+                                        ),
+                                      ],
+
+                                      const SizedBox(height: 24),
+                                      const Divider(height: 1, color: Colors.white24),
+                                      const SizedBox(height: 24),
+
+                                      // Score & placement fields for each participant
+                                      ListView.builder(
+                                        shrinkWrap: true,
+                                        physics: const NeverScrollableScrollPhysics(),
+                                        itemCount: _participants.length,
+                                        itemBuilder: (context, index) {
+                                          final part = _participants[index];
+                                          final pid = part['id'] as String;
+                                          final name = part['name'] as String;
+
+                                          final isAbsentInWalkover = _isWalkover && pid == _walkoverAbsentParticipantId;
+
+                                          return Container(
+                                            margin: const EdgeInsets.only(bottom: 20),
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: DesignSystem.glassDecoration(
+                                              borderAccentColor: isAbsentInWalkover ? DesignSystem.accentCoral : DesignSystem.primary,
+                                              fillOpacity: isAbsentInWalkover ? 0.05 : 0.1,
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                                              children: [
+                                                Row(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  children: [
+                                                    Expanded(
+                                                      child: Text(
+                                                        name,
+                                                        style: DesignSystem.headingStyle(fontSize: 16, color: Colors.white),
+                                                      ),
+                                                    ),
+                                                    if (isAbsentInWalkover)
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                        decoration: BoxDecoration(
+                                                          color: DesignSystem.accentCoral.withOpacity(0.15),
+                                                          borderRadius: BorderRadius.circular(10),
+                                                        ),
+                                                        child: Text(
+                                                          'FORFEIT (ABSENT)',
+                                                          style: DesignSystem.headingStyle(fontSize: 8, color: DesignSystem.accentCoral),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 16),
+                                                Row(
+                                                  children: [
+                                                    // Score Input
+                                                    Expanded(
+                                                      flex: 2,
+                                                      child: TextFormField(
+                                                        controller: _scoreControllers[pid],
+                                                        enabled: !isAbsentInWalkover,
+                                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                        style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                                                        decoration: InputDecoration(
+                                                          filled: true,
+                                                          fillColor: isAbsentInWalkover ? Colors.white.withOpacity(0.02) : Colors.white.withOpacity(0.08),
+                                                          labelText: 'Score',
+                                                          labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                                                          enabledBorder: OutlineInputBorder(
+                                                            borderRadius: BorderRadius.circular(16),
+                                                            borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                                          ),
+                                                          focusedBorder: OutlineInputBorder(
+                                                            borderRadius: BorderRadius.circular(16),
+                                                            borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
+                                                          ),
+                                                        ),
+                                                        validator: (value) {
+                                                          if (isAbsentInWalkover) return null;
+                                                          if (value == null || value.trim().isEmpty) {
+                                                            return 'Enter score';
+                                                          }
+                                                          if (double.tryParse(value) == null) {
+                                                            return 'Invalid number';
+                                                          }
+                                                          return null;
+                                                        },
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 16),
+
+                                                    // Placement Dropdown
+                                                    Expanded(
+                                                      flex: 2,
+                                                      child: DropdownButtonFormField<int>(
+                                                        value: isAbsentInWalkover ? 2 : (_selectedPlacements[pid] ?? 1),
+                                                        dropdownColor: const Color(0xFF1E293B),
+                                                        style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                                        decoration: InputDecoration(
+                                                          filled: true,
+                                                          fillColor: isAbsentInWalkover ? Colors.white.withOpacity(0.02) : Colors.white.withOpacity(0.08),
+                                                          labelText: 'Placement',
+                                                          labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                                                          enabledBorder: OutlineInputBorder(
+                                                            borderRadius: BorderRadius.circular(16),
+                                                            borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                                          ),
+                                                          focusedBorder: OutlineInputBorder(
+                                                            borderRadius: BorderRadius.circular(16),
+                                                            borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
+                                                          ),
+                                                        ),
+                                                        onChanged: isAbsentInWalkover
+                                                            ? null
+                                                            : (val) {
+                                                                if (val != null) {
+                                                                  setState(() {
+                                                                    _selectedPlacements[pid] = val;
+                                                                  });
+                                                                }
+                                                              },
+                                                        items: const [
+                                                          DropdownMenuItem(value: 1, child: Text('1st Place')),
+                                                          DropdownMenuItem(value: 2, child: Text('2nd Place')),
+                                                          DropdownMenuItem(value: 3, child: Text('3rd Place')),
+                                                          DropdownMenuItem(value: 4, child: Text('4th Place')),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      const SizedBox(height: 16),
+
+                                      // Action Button
+                                      ElevatedButton(
+                                        onPressed: _isSaving ? null : _submitScore,
+                                        style: DesignSystem.buttonStyle(color: DesignSystem.primary),
+                                        child: _isSaving
+                                            ? const SizedBox(
+                                                height: 20,
+                                                width: 20,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2.5,
+                                                  valueColor: AlwaysStoppedAnimation(Colors.white),
+                                                ),
+                                              )
+                                            : Text(
+                                                'RECORD MATCH RESULTS',
+                                                style: DesignSystem.headingStyle(fontSize: 16, color: Colors.white),
+                                              ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ],
-                            ),
-                          ),
+                              ),
+                            ],
+                          ],
                         ),
-                      ],
-                    ],
-                  ),
-                ),
+                      ),
+          ),
+        ],
+      ),
     );
   }
 }

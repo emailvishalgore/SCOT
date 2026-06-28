@@ -528,38 +528,61 @@ class _FinancePortalScreenState extends State<FinancePortalScreen> {
       length: 2,
       child: Scaffold(
         backgroundColor: DesignSystem.background,
-        appBar: AppBar(
-          title: Text(
-            'Sponsorships & Quotes',
-            style: DesignSystem.headingStyle(fontSize: 20),
-          ),
-          backgroundColor: DesignSystem.background,
-          elevation: 0,
-          iconTheme: const IconThemeData(color: DesignSystem.textPrimary),
-          bottom: TabBar(
-            labelColor: DesignSystem.primary,
-            unselectedLabelColor: DesignSystem.textMuted,
-            indicatorColor: DesignSystem.primary,
-            indicatorWeight: 3,
-            labelStyle: DesignSystem.headingStyle(fontSize: 14),
-            tabs: const [
-              Tab(text: 'Sponsorship Ledger'),
-              Tab(text: 'Vendor Estimates'),
-            ],
-          ),
+        appBar: const ScotHeaderBar(
+          title: 'Sponsorships & Quotes',
+          showBackButton: true,
+          primaryColor: DesignSystem.primary,
         ),
-        body: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
-                ),
-              )
-            : TabBarView(
-                children: [
-                  _buildSponsorsTab(),
-                  _buildQuotesTab(),
-                ],
+        body: Stack(
+          children: [
+            // Background sports photo with dark overlay
+            Positioned.fill(
+              child: Image.network(
+                DesignSystem.imgGeneralSports,
+                fit: BoxFit.cover,
               ),
+            ),
+            Positioned.fill(
+              child: Container(
+                color: const Color(0xFF0F172A).withOpacity(0.92),
+              ),
+            ),
+            Positioned.fill(
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: TabBar(
+                            labelColor: DesignSystem.secondary,
+                            unselectedLabelColor: DesignSystem.textMuted,
+                            indicatorColor: DesignSystem.secondary,
+                            indicatorWeight: 3,
+                            labelStyle: DesignSystem.headingStyle(fontSize: 14),
+                            tabs: const [
+                              Tab(text: 'Sponsorship Ledger'),
+                              Tab(text: 'Vendor Estimates'),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: TabBarView(
+                            children: [
+                              _buildSponsorsTab(),
+                              _buildQuotesTab(),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -578,13 +601,13 @@ class _FinancePortalScreenState extends State<FinancePortalScreen> {
           // Total Sum Card
           Container(
             padding: const EdgeInsets.all(22),
-            decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.successGreen),
+            decoration: DesignSystem.glassDecoration(borderAccentColor: DesignSystem.successGreen, fillOpacity: 0.12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'TOTAL SPONSORSHIP FUNDING',
-                  style: DesignSystem.headingStyle(fontSize: 10, color: DesignSystem.textMuted).copyWith(letterSpacing: 1.5),
+                  style: DesignSystem.headingStyle(fontSize: 10, color: Colors.white70).copyWith(letterSpacing: 1.5),
                 ),
                 const SizedBox(height: 10),
                 Text(
@@ -629,7 +652,7 @@ class _FinancePortalScreenState extends State<FinancePortalScreen> {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      decoration: DesignSystem.cardDecoration(borderAccentColor: tierColor),
+                      decoration: DesignSystem.glassDecoration(borderAccentColor: tierColor, fillOpacity: 0.12),
                       child: Row(
                         children: [
                           Column(
@@ -703,7 +726,7 @@ class _FinancePortalScreenState extends State<FinancePortalScreen> {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.all(20),
-                  decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.secondary),
+                  decoration: DesignSystem.glassDecoration(borderAccentColor: DesignSystem.secondary, fillOpacity: 0.12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [

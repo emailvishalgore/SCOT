@@ -149,7 +149,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
 
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: const Color(0xFF1C0D02),
+        backgroundColor: const Color(0xFF0F172A),
         body: Center(
           child: CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(theme.primaryColor),
@@ -192,6 +192,20 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     return DefaultTabController(
       length: tabLabels.length,
       child: Scaffold(
+        backgroundColor: DesignSystem.background,
+        appBar: ScotHeaderBar(
+          title: 'SCOT TOPAZ',
+          subtitle: '$_residentName • Flat $_wingName-$_flatNumber',
+          showBackButton: false,
+          primaryColor: theme.primaryColor,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),
+              tooltip: 'Logout',
+              onPressed: _handleLogout,
+            ),
+          ],
+        ),
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -233,7 +247,6 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildHeaderWidget(appState, theme),
                     _buildCustomTabBar(tabLabels, theme),
                     Expanded(
                       child: TabBarView(
@@ -250,80 +263,6 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     );
   }
 
-  Widget _buildHeaderWidget(AppState appState, ResidentTheme theme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: GlassCard(
-        baseColor: theme.glassBaseColor,
-        borderColor: theme.primaryColor.withOpacity(0.3),
-        padding: const EdgeInsets.all(16),
-        fillOpacity: 0.12,
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: theme.primaryColor.withOpacity(0.2),
-              child: Text(
-                _residentName.isNotEmpty ? _residentName[0].toUpperCase() : 'R',
-                style: DesignSystem.headingStyle(
-                  fontSize: 24,
-                  color: theme.primaryColor,
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _residentName,
-                    style: DesignSystem.headingStyle(
-                      fontSize: 18,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [theme.primaryColor, theme.secondaryColor]),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.white24),
-                        ),
-                        child: Text(
-                          appState.userRole == 'HOME_CHIEF' ? 'FLAT HEAD' : 'FAMILY MEMBER',
-                          style: GoogleFonts.nunito(
-                            fontSize: 10,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Flat $_wingName-$_flatNumber',
-                        style: DesignSystem.bodyStyle(
-                          fontSize: 12,
-                          color: Colors.white70,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              onPressed: _handleLogout,
-              icon: FreshIcon(
-                icon: Icons.logout_rounded,
-                primaryColor: Colors.white,
-                secondaryColor: theme.secondaryColor,
-                size: 20,
               ),
               tooltip: 'Logout',
             ),

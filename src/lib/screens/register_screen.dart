@@ -378,83 +378,106 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: DesignSystem.background,
-      appBar: AppBar(
-        title: Text(
-          _isOrganizer ? 'SCOT Team Registration' : 'Flat Registration',
-          style: DesignSystem.headingStyle(fontSize: 20),
-        ),
-        backgroundColor: DesignSystem.background,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: DesignSystem.textPrimary),
+      appBar: ScotHeaderBar(
+        title: _isOrganizer ? 'SCOT Team Registration' : 'Flat Registration',
+        showBackButton: true,
+        primaryColor: _isOrganizer ? DesignSystem.primary : DesignSystem.secondary,
       ),
-      body: _isSubmitting
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
-                  ),
-                  SizedBox(height: 16),
-                  Text('Submitting credentials...'),
-                ],
-              ),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (!_isOrganizer) ...[
-                      // Steps indicators
-                      Row(
+      body: Stack(
+        children: [
+          // Background sports photo with dark overlay
+          Positioned.fill(
+            child: Image.network(
+              DesignSystem.imgGeneralSports,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              color: const Color(0xFF0F172A).withOpacity(0.88),
+            ),
+          ),
+          Positioned.fill(
+            child: _isSubmitting
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
+                        ),
+                        SizedBox(height: 16),
+                        Text('Submitting credentials...', style: TextStyle(color: Colors.white)),
+                      ],
+                    ),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _buildStepIndicator(0, 'Flat Details'),
-                          const SizedBox(width: 8),
-                          Expanded(child: Container(height: 2, color: DesignSystem.secondary.withOpacity(0.3))),
-                          const SizedBox(width: 8),
-                          _buildStepIndicator(1, 'Family Roster'),
+                          if (!_isOrganizer) ...[
+                            // Steps indicators
+                            Row(
+                              children: [
+                                _buildStepIndicator(0, 'Flat Details'),
+                                const SizedBox(width: 8),
+                                Expanded(child: Container(height: 2, color: DesignSystem.secondary.withOpacity(0.3))),
+                                const SizedBox(width: 8),
+                                _buildStepIndicator(1, 'Family Roster'),
+                              ],
+                            ),
+                            const SizedBox(height: 28),
+                          ],
+
+                          if (_isOrganizer)
+                            _buildOrganizerDetailsForm()
+                          else ...[
+                            if (_currentStep == 0) _buildStep1FlatDetails(),
+                            if (_currentStep == 1) _buildStep2FamilyRoster(),
+                          ],
                         ],
                       ),
-                      const SizedBox(height: 28),
-                    ],
-
-                    if (_isOrganizer)
-                      _buildOrganizerDetailsForm()
-                    else ...[
-                      if (_currentStep == 0) _buildStep1FlatDetails(),
-                      if (_currentStep == 1) _buildStep2FamilyRoster(),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildOrganizerDetailsForm() {
     return Container(
       padding: const EdgeInsets.all(22),
-      decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.primary),
+      decoration: DesignSystem.glassDecoration(borderAccentColor: DesignSystem.primary, fillOpacity: 0.12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
             'ORGANIZER CREDENTIALS',
-            style: DesignSystem.headingStyle(fontSize: 12, color: DesignSystem.textMuted).copyWith(letterSpacing: 1.5),
+            style: DesignSystem.headingStyle(fontSize: 12, color: Colors.white70).copyWith(letterSpacing: 1.5),
           ),
           const SizedBox(height: 16),
 
           // Username
           TextFormField(
             controller: _usernameController,
-            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
+            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, color: Colors.white),
             decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.08),
               labelText: 'Account Username (for login)',
-              labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
+              ),
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) return 'Enter a username';
@@ -469,12 +492,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
             controller: _pinController,
             keyboardType: TextInputType.number,
             obscureText: true,
-            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
+            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, color: Colors.white),
             maxLength: 4,
             decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.08),
               labelText: 'Create 4-Digit Login PIN',
-              labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
+              ),
               counterText: '',
             ),
             validator: (value) {
@@ -489,10 +521,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
           // Team Dropdown
           DropdownButtonFormField<String>(
             value: _selectedRole,
+            dropdownColor: const Color(0xFF1E293B),
+            style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
             decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.08),
               labelText: 'Select Your SCOT Team',
-              labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
+              ),
             ),
             onChanged: (val) {
               if (val != null) {
@@ -514,10 +557,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
           if (_selectedRole == 'WING_COMMANDER' || _selectedRole == 'WING_CAPTAIN') ...[
             DropdownButtonFormField<String>(
               value: _selectedWingName,
+              dropdownColor: const Color(0xFF1E293B),
+              style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.08),
                 labelText: 'Select Assigned Wing',
-                labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
+                ),
               ),
               onChanged: (val) {
                 if (val != null) {
@@ -588,23 +642,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildStep1FlatDetails() {
     return Container(
       padding: const EdgeInsets.all(22),
-      decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.primary),
+      decoration: DesignSystem.glassDecoration(borderAccentColor: DesignSystem.primary, fillOpacity: 0.12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
             'ACCOUNT CREDENTIALS',
-            style: DesignSystem.headingStyle(fontSize: 12, color: DesignSystem.textMuted).copyWith(letterSpacing: 1.5),
+            style: DesignSystem.headingStyle(fontSize: 12, color: Colors.white70).copyWith(letterSpacing: 1.5),
           ),
           const SizedBox(height: 16),
 
           // Wing Selection
           DropdownButtonFormField<String>(
             value: _selectedWingName,
+            dropdownColor: const Color(0xFF1E293B),
+            style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
             decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.08),
               labelText: 'Select Society Wing',
-              labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+              ),
             ),
             onChanged: (val) {
               if (val != null) {
@@ -625,10 +690,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ? const Center(child: CircularProgressIndicator())
               : DropdownButtonFormField<String>(
                   value: _selectedFlatId,
+                  dropdownColor: const Color(0xFF1E293B),
+                  style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.08),
                     labelText: 'Select Flat Number',
-                    labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                    labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                    ),
                   ),
                   onChanged: (val) {
                     if (val != null) {
@@ -651,11 +727,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
           // Username
           TextFormField(
             controller: _usernameController,
-            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
+            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, color: Colors.white),
             decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.08),
               labelText: 'Account Username (for login)',
-              labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+              ),
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) return 'Enter a username';
@@ -665,19 +750,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 16),
 
-
-
           // login PIN
           TextFormField(
             controller: _pinController,
             keyboardType: TextInputType.number,
             obscureText: true,
-            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
+            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, color: Colors.white),
             maxLength: 4,
             decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.08),
               labelText: 'Create 4-Digit Login PIN',
-              labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+              ),
               counterText: '',
             ),
             validator: (value) {
@@ -715,24 +807,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Member Input Form Card
         Container(
           padding: const EdgeInsets.all(20),
-          decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.secondary),
+          decoration: DesignSystem.glassDecoration(borderAccentColor: DesignSystem.secondary, fillOpacity: 0.12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
                 'ADD FLAT RESIDENT (MAX 7 TOTAL)',
-                style: DesignSystem.headingStyle(fontSize: 11, color: DesignSystem.textMuted).copyWith(letterSpacing: 1.5),
+                style: DesignSystem.headingStyle(fontSize: 11, color: Colors.white70).copyWith(letterSpacing: 1.5),
               ),
               const SizedBox(height: 14),
 
               // Member Name
               TextFormField(
                 controller: _memberNameController,
-                style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
+                style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, color: Colors.white),
                 decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.08),
                   labelText: 'Resident Full Name',
-                  labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
@@ -743,10 +844,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       value: _selectedGender,
+                      dropdownColor: const Color(0xFF1E293B),
+                      style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.08),
                         labelText: 'Gender',
-                        labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 11),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 11),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                        ),
                       ),
                       onChanged: (val) {
                         if (val != null) {
@@ -768,10 +880,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       value: _selectedAgeGroup,
+                      dropdownColor: const Color(0xFF1E293B),
+                      style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.08),
                         labelText: 'Age Category',
-                        labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 11),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 11),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                        ),
                       ),
                       onChanged: (val) {
                         if (val != null) {
@@ -810,39 +933,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Added Members List Roster
         Text(
           'ROSTER MEMBERS (${_familyMembers.length + 1} / 7)',
-          style: DesignSystem.headingStyle(fontSize: 12, color: DesignSystem.textMuted).copyWith(letterSpacing: 2),
+          style: DesignSystem.headingStyle(fontSize: 12, color: Colors.white70).copyWith(letterSpacing: 2),
         ),
         const SizedBox(height: 12),
 
         // Flat Head (Primary User)
         Container(
           margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: DesignSystem.primary.withOpacity(0.5), width: 1.5),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.stars_rounded, color: DesignSystem.primary, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _usernameController.text.isNotEmpty ? _usernameController.text : 'Flat Head',
-                      style: DesignSystem.headingStyle(fontSize: 14, color: DesignSystem.textPrimary),
-                    ),
-                    Text(
-                      'Primary Resident • Head of Flat',
-                      style: DesignSystem.bodyStyle(fontSize: 10, color: DesignSystem.textMuted, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          decoration: DesignSystem.glassDecoration(borderAccentColor: DesignSystem.primary, fillOpacity: 0.1),
+          child: ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: Colors.transparent,
+              child: Icon(Icons.stars_rounded, color: DesignSystem.primary, size: 24),
+            ),
+            title: Text(
+              _usernameController.text.isNotEmpty ? _usernameController.text : 'Flat Head',
+              style: DesignSystem.headingStyle(fontSize: 14, color: Colors.white),
+            ),
+            subtitle: Text(
+              'Primary Resident • Head of Flat',
+              style: DesignSystem.bodyStyle(fontSize: 10, color: DesignSystem.textMuted, fontWeight: FontWeight.bold),
+            ),
           ),
         ),
 
@@ -861,37 +972,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
             return Container(
               margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: DesignSystem.secondary.withOpacity(0.2), width: 1.2),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.person_outline_rounded, color: DesignSystem.secondary, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          style: DesignSystem.headingStyle(fontSize: 13, color: DesignSystem.textPrimary),
-                        ),
-                        Text(
-                          '$gender • Age: $ageGroup',
-                          style: DesignSystem.bodyStyle(fontSize: 10, color: DesignSystem.textMuted, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => _removeFamilyMember(index),
-                    icon: const Icon(Icons.delete_outline_rounded, color: DesignSystem.accentCoral, size: 20),
-                    tooltip: 'Remove',
-                  )
-                ],
+              decoration: DesignSystem.glassDecoration(borderAccentColor: DesignSystem.secondary, fillOpacity: 0.08),
+              child: ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.transparent,
+                  child: Icon(Icons.person_outline_rounded, color: DesignSystem.secondary, size: 24),
+                ),
+                title: Text(
+                  name,
+                  style: DesignSystem.headingStyle(fontSize: 13, color: Colors.white),
+                ),
+                subtitle: Text(
+                  '$gender • Age: $ageGroup',
+                  style: DesignSystem.bodyStyle(fontSize: 10, color: DesignSystem.textMuted, fontWeight: FontWeight.bold),
+                ),
+                trailing: IconButton(
+                  onPressed: () => _removeFamilyMember(index),
+                  icon: const Icon(Icons.delete_outline_rounded, color: DesignSystem.accentCoral, size: 20),
+                  tooltip: 'Remove',
+                ),
               ),
             );
           },
@@ -911,11 +1010,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  side: const BorderSide(color: DesignSystem.textMuted),
+                  side: const BorderSide(color: Colors.white30),
                 ),
                 child: Text(
                   'BACK',
-                  style: DesignSystem.headingStyle(fontSize: 14, color: DesignSystem.textMuted),
+                  style: DesignSystem.headingStyle(fontSize: 14, color: Colors.white70),
                 ),
               ),
             ),

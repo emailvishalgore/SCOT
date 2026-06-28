@@ -216,106 +216,123 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
     return Scaffold(
       backgroundColor: DesignSystem.background,
-      appBar: AppBar(
-        title: Text(
-          'Tournament Media Gallery',
-          style: DesignSystem.headingStyle(fontSize: 20),
-        ),
-        backgroundColor: DesignSystem.background,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: DesignSystem.textPrimary),
+      appBar: const ScotHeaderBar(
+        title: 'Tournament Media Gallery',
+        showBackButton: true,
+        primaryColor: DesignSystem.secondary,
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
-              ),
-            )
-          : _photos.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.photo_library_outlined, size: 64, color: DesignSystem.textMuted.withOpacity(0.3)),
-                      const SizedBox(height: 12),
-                      Text(
-                        'No photos posted in the gallery.',
-                        style: DesignSystem.headingStyle(fontSize: 16, color: DesignSystem.textMuted),
-                      ),
-                    ],
-                  ),
-                )
-              : GridView.builder(
-                  padding: const EdgeInsets.all(24),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 0.85,
-                  ),
-                  itemCount: _photos.length,
-                  itemBuilder: (context, index) {
-                    final photo = _photos[index];
-
-                    return InkWell(
-                      onTap: () => _viewPhotoDetails(photo),
-                      borderRadius: BorderRadius.circular(24),
-                      child: Container(
-                        decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.secondary),
+      body: Stack(
+        children: [
+          // Background sports photo with dark overlay
+          Positioned.fill(
+            child: Image.network(
+              DesignSystem.imgGeneralSports,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              color: const Color(0xFF0F172A).withOpacity(0.92),
+            ),
+          ),
+          Positioned.fill(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.secondary),
+                    ),
+                  )
+                : _photos.isEmpty
+                    ? Center(
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(22),
-                                  topRight: Radius.circular(22),
-                                ),
-                                child: Image.network(
-                                  photo['url']!,
-                                  fit: BoxFit.cover,
-                                  loadingBuilder: (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return const Center(
-                                      child: SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
+                            Icon(Icons.photo_library_outlined, size: 64, color: DesignSystem.textMuted.withOpacity(0.3)),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No photos posted in the gallery.',
+                              style: DesignSystem.headingStyle(fontSize: 16, color: DesignSystem.textMuted),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.all(12),
+                          ],
+                        ),
+                      )
+                    : GridView.builder(
+                        padding: const EdgeInsets.all(24),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: 0.85,
+                        ),
+                        itemCount: _photos.length,
+                        itemBuilder: (context, index) {
+                          final photo = _photos[index];
+
+                          return InkWell(
+                            onTap: () => _viewPhotoDetails(photo),
+                            borderRadius: BorderRadius.circular(24),
+                            child: Container(
+                              decoration: DesignSystem.glassDecoration(
+                                borderAccentColor: DesignSystem.secondary,
+                                fillOpacity: 0.12,
+                              ),
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  Text(
-                                    photo['title']!,
-                                    style: DesignSystem.headingStyle(fontSize: 12, color: DesignSystem.textPrimary),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                  Expanded(
+                                    child: ClipRRect(
+                                      borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(22),
+                                        topRight: Radius.circular(22),
+                                      ),
+                                      child: Image.network(
+                                        photo['url']!,
+                                        fit: BoxFit.cover,
+                                        loadingBuilder: (context, child, loadingProgress) {
+                                          if (loadingProgress == null) return child;
+                                          return const Center(
+                                            child: SizedBox(
+                                              height: 20,
+                                              width: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    photo['description']!,
-                                    style: DesignSystem.bodyStyle(fontSize: 9, color: DesignSystem.textMuted, fontWeight: FontWeight.bold),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                  Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          photo['title']!,
+                                          style: DesignSystem.headingStyle(fontSize: 12, color: Colors.white),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          photo['description']!,
+                                          style: DesignSystem.bodyStyle(fontSize: 9, color: Colors.white70, fontWeight: FontWeight.bold),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
+          ),
+        ],
+      ),
       floatingActionButton: isCoordinator
           ? FloatingActionButton.extended(
               onPressed: _isUploading ? null : _simulateUpload,

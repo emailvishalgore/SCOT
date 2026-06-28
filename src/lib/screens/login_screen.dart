@@ -200,41 +200,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       backgroundColor: DesignSystem.background,
       body: Stack(
         children: [
-          // Background playful decorative shapes
-          Positioned(
-            top: -100,
-            left: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                color: DesignSystem.secondary.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
+          // Background sports photo with dark overlay
+          Positioned.fill(
+            child: Image.network(
+              DesignSystem.imgGeneralSports,
+              fit: BoxFit.cover,
             ),
           ),
-          Positioned(
-            bottom: -50,
-            right: -50,
+          Positioned.fill(
             child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                color: DesignSystem.accentCoral.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            top: 250,
-            right: -80,
-            child: Container(
-              width: 180,
-              height: 180,
-              decoration: BoxDecoration(
-                color: DesignSystem.accentYellow.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
+              color: const Color(0xFF0F172A).withOpacity(0.85),
             ),
           ),
           
@@ -251,11 +226,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Colors.white.withOpacity(0.1),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: DesignSystem.primary.withOpacity(0.12),
+                            color: DesignSystem.primary.withOpacity(0.3),
                             blurRadius: 24,
                             offset: const Offset(0, 10),
                           ),
@@ -268,6 +243,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           height: 110,
                           width: 110,
                           fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            height: 110,
+                            width: 110,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(colors: [DesignSystem.primary, DesignSystem.secondary]),
+                            ),
+                            child: const Icon(Icons.sports_soccer_rounded, color: Colors.white, size: 50),
+                          ),
                         ),
                       ),
                     ),
@@ -277,8 +261,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     'SCOT TOPAZ',
                     textAlign: TextAlign.center,
                     style: DesignSystem.headingStyle(
-                      fontSize: 28,
-                      color: DesignSystem.primary,
+                      fontSize: 32,
+                      color: Colors.white,
                     ),
                   ),
                   Text(
@@ -292,20 +276,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   ),
                   const SizedBox(height: 28),
 
-                  // Login Form Card
+                  // Login Form Card (Glassmorphic)
                   Container(
                     padding: const EdgeInsets.all(24),
-                    decoration: DesignSystem.cardDecoration(
+                    decoration: DesignSystem.glassDecoration(
                       borderAccentColor: DesignSystem.primary,
+                      fillOpacity: 0.12,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         TabBar(
                           controller: _tabController,
-                          labelColor: DesignSystem.primary,
+                          labelColor: DesignSystem.secondary,
                           unselectedLabelColor: DesignSystem.textMuted,
-                          indicatorColor: DesignSystem.primary,
+                          indicatorColor: DesignSystem.secondary,
                           indicatorWeight: 3,
                           labelStyle: DesignSystem.headingStyle(fontSize: 14),
                           tabs: const [
@@ -318,12 +303,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         // Username Input
                         TextField(
                           controller: _usernameController,
-                          style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
+                          style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, color: Colors.white),
                           decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white.withOpacity(0.08),
                             labelText: 'Username or Member ID',
-                            labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-                            prefixIcon: const Icon(Icons.person_outline_rounded, color: DesignSystem.primary),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                            labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                            prefixIcon: const Icon(Icons.person_outline_rounded, color: DesignSystem.secondary),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -334,13 +328,22 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           keyboardType: TextInputType.number,
                           obscureText: true,
                           maxLength: 4,
-                          style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
                           decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white.withOpacity(0.08),
                             labelText: 'Login PIN',
-                            labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-                            prefixIcon: const Icon(Icons.lock_outline_rounded, color: DesignSystem.primary),
+                            labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                            prefixIcon: const Icon(Icons.lock_outline_rounded, color: DesignSystem.secondary),
                             counterText: '',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -379,7 +382,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   children: [
                                     Text(
                                       _tabController.index == 0 ? 'New to Topaz? ' : 'New Organizer? ',
-                                      style: DesignSystem.bodyStyle(fontSize: 13, color: DesignSystem.textMuted),
+                                      style: DesignSystem.bodyStyle(fontSize: 13, color: Colors.white70),
                                     ),
                                     InkWell(
                                       onTap: () {
@@ -396,7 +399,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         _tabController.index == 0 ? 'Register Flat' : 'Register Organizer',
                                         style: DesignSystem.headingStyle(
                                           fontSize: 13,
-                                          color: _tabController.index == 0 ? DesignSystem.secondary : DesignSystem.primary,
+                                          color: DesignSystem.secondary,
                                         ),
                                       ),
                                     ),
@@ -458,18 +461,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         itemBuilder: (context, index) {
                           final acc = uniqueAccounts[index];
                           final isResident = acc['type'] == 'RESIDENT';
-                          final Color cardColor = isResident ? DesignSystem.secondary : DesignSystem.primary;
+                          final Color cardColor = isResident ? DesignSystem.secondary : DesignSystem.accentCoral;
 
-                          return Card(
-                            color: Colors.white,
+                          return Container(
                             margin: const EdgeInsets.only(bottom: 12),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              side: BorderSide(
-                                color: cardColor.withOpacity(0.3),
-                                width: 1.2,
-                              ),
+                            decoration: DesignSystem.glassDecoration(
+                              borderAccentColor: cardColor,
+                              fillOpacity: 0.08,
                             ),
                             child: ListTile(
                               onTap: () {
@@ -482,7 +480,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               leading: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: cardColor.withOpacity(0.1),
+                                  color: cardColor.withOpacity(0.15),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(

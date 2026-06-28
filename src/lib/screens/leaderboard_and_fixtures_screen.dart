@@ -194,38 +194,61 @@ class _LeaderboardAndFixturesScreenState extends State<LeaderboardAndFixturesScr
       length: 2,
       child: Scaffold(
         backgroundColor: DesignSystem.background,
-        appBar: AppBar(
-          title: Text(
-            'Scores & Leaderboard',
-            style: DesignSystem.headingStyle(fontSize: 20),
-          ),
-          backgroundColor: DesignSystem.background,
-          elevation: 0,
-          iconTheme: const IconThemeData(color: DesignSystem.textPrimary),
-          bottom: TabBar(
-            labelColor: DesignSystem.primary,
-            unselectedLabelColor: DesignSystem.textMuted,
-            indicatorColor: DesignSystem.primary,
-            indicatorWeight: 3,
-            labelStyle: DesignSystem.headingStyle(fontSize: 14),
-            tabs: const [
-              Tab(text: 'Wing Leaderboard'),
-              Tab(text: 'Fixtures & Results'),
-            ],
-          ),
+        appBar: const ScotHeaderBar(
+          title: 'Scores & Leaderboard',
+          showBackButton: true,
+          primaryColor: DesignSystem.primary,
         ),
-        body: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
-                ),
-              )
-            : TabBarView(
-                children: [
-                  _buildLeaderboardTab(),
-                  _buildFixturesTab(),
-                ],
+        body: Stack(
+          children: [
+            // Background sports photo with dark overlay
+            Positioned.fill(
+              child: Image.network(
+                DesignSystem.imgGeneralSports,
+                fit: BoxFit.cover,
               ),
+            ),
+            Positioned.fill(
+              child: Container(
+                color: const Color(0xFF0F172A).withOpacity(0.92),
+              ),
+            ),
+            Positioned.fill(
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: TabBar(
+                            labelColor: DesignSystem.secondary,
+                            unselectedLabelColor: DesignSystem.textMuted,
+                            indicatorColor: DesignSystem.secondary,
+                            indicatorWeight: 3,
+                            labelStyle: DesignSystem.headingStyle(fontSize: 14),
+                            tabs: const [
+                              Tab(text: 'Wing Leaderboard'),
+                              Tab(text: 'Fixtures & Results'),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: TabBarView(
+                            children: [
+                              _buildLeaderboardTab(),
+                              _buildFixturesTab(),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -252,12 +275,12 @@ class _LeaderboardAndFixturesScreenState extends State<LeaderboardAndFixturesScr
         // Podium Display Card
         Container(
           padding: const EdgeInsets.all(20),
-          decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.accentYellow),
+          decoration: DesignSystem.glassDecoration(borderAccentColor: DesignSystem.accentYellow, fillOpacity: 0.12),
           child: Column(
             children: [
               Text(
                 'CHAMPIONSHIP PODIUM',
-                style: DesignSystem.headingStyle(fontSize: 12, color: DesignSystem.textMuted).copyWith(letterSpacing: 2),
+                style: DesignSystem.headingStyle(fontSize: 12, color: Colors.white70).copyWith(letterSpacing: 2),
               ),
               const SizedBox(height: 24),
               Row(
@@ -439,8 +462,9 @@ class _LeaderboardAndFixturesScreenState extends State<LeaderboardAndFixturesScr
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(20),
-          decoration: DesignSystem.cardDecoration(
+          decoration: DesignSystem.glassDecoration(
             borderAccentColor: isCompleted ? DesignSystem.successGreen : DesignSystem.primary,
+            fillOpacity: 0.12,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

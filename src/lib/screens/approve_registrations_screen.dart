@@ -410,60 +410,97 @@ class _ApproveRegistrationsScreenState extends State<ApproveRegistrationsScreen>
         length: 2,
         child: Scaffold(
           backgroundColor: DesignSystem.background,
-          appBar: AppBar(
-            title: Text(
-              'Verification Queue',
-              style: DesignSystem.headingStyle(fontSize: 20),
-            ),
-            backgroundColor: DesignSystem.background,
-            elevation: 0,
-            iconTheme: const IconThemeData(color: DesignSystem.textPrimary),
-            bottom: TabBar(
-              labelColor: DesignSystem.primary,
-              unselectedLabelColor: DesignSystem.textMuted,
-              indicatorColor: DesignSystem.primary,
-              indicatorWeight: 3,
-              labelStyle: DesignSystem.headingStyle(fontSize: 13),
-              tabs: const [
-                Tab(text: 'Resident Queue'),
-                Tab(text: 'SCOT Team Queue'),
-              ],
-            ),
+          appBar: const ScotHeaderBar(
+            title: 'Verification Queue',
+            showBackButton: true,
+            primaryColor: DesignSystem.primary,
           ),
-          body: _isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
-                  ),
-                )
-              : TabBarView(
-                  children: [
-                    _buildResidentQueueList(),
-                    _buildOrganizerQueueList(),
-                  ],
+          body: Stack(
+            children: [
+              // Background sports photo with dark overlay
+              Positioned.fill(
+                child: Image.network(
+                  DesignSystem.imgGeneralSports,
+                  fit: BoxFit.cover,
                 ),
+              ),
+              Positioned.fill(
+                child: Container(
+                  color: const Color(0xFF0F172A).withOpacity(0.92),
+                ),
+              ),
+              Positioned.fill(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: TabBar(
+                              labelColor: DesignSystem.secondary,
+                              unselectedLabelColor: DesignSystem.textMuted,
+                              indicatorColor: DesignSystem.secondary,
+                              indicatorWeight: 3,
+                              labelStyle: DesignSystem.headingStyle(fontSize: 13),
+                              tabs: const [
+                                Tab(text: 'Resident Queue'),
+                                Tab(text: 'SCOT Team Queue'),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: TabBarView(
+                              children: [
+                                _buildResidentQueueList(),
+                                _buildOrganizerQueueList(),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     return Scaffold(
       backgroundColor: DesignSystem.background,
-      appBar: AppBar(
-        title: Text(
-          'Verification Queue',
-          style: DesignSystem.headingStyle(fontSize: 20),
-        ),
-        backgroundColor: DesignSystem.background,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: DesignSystem.textPrimary),
+      appBar: const ScotHeaderBar(
+        title: 'Verification Queue',
+        showBackButton: true,
+        primaryColor: DesignSystem.primary,
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
-              ),
-            )
-          : _buildResidentQueueList(),
+      body: Stack(
+        children: [
+          // Background sports photo with dark overlay
+          Positioned.fill(
+            child: Image.network(
+              DesignSystem.imgGeneralSports,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              color: const Color(0xFF0F172A).withOpacity(0.92),
+            ),
+          ),
+          Positioned.fill(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
+                    ),
+                  )
+                : _buildResidentQueueList(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -497,7 +534,7 @@ class _ApproveRegistrationsScreenState extends State<ApproveRegistrationsScreen>
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(20),
-          decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.primary),
+          decoration: DesignSystem.glassDecoration(borderAccentColor: DesignSystem.primary, fillOpacity: 0.12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -506,7 +543,7 @@ class _ApproveRegistrationsScreenState extends State<ApproveRegistrationsScreen>
                 children: [
                   Text(
                     'Flat $wing-$flat',
-                    style: DesignSystem.headingStyle(fontSize: 18, color: DesignSystem.textPrimary),
+                    style: DesignSystem.headingStyle(fontSize: 18, color: Colors.white),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -625,7 +662,7 @@ class _ApproveRegistrationsScreenState extends State<ApproveRegistrationsScreen>
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(20),
-          decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.secondary),
+          decoration: DesignSystem.glassDecoration(borderAccentColor: DesignSystem.secondary, fillOpacity: 0.12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -634,7 +671,7 @@ class _ApproveRegistrationsScreenState extends State<ApproveRegistrationsScreen>
                 children: [
                   Text(
                     username,
-                    style: DesignSystem.headingStyle(fontSize: 18, color: DesignSystem.textPrimary),
+                    style: DesignSystem.headingStyle(fontSize: 18, color: Colors.white),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

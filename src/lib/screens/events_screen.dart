@@ -512,71 +512,81 @@ class _EventsScreenState extends State<EventsScreen> {
 
     return Scaffold(
       backgroundColor: DesignSystem.background,
-      appBar: AppBar(
-        title: Text(
-          'Register for Events',
-          style: DesignSystem.headingStyle(fontSize: 20),
-        ),
-        backgroundColor: DesignSystem.background,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: DesignSystem.textPrimary),
+      appBar: const ScotHeaderBar(
+        title: 'Register for Events',
+        showBackButton: true,
+        primaryColor: DesignSystem.secondary,
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.primary),
-              ),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Eligibility Gating Banner
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: DesignSystem.cardDecoration(
-                      borderAccentColor: _isPaid ? DesignSystem.successGreen : DesignSystem.accentCoral,
-                    ).copyWith(
-                      color: _isPaid ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
+      body: Stack(
+        children: [
+          // Background sports photo with dark overlay
+          Positioned.fill(
+            child: Image.network(
+              DesignSystem.imgGeneralSports,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              color: const Color(0xFF0F172A).withOpacity(0.92),
+            ),
+          ),
+          Positioned.fill(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(DesignSystem.secondary),
                     ),
-                    child: Row(
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Icon(
-                          _isPaid ? Icons.verified_user_rounded : Icons.gpp_bad_rounded,
-                          color: _isPaid ? DesignSystem.successGreen : DesignSystem.accentCoral,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        // Eligibility Gating Banner
+                        Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: DesignSystem.glassDecoration(
+                            borderAccentColor: _isPaid ? DesignSystem.successGreen : DesignSystem.accentCoral,
+                            fillOpacity: 0.1,
+                          ),
+                          child: Row(
                             children: [
-                              Text(
-                                _isPaid ? 'ELIGIBLE FOR EVENTS' : 'REGISTRATION GATED',
-                                style: DesignSystem.headingStyle(
-                                  fontSize: 12,
-                                  color: _isPaid ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
-                                ),
+                              Icon(
+                                _isPaid ? Icons.verified_user_rounded : Icons.gpp_bad_rounded,
+                                color: _isPaid ? DesignSystem.successGreen : DesignSystem.accentCoral,
+                                size: 28,
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _isPaid
-                                    ? 'Your Flat contribution is paid. Select a sport below to join!'
-                                    : 'Flat $_flatNumber contribution is pending. Please pay to unlock registrations.',
-                                style: DesignSystem.bodyStyle(
-                                  fontSize: 12,
-                                  color: _isPaid ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
-                                  fontWeight: FontWeight.bold,
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _isPaid ? 'ELIGIBLE FOR EVENTS' : 'REGISTRATION GATED',
+                                      style: DesignSystem.headingStyle(
+                                        fontSize: 12,
+                                        color: _isPaid ? DesignSystem.successGreen : DesignSystem.accentCoral,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _isPaid
+                                          ? 'Your Flat contribution is paid. Select a sport below to join!'
+                                          : 'Flat $_flatNumber contribution is pending. Please pay to unlock registrations.',
+                                      style: DesignSystem.bodyStyle(
+                                        fontSize: 12,
+                                        color: Colors.white70,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 28),
+                        const SizedBox(height: 28),
 
                   Text(
                     'AVAILABLE COMPETITIONS',
@@ -789,10 +799,13 @@ class _EventsScreenState extends State<EventsScreen> {
                               ),
                             );
                           },
-                          ),
-                ],
-              ),
-            ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -256,292 +256,394 @@ class _CreateCompetitionScreenState extends State<CreateCompetitionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: DesignSystem.background,
-      appBar: AppBar(
-        title: Text(
-          'Onboard Umbrella Event',
-          style: DesignSystem.headingStyle(fontSize: 20),
-        ),
-        backgroundColor: DesignSystem.background,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: DesignSystem.textPrimary),
+      appBar: const ScotHeaderBar(
+        title: 'Onboard Umbrella Event',
+        showBackButton: true,
+        primaryColor: DesignSystem.primary,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Section 1: Master Event Details
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: DesignSystem.cardDecoration(borderAccentColor: DesignSystem.primary),
+      body: Stack(
+        children: [
+          // Background sports photo with dark overlay
+          Positioned.fill(
+            child: Image.network(
+              DesignSystem.imgGeneralSports,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              color: const Color(0xFF0F172A).withOpacity(0.92),
+            ),
+          ),
+          Positioned.fill(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Form(
+                key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'MASTER (UMBRELLA) EVENT',
-                      style: DesignSystem.headingStyle(fontSize: 14, color: DesignSystem.textMuted),
+                    // Section 1: Master Event Details
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: DesignSystem.glassDecoration(borderAccentColor: DesignSystem.primary, fillOpacity: 0.12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'MASTER (UMBRELLA) EVENT',
+                            style: DesignSystem.headingStyle(fontSize: 14, color: Colors.white70),
+                          ),
+                          const SizedBox(height: 20),
+                          TextFormField(
+                            controller: _masterNameController,
+                            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Colors.white.withOpacity(0.08),
+                              labelText: 'Master Event Name (e.g. Topaz Annual Meet 2026)',
+                              labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) return 'Enter master event name';
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _masterDescController,
+                            style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                            maxLines: 2,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Colors.white.withOpacity(0.08),
+                              labelText: 'Brief Description / Date Details',
+                              labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: DesignSystem.primary, width: 2),
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) return 'Enter description';
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Section 2: Sub-Events List
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'SUB-EVENTS CATALOG',
+                          style: DesignSystem.headingStyle(fontSize: 12, color: Colors.white70).copyWith(letterSpacing: 1.5),
+                        ),
+                        TextButton.icon(
+                          onPressed: _addSubEventItem,
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: Text('ADD SUB-EVENT', style: DesignSystem.headingStyle(fontSize: 11, color: DesignSystem.secondary)),
+                          style: TextButton.styleFrom(foregroundColor: DesignSystem.secondary),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _subEventItems.length,
+                      itemBuilder: (context, index) {
+                        final item = _subEventItems[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(20),
+                          decoration: DesignSystem.glassDecoration(
+                            borderAccentColor: DesignSystem.secondary,
+                            fillOpacity: 0.12,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'SUB-EVENT #${index + 1}',
+                                    style: DesignSystem.headingStyle(fontSize: 11, color: DesignSystem.secondary),
+                                  ),
+                                  if (_subEventItems.length > 1)
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline_rounded, color: DesignSystem.accentCoral, size: 20),
+                                      onPressed: () => _removeSubEventItem(index),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+
+                              // Sub-event Category (Sports vs Cultural)
+                              DropdownButtonFormField<String>(
+                                value: item.category,
+                                dropdownColor: const Color(0xFF1E293B),
+                                style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: Colors.white.withOpacity(0.08),
+                                  labelText: 'Category',
+                                  labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                                  ),
+                                ),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setState(() {
+                                      item.category = val;
+                                    });
+                                  }
+                                },
+                                items: const [
+                                  DropdownMenuItem(value: 'Sports', child: Text('Sports (Fixtures & Brackets)')),
+                                  DropdownMenuItem(value: 'Cultural', child: Text('Cultural (Popularity Meter)')),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Sub-event Name
+                              TextFormField(
+                                controller: item.nameController,
+                                style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: Colors.white.withOpacity(0.08),
+                                  labelText: 'Sub-Event Name (e.g. Volleyball League)',
+                                  labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                                  ),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) return 'Enter sub-event name';
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Scoring Category
+                              DropdownButtonFormField<String>(
+                                value: item.type,
+                                dropdownColor: const Color(0xFF1E293B),
+                                style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: Colors.white.withOpacity(0.08),
+                                  labelText: 'Participation Category',
+                                  labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                                  ),
+                                ),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setState(() {
+                                      item.type = val;
+                                    });
+                                  }
+                                },
+                                items: const [
+                                  DropdownMenuItem(value: 'WING_BASED', child: Text('Wing vs Wing (Society Standings)')),
+                                  DropdownMenuItem(value: 'INDIVIDUAL', child: Text('Individual Resident Matches')),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Sports configurations
+                              if (item.category == 'Sports') ...[
+                                // Tournament Format
+                                DropdownButtonFormField<String>(
+                                  value: item.format,
+                                  dropdownColor: const Color(0xFF1E293B),
+                                  style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.white.withOpacity(0.08),
+                                    labelText: 'Format',
+                                    labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                                    ),
+                                  ),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() {
+                                        item.format = val;
+                                      });
+                                    }
+                                  },
+                                  items: const [
+                                    DropdownMenuItem(value: 'ROUND_ROBIN', child: Text('Round Robin League (Circle Method)')),
+                                    DropdownMenuItem(value: 'KNOCKOUT', child: Text('Single Elimination Knockout')),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+
+                                if (item.format == 'KNOCKOUT') ...[
+                                  DropdownButtonFormField<int>(
+                                    value: item.bracketSize,
+                                    dropdownColor: const Color(0xFF1E293B),
+                                    style: DesignSystem.bodyStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: Colors.white.withOpacity(0.08),
+                                      labelText: 'Bracket Size',
+                                      labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                                      ),
+                                    ),
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setState(() {
+                                          item.bracketSize = val;
+                                        });
+                                      }
+                                    },
+                                    items: const [
+                                      DropdownMenuItem(value: 4, child: Text('4 Teams (Semifinals)')),
+                                      DropdownMenuItem(value: 8, child: Text('8 Teams (Quarterfinals)')),
+                                      DropdownMenuItem(value: 16, child: Text('16 Teams (Round of 16)')),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
+
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: item.pointsController,
+                                        keyboardType: TextInputType.number,
+                                        style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                                        decoration: InputDecoration(
+                                          filled: true,
+                                          fillColor: Colors.white.withOpacity(0.08),
+                                          labelText: 'Participation Pts',
+                                          labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 11),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                            borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                            borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                                          ),
+                                        ),
+                                        validator: (value) {
+                                          if (value == null || double.tryParse(value) == null) return 'Enter number';
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: item.capController,
+                                        keyboardType: TextInputType.number,
+                                        style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                                        decoration: InputDecoration(
+                                          filled: true,
+                                          fillColor: Colors.white.withOpacity(0.08),
+                                          labelText: 'Wing Pts Cap',
+                                          labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 11),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                            borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                            borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+                                          ),
+                                        ),
+                                        validator: (value) {
+                                          if (value == null || double.tryParse(value) == null) return 'Enter number';
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _masterNameController,
-                      style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
-                      decoration: InputDecoration(
-                        labelText: 'Master Event Name (e.g. Topaz Annual Meet 2026)',
-                        labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) return 'Enter master event name';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _masterDescController,
-                      style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        labelText: 'Brief Description / Date Details',
-                        labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) return 'Enter description';
-                        return null;
-                      },
+
+                    // Submit button
+                    ElevatedButton(
+                      onPressed: _isCreating ? null : _submitCompetition,
+                      style: DesignSystem.buttonStyle(color: DesignSystem.primary),
+                      child: _isCreating
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                valueColor: AlwaysStoppedAnimation(Colors.white),
+                              ),
+                            )
+                          : Text(
+                              'GENERATE UMBRELLA EVENT',
+                              style: DesignSystem.headingStyle(fontSize: 14, color: Colors.white),
+                            ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // Section 2: Sub-Events List
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'SUB-EVENTS CATALOG',
-                    style: DesignSystem.headingStyle(fontSize: 12, color: DesignSystem.textMuted).copyWith(letterSpacing: 1.5),
-                  ),
-                  TextButton.icon(
-                    onPressed: _addSubEventItem,
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: Text('ADD SUB-EVENT', style: DesignSystem.headingStyle(fontSize: 11, color: DesignSystem.secondary)),
-                    style: TextButton.styleFrom(foregroundColor: DesignSystem.secondary),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _subEventItems.length,
-                itemBuilder: (context, index) {
-                  final item = _subEventItems[index];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: DesignSystem.secondary.withOpacity(0.2), width: 1.2),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'SUB-EVENT #${index + 1}',
-                              style: DesignSystem.headingStyle(fontSize: 11, color: DesignSystem.secondary),
-                            ),
-                            if (_subEventItems.length > 1)
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline_rounded, color: DesignSystem.accentCoral, size: 20),
-                                onPressed: () => _removeSubEventItem(index),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Sub-event Category (Sports vs Cultural)
-                        DropdownButtonFormField<String>(
-                          value: item.category,
-                          decoration: InputDecoration(
-                            labelText: 'Category',
-                            labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                          ),
-                          onChanged: (val) {
-                            if (val != null) {
-                              setState(() {
-                                item.category = val;
-                              });
-                            }
-                          },
-                          items: const [
-                            DropdownMenuItem(value: 'Sports', child: Text('Sports (Requires Fixtures & Brackets)')),
-                            DropdownMenuItem(value: 'Cultural', child: Text('Cultural (Audios & Popularity Meter)')),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Sub-event Name
-                        TextFormField(
-                          controller: item.nameController,
-                          style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
-                          decoration: InputDecoration(
-                            labelText: 'Sub-Event Name (e.g. Volleyball League)',
-                            labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) return 'Enter sub-event name';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Scoring Category
-                        DropdownButtonFormField<String>(
-                          value: item.type,
-                          decoration: InputDecoration(
-                            labelText: 'Participation Category',
-                            labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                          ),
-                          onChanged: (val) {
-                            if (val != null) {
-                              setState(() {
-                                item.type = val;
-                              });
-                            }
-                          },
-                          items: const [
-                            DropdownMenuItem(value: 'WING_BASED', child: Text('Wing vs Wing (Society Standings)')),
-                            DropdownMenuItem(value: 'INDIVIDUAL', child: Text('Individual Resident Matches')),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Sports configurations
-                        if (item.category == 'Sports') ...[
-                          // Tournament Format
-                          DropdownButtonFormField<String>(
-                            value: item.format,
-                            decoration: InputDecoration(
-                              labelText: 'Format',
-                              labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                            ),
-                            onChanged: (val) {
-                              if (val != null) {
-                                setState(() {
-                                  item.format = val;
-                                });
-                              }
-                            },
-                            items: const [
-                              DropdownMenuItem(value: 'ROUND_ROBIN', child: Text('Round Robin League (Circle Method)')),
-                              DropdownMenuItem(value: 'KNOCKOUT', child: Text('Single Elimination Knockout')),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          if (item.format == 'KNOCKOUT') ...[
-                            DropdownButtonFormField<int>(
-                              value: item.bracketSize,
-                              decoration: InputDecoration(
-                                labelText: 'Bracket Size',
-                                labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 13),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                              ),
-                              onChanged: (val) {
-                                if (val != null) {
-                                  setState(() {
-                                    item.bracketSize = val;
-                                  });
-                                }
-                              },
-                              items: const [
-                                DropdownMenuItem(value: 4, child: Text('4 Teams (Semifinals)')),
-                                DropdownMenuItem(value: 8, child: Text('8 Teams (Quarterfinals)')),
-                                DropdownMenuItem(value: 16, child: Text('16 Teams (Round of 16)')),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  controller: item.pointsController,
-                                  keyboardType: TextInputType.number,
-                                  style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
-                                  decoration: InputDecoration(
-                                    labelText: 'Participation Pts',
-                                    labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 11),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || double.tryParse(value) == null) return 'Enter number';
-                                    return null;
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: item.capController,
-                                  keyboardType: TextInputType.number,
-                                  style: DesignSystem.bodyStyle(fontWeight: FontWeight.bold),
-                                  decoration: InputDecoration(
-                                    labelText: 'Wing Pts Cap',
-                                    labelStyle: DesignSystem.bodyStyle(color: DesignSystem.textMuted, fontSize: 11),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || double.tryParse(value) == null) return 'Enter number';
-                                    return null;
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-
-              // Submit button
-              ElevatedButton(
-                onPressed: _isCreating ? null : _submitCompetition,
-                style: DesignSystem.buttonStyle(color: DesignSystem.primary),
-                child: _isCreating
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          valueColor: AlwaysStoppedAnimation(Colors.white),
-                        ),
-                      )
-                    : Text(
-                        'GENERATE UMBRELLA EVENT',
-                        style: DesignSystem.headingStyle(fontSize: 14, color: Colors.white),
-                      ),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
