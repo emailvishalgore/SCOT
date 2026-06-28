@@ -437,4 +437,5 @@ class _ResidentOnboardingScreenState extends State<ResidentOnboardingScreen> {
         ],
       ),
     );
+  }
 }

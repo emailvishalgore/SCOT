@@ -483,9 +483,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                           ),
                         ),
                       ],
-                    ),
                   ),
           ),
+        ],
       ),
     );
   }
