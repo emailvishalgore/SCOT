@@ -15,6 +15,7 @@ import 'finance_portal_screen.dart';
 import 'approve_registrations_screen.dart';
 import 'gallery_screen.dart';
 import 'announcements_screen.dart';
+import 'reports_tab_view.dart';
 
 class CoordinatorDashboard extends StatefulWidget {
   const CoordinatorDashboard({super.key});
@@ -205,11 +206,13 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
         const Tab(text: 'Overview'),
         const Tab(text: 'Requests'),
         const Tab(text: 'Control Desk'),
+        const Tab(text: 'Reports'),
       ]);
       tabViews.addAll([
         _buildAdminOverviewTab(appState, theme),
         _buildAdminRequestsTab(appState, theme),
         _buildAdminControlDeskTab(appState, theme),
+        const ReportsTabView(),
       ]);
     } else if (appState.userRole == 'CORE_TEAM') {
       final portfolios = appState.userPortfolios;
@@ -242,6 +245,8 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           tabViews.add(_buildFoodStallsTab(appState, theme));
         }
       }
+      tabLabels.add(const Tab(text: 'Reports'));
+      tabViews.add(const ReportsTabView());
     } else if (appState.userRole == 'EVENT_CHAMPION') {
       final portfolios = appState.userPortfolios;
       if (portfolios.isEmpty) {
