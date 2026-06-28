@@ -263,15 +263,6 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     );
   }
 
-              ),
-              tooltip: 'Logout',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildCustomTabBar(List<Widget> tabLabels, ResidentTheme theme) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
