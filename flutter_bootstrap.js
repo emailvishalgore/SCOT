@@ -37,11 +37,10 @@ _flutter.buildConfig = {"engineRevision":"a10d8ac38de835021c8d2f920dbf50a920ccc0
 
 
 _flutter.loader.load({
-  config: {
-    renderer: 'html',
-  },
   onEntrypointLoaded: async function(engineInitializer) {
-    const appRunner = await engineInitializer.initializeEngine();
+    const appRunner = await engineInitializer.initializeEngine({
+      canvasKitBaseUrl: "canvaskit/",
+    });
     await appRunner.runApp();
   }
 });
