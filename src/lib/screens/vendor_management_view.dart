@@ -33,6 +33,24 @@ class _VendorManagementViewState extends State<VendorManagementView> {
   final _amountController = TextEditingController();
   final _descController = TextEditingController();
 
+  InputDecoration _buildInputDeco(String label, IconData icon) {
+    return InputDecoration(
+      filled: true,
+      fillColor: Colors.white.withOpacity(0.08),
+      labelText: label,
+      labelStyle: DesignSystem.bodyStyle(color: Colors.white70, fontSize: 13),
+      prefixIcon: Icon(icon, color: DesignSystem.secondary),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: DesignSystem.secondary, width: 2),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -274,7 +292,7 @@ class _VendorManagementViewState extends State<VendorManagementView> {
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    margin: const EdgeInsets.bottom(16),
+                    margin: const EdgeInsets.only(bottom: 16),
                     decoration: DesignSystem.glassDecoration(
                       borderAccentColor: DesignSystem.primary,
                       fillOpacity: 0.05,
@@ -288,7 +306,7 @@ class _VendorManagementViewState extends State<VendorManagementView> {
                   // Vendor Name
                   TextFormField(
                     controller: _vendorNameController,
-                    decoration: DesignSystem.inputDecoration('Vendor Name', Icons.storefront_rounded),
+                    decoration: _buildInputDeco('Vendor Name', Icons.storefront_rounded),
                     style: const TextStyle(color: Colors.white),
                     validator: (val) =>
                         (val == null || val.trim().isEmpty) ? 'Enter vendor name' : null,
@@ -299,7 +317,7 @@ class _VendorManagementViewState extends State<VendorManagementView> {
                   TextFormField(
                     controller: _amountController,
                     keyboardType: TextInputType.number,
-                    decoration: DesignSystem.inputDecoration('Quote Amount (₹)', Icons.currency_rupee_rounded),
+                    decoration: _buildInputDeco('Quote Amount (₹)', Icons.currency_rupee_rounded),
                     style: const TextStyle(color: Colors.white),
                     validator: (val) {
                       if (val == null || val.trim().isEmpty) return 'Enter quote amount';
@@ -313,7 +331,7 @@ class _VendorManagementViewState extends State<VendorManagementView> {
                   TextFormField(
                     controller: _descController,
                     maxLines: 3,
-                    decoration: DesignSystem.inputDecoration('Brief Description/Details', Icons.description_rounded),
+                    decoration: _buildInputDeco('Brief Description/Details', Icons.description_rounded),
                     style: const TextStyle(color: Colors.white),
                     validator: (val) =>
                         (val == null || val.trim().isEmpty) ? 'Enter bid description' : null,
@@ -329,7 +347,7 @@ class _VendorManagementViewState extends State<VendorManagementView> {
             ),
             ElevatedButton(
               onPressed: _submitNewQuote,
-              style: DesignSystem.buttonStyle(),
+              style: DesignSystem.buttonStyle(color: DesignSystem.primary),
               child: const Text('SUBMIT BID'),
             ),
           ],
@@ -369,7 +387,7 @@ class _VendorManagementViewState extends State<VendorManagementView> {
                       ),
                       ElevatedButton.icon(
                         onPressed: _showAddQuoteDialog,
-                        style: DesignSystem.buttonStyle(),
+                        style: DesignSystem.buttonStyle(color: DesignSystem.primary),
                         icon: const Icon(Icons.add_rounded, size: 16, color: Colors.white),
                         label: Text(
                           'ADD QUOTE',
