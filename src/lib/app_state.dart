@@ -239,9 +239,32 @@ class AppState extends ChangeNotifier {
     {
       'id': 'qte-1',
       'vendor': 'Tasty Catering Service',
+      'service_category': 'Catering',
       'amount': 15000.0,
       'description': 'Food and drinks estimate for 100 residents.',
-      'file': 'catering_quote_v2.pdf'
+      'file': 'catering_quote_v1.pdf',
+      'status': 'SUBMITTED',
+      'voter_ids': ['coremember1']
+    },
+    {
+      'id': 'qte-2',
+      'vendor': 'Gourmet Feast Foods',
+      'service_category': 'Catering',
+      'amount': 17500.0,
+      'description': 'Special buffet service with dessert tables.',
+      'file': 'gourmet_estimate_raw.pdf',
+      'status': 'SUBMITTED',
+      'voter_ids': []
+    },
+    {
+      'id': 'qte-3',
+      'vendor': 'HighBass Sounds & DJ',
+      'service_category': 'Sound & DJ',
+      'amount': 8000.0,
+      'description': 'Dual-speaker setup with lighting stand.',
+      'file': 'dj_estimate.pdf',
+      'status': 'SUBMITTED',
+      'voter_ids': ['coremember1']
     }
   ];
 
@@ -342,6 +365,73 @@ class AppState extends ChangeNotifier {
 
   void addQuoteInDemo(Map<String, dynamic> quote) {
     demoQuotes.insert(0, quote);
+    notifyListeners();
+  }
+
+  void castVendorVoteInDemo(String quoteId, String voterUsername) {
+    final idx = demoQuotes.indexWhere((element) => element['id'] == quoteId);
+    if (idx != -1) {
+      final quote = demoQuotes[idx];
+      final String category = quote['service_category'] ?? '';
+
+      // First, get the current list of voter_ids for this quote
+      final List<dynamic> currentVoters = List<dynamic>.from(quote['voter_ids'] ?? []);
+
+      if (currentVoters.contains(voterUsername)) {
+        // Toggle off (unvote)
+        currentVoters.remove(voterUsername);
+        demoQuotes[idx]['voter_ids'] = currentVoters;
+      } else {
+        // Clear votes from all other quotes in this same category for this voter
+        for (var i = 0; i < demoQuotes.length; i++) {
+          if (demoQuotes[i]['service_category'] == category) {
+            final List<dynamic> vList = List<dynamic>.from(demoQuotes[i]['voter_ids'] ?? []);
+            if (vList.contains(voterUsername)) {
+              vList.remove(voterUsername);
+              demoQuotes[i]['voter_ids'] = vList;
+            }
+          }
+        }
+        // Toggle on (vote) for this quote
+        currentVoters.add(voterUsername);
+        demoQuotes[idx]['voter_ids'] = currentVoters;
+      }
+      notifyListeners();
+    }
+  }
+
+  void confirmVendorQuoteInDemo(String quoteId) {
+    final idx = demoQuotes.indexWhere((element) => element['id'] == quoteId);
+    if (idx != -1) {
+      final quote = demoQuotes[idx];
+      final String category = quote['service_category'] ?? '';
+
+      // Set selected to APPROVED, and other quotes in the same category to REJECTED
+      for (var i = 0; i < demoQuotes.length; i++) {
+        if (demoQuotes[i]['service_category'] == category) {
+          if (demoQuotes[i]['id'] == quoteId) {
+            demoQuotes[i]['status'] = 'APPROVED';
+          } else {
+            demoQuotes[i]['status'] = 'REJECTED';
+          }
+        }
+      }
+      notifyListeners();
+    }
+  }
+
+  void addCustomQuoteInDemo(String vendorName, String category, double amount, String description) {
+    final newQuote = {
+      'id': 'qte-gen-${DateTime.now().millisecondsSinceEpoch}',
+      'vendor': vendorName,
+      'service_category': category,
+      'amount': amount,
+      'description': description,
+      'file': 'local_quote_invoice.pdf',
+      'status': 'SUBMITTED',
+      'voter_ids': []
+    };
+    demoQuotes.insert(0, newQuote);
     notifyListeners();
   }
 

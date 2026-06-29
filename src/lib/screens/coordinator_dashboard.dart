@@ -16,6 +16,7 @@ import 'approve_registrations_screen.dart';
 import 'gallery_screen.dart';
 import 'announcements_screen.dart';
 import 'reports_tab_view.dart';
+import 'vendor_management_view.dart';
 
 class CoordinatorDashboard extends StatefulWidget {
   const CoordinatorDashboard({super.key});
@@ -206,12 +207,14 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
         const Tab(text: 'Overview'),
         const Tab(text: 'Requests'),
         const Tab(text: 'Control Desk'),
+        const Tab(text: 'Vendor Console'),
         const Tab(text: 'Reports'),
       ]);
       tabViews.addAll([
         _buildAdminOverviewTab(appState, theme),
         _buildAdminRequestsTab(appState, theme),
         _buildAdminControlDeskTab(appState, theme),
+        const VendorManagementView(),
         const ReportsTabView(),
       ]);
     } else if (appState.userRole == 'CORE_TEAM') {
@@ -245,6 +248,8 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           tabViews.add(_buildFoodStallsTab(appState, theme));
         }
       }
+      tabLabels.add(const Tab(text: 'Vendor Console'));
+      tabViews.add(const VendorManagementView());
       tabLabels.add(const Tab(text: 'Reports'));
       tabViews.add(const ReportsTabView());
     } else if (appState.userRole == 'EVENT_CHAMPION') {
@@ -260,6 +265,8 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           tabViews.add(_buildSportsScoresTab(appState, theme));
         }
         if (portfolios.contains('Cultural events')) {
+          tabLabels.add(const Tab(text: 'Cultural Console'));
+          tabViews.add(_buildCulturalConsoleTab(appState, theme));
           tabLabels.add(const Tab(text: 'Cultural Popularity'));
           tabViews.add(_buildCulturalPopularityTab(appState, theme));
         }
@@ -1459,10 +1466,40 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
           ),
           const SizedBox(height: 16),
           _buildActionConsoleTile(
-            icon: Icons.sports_football_rounded,
-            title: 'Schedule Sports Tournament',
-            subtitle: 'Establish points rules and run scheduler code',
+            icon: Icons.emoji_events_rounded,
+            title: 'Onboard Umbrella Event',
+            subtitle: 'Create an umbrella event containing sports and/or cultural activities',
             color: theme.primaryColor,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CreateCompetitionScreen()),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCulturalConsoleTab(AppState appState, PersonaTheme theme) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildBannerImage(
+            'https://images.unsplash.com/photo-1460881680858-30d872d5b530?w=800&auto=format&fit=crop&q=80',
+            'CULTURAL EVENTS CONSOLE',
+            'Onboard Performances, Shows, and Manage Talent Portfolios',
+            theme,
+          ),
+          const SizedBox(height: 16),
+          _buildActionConsoleTile(
+            icon: Icons.festival_rounded,
+            title: 'Onboard Umbrella Event',
+            subtitle: 'Create an umbrella event containing cultural and/or sports activities',
+            color: theme.secondaryColor,
             onTap: () {
               Navigator.push(
                 context,
