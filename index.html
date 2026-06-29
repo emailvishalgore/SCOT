@@ -20,6 +20,10 @@
   <title>SCOT TOPAZ</title>
   <!-- Manifest removed to prevent PWA install prompts on mobile browsers -->
   <!-- <link rel="manifest" href="manifest.json"> -->
+  <script src="pdfjs/pdf.min.js"></script>
+  <script type="text/javascript">
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "pdfjs/pdf.worker.min.js";
+  </script>
 </head>
 <body>
   <div id="error-console" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.95); color:#f87171; padding:24px; font-family:Consolas, monospace; z-index:999999; overflow:auto; font-size:14px; line-height:1.6; border:4px solid #ef4444;">
