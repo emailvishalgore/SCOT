@@ -2,11 +2,10 @@
 {{flutter_build_config}}
 
 _flutter.loader.load({
-  config: {
-    renderer: 'html',
-  },
   onEntrypointLoaded: async function(engineInitializer) {
-    const appRunner = await engineInitializer.initializeEngine();
+    const appRunner = await engineInitializer.initializeEngine({
+      canvasKitBaseUrl: "canvaskit/",
+    });
     await appRunner.runApp();
   }
 });
