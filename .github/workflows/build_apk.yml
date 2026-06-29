@@ -54,12 +54,14 @@ jobs:
           name: scot-platform-release-apk
           path: src/build/app/outputs/flutter-apk/app-release.apk
 
-      # 6.5. Download Local PDF.js for Web Printing
-      - name: Download Local PDF.js
+      # 6.5. Download Local PDF.js & Passkeys bundle for Web
+      - name: Download Local Web Dependencies
         run: |
           mkdir -p src/web/pdfjs
           curl -L -o src/web/pdfjs/pdf.min.js https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.2.146/pdf.min.js
           curl -L -o src/web/pdfjs/pdf.worker.min.js https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.2.146/pdf.worker.min.js
+          mkdir -p src/web/passkeys
+          curl -L -o src/web/passkeys/bundle.js https://github.com/corbado/flutter-passkeys/releases/latest/download/bundle.js
 
       # 7. Build Flutter Web
       - name: Build Web
