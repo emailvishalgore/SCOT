@@ -508,6 +508,14 @@ body {
   border-color: var(--primary);
 }
 
+.table-select:disabled,
+.table-input:disabled {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* Highlight Yes/No status cells */
 .status-yes {
   background-color: rgba(16, 185, 129, 0.08) !important;
@@ -687,4 +695,13 @@ body {
   .table-select, .table-input {
     width: 60%; /* Fixed width for inputs on mobile cards */
   }
+}
+
+.total-row {
+  background: rgba(255, 255, 255, 0.4) !important;
+  font-weight: 700;
+}
+.total-row td {
+  font-size: 16px !important;
+  color: var(--text-dark) !important;
 }
