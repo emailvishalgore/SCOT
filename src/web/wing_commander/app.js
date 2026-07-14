@@ -15,10 +15,22 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // 1. OFFLINE DATABASE ENGINE (Local Storage Fallback)
 function initLocalDb() {
-  const storedDb = localStorage.getItem('scot_wings_db');
+  // Clear out old pre-populated pins from early testing
   const storedPins = localStorage.getItem('scot_wings_pins');
+  if (storedPins) {
+    try {
+      const parsed = JSON.parse(storedPins);
+      if (parsed['N'] === '1111') {
+        localStorage.removeItem('scot_wings_db');
+        localStorage.removeItem('scot_wings_pins');
+      }
+    } catch (e) {}
+  }
+
+  const storedDb = localStorage.getItem('scot_wings_db');
+  const reStoredPins = localStorage.getItem('scot_wings_pins');
   
-  if (storedDb && storedPins) {
+  if (storedDb && reStoredPins) {
     localDb = JSON.parse(storedDb);
     return;
   }
@@ -44,13 +56,9 @@ function initLocalDb() {
     }
   });
 
-  // Default Pins
+  // Default Pins (Only Admin starts pre-registered)
   const initialPins = {
     'ADMIN': '9999',
-    'N': '1111',
-    'O': '2222',
-    'P': '3333',
-    'Q': '4444',
   };
 
   localDb = { flats: initialFlats };
