@@ -296,7 +296,7 @@ async function fetchFlatsData() {
               paid: 'No',
               mode: 'Select',
               date: '',
-              amount: 5000
+              amount: ''
             });
           }
         }
@@ -314,7 +314,16 @@ async function fetchFlatsData() {
 
 function loadLocalFlatsData(wing) {
   const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
-  flatsData = storedDb.flats.filter(f => f.wing === wing);
+  flatsData = (storedDb.flats || [])
+    .filter(f => f.wing === wing)
+    .map(f => ({
+      wing: f.wing,
+      flat: f.flat,
+      paid: f.paid || 'No',
+      mode: f.mode || 'Select',
+      date: f.date || '',
+      amount: f.amount !== undefined ? f.amount : ''
+    }));
 }
 
 
@@ -363,12 +372,11 @@ function renderFlatsRoster() {
 function recalculateSummary() {
   const totalFlats = 28;
   const paidCount = flatsData.filter(f => f.paid === 'Yes').length;
-  const pendingCount = totalFlats - paidCount;
   
   const totalCollected = flatsData
     .filter(f => f.paid === 'Yes')
     .reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
-  const totalPending = pendingCount * 5000;
+  const totalPending = flatsData.reduce((sum, f) => sum + (f.paid === 'Yes' ? Math.max(0, 5000 - (parseFloat(f.amount) || 0)) : 5000), 0);
   const progressPct = Math.round((paidCount / totalFlats) * 100);
 
   document.getElementById('metric-collected').textContent = `₹${totalCollected.toLocaleString('en-IN')}`;
@@ -436,7 +444,7 @@ function triggerSync(flatRecord) {
           method: 'POST',
           mode: 'no-cors', // Apps Script web app endpoint requirement
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'text/plain'
           },
           body: JSON.stringify(payload)
         });
@@ -475,7 +483,7 @@ function shareWhatsAppSummary() {
   const totalCollected = flatsData
     .filter(f => f.paid === 'Yes')
     .reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
-  const totalPending = pendingCount * 5000;
+  const totalPending = flatsData.reduce((sum, f) => sum + (f.paid === 'Yes' ? Math.max(0, 5000 - (parseFloat(f.amount) || 0)) : 5000), 0);
   const pct = Math.round((paidCount / totalFlats) * 100);
 
   // Mode breakdown
