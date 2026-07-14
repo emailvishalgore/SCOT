@@ -65,9 +65,12 @@ function initLocalDb() {
   localStorage.setItem('scot_wings_pins', JSON.stringify(initialPins));
 }
 
-// Get Configured API Url
+// Default API URL - hardcoded so all users on all devices sync to Google Sheets
+var DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbyn7UVwYLnlV59cFMfdl_aeNb_cpUET1WJYsWsuTJYB8b2VcyUgmJYpVW--Ydjvyyli/exec";
+
+// Get Configured API Url (localStorage override > hardcoded default)
 function getApiUrl() {
-  return localStorage.getItem('scot_apps_script_url') || '';
+  return localStorage.getItem('scot_apps_script_url') || DEFAULT_API_URL;
 }
 
 function updateConfigUi() {
