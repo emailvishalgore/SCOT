@@ -153,14 +153,21 @@
             <thead>
               <tr>
                 <th>Flat</th>
-                <th>Maintenance Paid?</th>
-                <th>Mode of Payment</th>
+                <th>Paid?</th>
+                <th>Amount (₹)</th>
+                <th>Payment Mode</th>
                 <th>Paid Date</th>
               </tr>
             </thead>
             <tbody id="flats-table-body">
               <!-- Dynamically populated rows -->
             </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="2" style="font-weight: bold; text-align: right; border-top: 2px solid var(--border-color);">Total Collected:</td>
+                <td id="table-total-amount" colspan="3" style="font-weight: bold; text-align: left; color: var(--success); border-top: 2px solid var(--border-color);">₹0</td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
