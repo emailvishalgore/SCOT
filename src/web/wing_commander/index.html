@@ -230,6 +230,20 @@
 
   </div>
 
-  <script src="app.js?v=8"></script>
+  <script>
+    // Unregister any lingering service workers from previous Flutter builds
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        registrations.forEach(function(reg) { reg.unregister(); });
+      });
+    }
+    // Clear all caches
+    if ('caches' in window) {
+      caches.keys().then(function(names) {
+        names.forEach(function(name) { caches.delete(name); });
+      });
+    }
+  </script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
