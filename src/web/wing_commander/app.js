@@ -50,12 +50,11 @@ function initLocalDb() {
           paid: 'No',
           mode: 'Select',
           date: '',
-          amount: 5000
+          amount: ''
         });
       }
     }
   });
-
   // Default Pins (Only Admin starts pre-registered)
   const initialPins = {
     'ADMIN': '9999',
@@ -314,9 +313,10 @@ async function fetchFlatsData() {
 }
 
 function loadLocalFlatsData(wing) {
-  const storedDb = JSON.parse(localStorage.getItem('scot_wings_db'));
+  const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
   flatsData = storedDb.flats.filter(f => f.wing === wing);
 }
+
 
 function renderFlatsRoster() {
   const tbody = document.getElementById('flats-table-body');
@@ -339,8 +339,11 @@ function renderFlatsRoster() {
           <option value="No" ${row.paid === 'No' ? 'selected' : ''}>No (Pending)</option>
         </select>
       </td>
+      <td data-label="Amount (₹)">
+        <input type="number" class="table-input" placeholder="0" value="${row.amount !== undefined && row.amount !== null ? row.amount : ''}" ${!isPaid ? 'disabled' : ''} onchange="updateFlatCell('${row.flat}', 'amount', this.value)">
+      </td>
       <td data-label="Mode">
-        <select class="table-select" onchange="updateFlatCell('${row.flat}', 'mode', this.value)">
+        <select class="table-select" ${!isPaid ? 'disabled' : ''} onchange="updateFlatCell('${row.flat}', 'mode', this.value)">
           <option value="Select" ${row.mode === 'Select' ? 'selected' : ''}>Select Mode...</option>
           <option value="Cash" ${row.mode === 'Cash' ? 'selected' : ''}>Cash</option>
           <option value="UPI" ${row.mode === 'UPI' ? 'selected' : ''}>UPI</option>
@@ -348,7 +351,7 @@ function renderFlatsRoster() {
         </select>
       </td>
       <td data-label="Paid Date">
-        <input type="date" class="table-input" value="${row.date || ''}" onchange="updateFlatCell('${row.flat}', 'date', this.value)">
+        <input type="date" class="table-input" value="${row.date || ''}" ${!isPaid ? 'disabled' : ''} onchange="updateFlatCell('${row.flat}', 'date', this.value)">
       </td>
     `;
     tbody.appendChild(tr);
@@ -362,7 +365,9 @@ function recalculateSummary() {
   const paidCount = flatsData.filter(f => f.paid === 'Yes').length;
   const pendingCount = totalFlats - paidCount;
   
-  const totalCollected = paidCount * 5000;
+  const totalCollected = flatsData
+    .filter(f => f.paid === 'Yes')
+    .reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
   const totalPending = pendingCount * 5000;
   const progressPct = Math.round((paidCount / totalFlats) * 100);
 
@@ -371,21 +376,35 @@ function recalculateSummary() {
   document.getElementById('metric-progress-pct').textContent = `${progressPct}%`;
   document.getElementById('metric-progress-bar').style.width = `${progressPct}%`;
   document.getElementById('metric-summary-text').textContent = `${paidCount} of 28 flats paid`;
+  
+  const tableTotal = document.getElementById('table-total-amount');
+  if (tableTotal) {
+    tableTotal.innerHTML = `<strong>₹${totalCollected.toLocaleString('en-IN')}</strong>`;
+  }
 }
 
 // Auto-save function on cell update
 function updateFlatCell(flatNo, field, value) {
   const flat = flatsData.find(f => f.flat === flatNo);
   if (flat) {
-    flat[field] = value;
-    
-    // Auto-update cell colors if Paid is toggled
-    if (field === 'paid') {
-      renderFlatsRoster();
-      return;
+    if (field === 'amount') {
+      flat[field] = value ? parseFloat(value) : '';
+    } else {
+      flat[field] = value;
     }
     
-    recalculateSummary();
+    // Auto-update cell colors and values if Paid is toggled
+    if (field === 'paid') {
+      if (value === 'No') {
+        flat.amount = '';
+        flat.mode = 'Select';
+        flat.date = '';
+      }
+      renderFlatsRoster();
+    } else {
+      recalculateSummary();
+    }
+    
     triggerSync(flat);
   }
 }
@@ -430,8 +449,8 @@ function triggerSync(flatRecord) {
       }
     } else {
       // Local Save
-      const storedDb = JSON.parse(localStorage.getItem('scot_wings_db'));
-      const idx = storedDb.flats.indexWhere(f => f.wing === activeSession.wing && f.flat === flatRecord.flat);
+      const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
+      const idx = storedDb.flats.findIndex(f => f.wing === activeSession.wing && f.flat === flatRecord.flat);
       if (idx !== -1) {
         storedDb.flats[idx] = flatRecord;
       } else {
@@ -453,7 +472,9 @@ function shareWhatsAppSummary() {
   const totalFlats = 28;
   const paidCount = flatsData.filter(f => f.paid === 'Yes').length;
   const pendingCount = totalFlats - paidCount;
-  const totalCollected = paidCount * 5000;
+  const totalCollected = flatsData
+    .filter(f => f.paid === 'Yes')
+    .reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
   const totalPending = pendingCount * 5000;
   const pct = Math.round((paidCount / totalFlats) * 100);
 
@@ -519,7 +540,7 @@ async function loadAdminDashboard() {
     }
   } else {
     const storedDb = JSON.parse(localStorage.getItem('scot_wings_db'));
-    allFlats = storedDb.flats;
+    allFlats = storedDb ? storedDb.flats : [];
   }
 
   renderAdminGrid(allFlats);
@@ -537,9 +558,9 @@ function renderAdminGrid(allFlats) {
     const wingFlats = allFlats.filter(f => f.wing === wing);
     const totalFlats = 28;
     const paidCount = wingFlats.filter(f => f.paid === 'Yes').length;
-    const pendingCount = totalFlats - paidCount;
-    
-    const collected = paidCount * 5000;
+    const collected = wingFlats
+      .filter(f => f.paid === 'Yes')
+      .reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
     const progressPct = totalFlats > 0 ? Math.round((paidCount / totalFlats) * 100) : 0;
 
     grandTotal += collected;
@@ -582,17 +603,6 @@ function renderAdminGrid(allFlats) {
   document.getElementById('admin-total-ratio').textContent = `${grandPaidRatio} / 280 flats`;
 }
 
-// Global spinner
 function showLoading(show) {
   // Can expand with custom spinner overlay
-}
-
-// Array utility helper
-if (!Array.prototype.indexWhere) {
-  Array.prototype.indexWhere = function(callback) {
-    for (let i = 0; i < this.length; i++) {
-      if (callback(this[i])) return i;
-    }
-    return -1;
-  };
 }
