@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SCOT TOPAZ - Wing Commander Portal</title>
+  <!-- Google Fonts: Fredoka & Nunito -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Decorative background blobs -->
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
+  <!-- Main Container -->
+  <div class="app-container">
+    
+    <!-- 1. AUTH SCREEN -->
+    <div id="auth-screen" class="glass-card auth-card">
+      <div class="brand-header">
+        <div class="logo-placeholder">💎</div>
+        <h2>SCOT TOPAZ</h2>
+        <p>Wing Commander Console</p>
+      </div>
+
+      <!-- Tab selection -->
+      <div class="auth-tabs">
+        <button id="tab-login" class="tab-btn active" onclick="switchAuthTab('login')">LOGIN</button>
+        <button id="tab-register" class="tab-btn" onclick="switchAuthTab('register')">REGISTER WING</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="login-wing">Select Wing / Role</label>
+          <select id="login-wing" required>
+            <option value="" disabled selected>Choose wing...</option>
+            <option value="ADMIN">ADMIN (View All Wings)</option>
+            <option value="N">Wing N</option>
+            <option value="O">Wing O</option>
+            <option value="P">Wing P</option>
+            <option value="Q">Wing Q</option>
+            <option value="R">Wing R</option>
+            <option value="S">Wing S</option>
+            <option value="T">Wing T</option>
+            <option value="U">Wing U</option>
+            <option value="V">Wing V</option>
+            <option value="W">Wing W</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label id="pin-label" for="login-pin">4-Digit PIN</label>
+          <input type="password" id="login-pin" maxlength="12" placeholder="••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">LOG IN</button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="register-form" class="hidden" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label for="reg-wing">Select Wing to Register</label>
+          <select id="reg-wing" required>
+            <option value="" disabled selected>Choose wing...</option>
+            <option value="N">Wing N</option>
+            <option value="O">Wing O</option>
+            <option value="P">Wing P</option>
+            <option value="Q">Wing Q</option>
+            <option value="R">Wing R</option>
+            <option value="S">Wing S</option>
+            <option value="T">Wing T</option>
+            <option value="U">Wing U</option>
+            <option value="V">Wing V</option>
+            <option value="W">Wing W</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="reg-pin">Set 4-Digit Security PIN</label>
+          <input type="password" id="reg-pin" pattern="[0-9]{4}" maxlength="4" placeholder="e.g. 1234" required>
+          <small class="helper-text">This PIN will lock this Wing for your updates.</small>
+        </div>
+        <button type="submit" class="btn btn-secondary btn-block">REGISTER WING</button>
+      </form>
+
+      <div id="auth-error" class="error-banner hidden"></div>
+    </div>
+
+    <!-- 2. WING COMMANDER DASHBOARD -->
+    <div id="commander-dashboard" class="hidden">
+      <!-- Top Bar -->
+      <div class="top-nav glass-card">
+        <div class="nav-brand">
+          <span class="logo-emoji">💎</span>
+          <div>
+            <h3 id="dashboard-title">Wing N Dashboard</h3>
+            <span class="role-badge">Wing Commander</span>
+          </div>
+        </div>
+        <button class="btn btn-outline" onclick="handleLogout()">Log Out</button>
+      </div>
+
+      <!-- Quick Metrics Summary -->
+      <div class="metrics-grid">
+        <div class="metric-card glass-card">
+          <div class="metric-icon">💰</div>
+          <div class="metric-info">
+            <span class="metric-label">TOTAL COLLECTED</span>
+            <h2 id="metric-collected">₹0</h2>
+          </div>
+        </div>
+        <div class="metric-card glass-card">
+          <div class="metric-icon">⏳</div>
+          <div class="metric-info">
+            <span class="metric-label">PENDING DUES</span>
+            <h2 id="metric-pending">₹1,40,000</h2>
+          </div>
+        </div>
+        <div class="metric-card glass-card full-width-metric">
+          <div class="progress-info">
+            <span class="metric-label">COLLECTION PROGRESS</span>
+            <span id="metric-progress-pct" class="progress-pct">0%</span>
+          </div>
+          <div class="progress-track">
+            <div id="metric-progress-bar" class="progress-bar" style="width: 0%"></div>
+          </div>
+          <p id="metric-summary-text" class="metric-subtext">0 of 28 flats paid</p>
+        </div>
+      </div>
+
+      <!-- Actions Bar -->
+      <div class="actions-panel glass-card">
+        <button class="btn btn-whatsapp" onclick="shareWhatsAppSummary()">
+          <span class="btn-icon">💬</span> SHARE DAILY SUMMARY TO WHATSAPP
+        </button>
+      </div>
+
+      <!-- Auto-save Sync Status Banner -->
+      <div id="sync-status" class="sync-status glass-card">
+        <span class="sync-dot"></span>
+        <span id="sync-text">All changes saved locally</span>
+      </div>
+
+      <!-- Flats Data Table Card -->
+      <div class="glass-card flats-table-card">
+        <div class="table-header">
+          <h3>Wing Flats Roster (28 Units)</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="flats-table">
+            <thead>
+              <tr>
+                <th>Flat</th>
+                <th>Maintenance Paid?</th>
+                <th>Mode of Payment</th>
+                <th>Paid Date</th>
+              </tr>
+            </thead>
+            <tbody id="flats-table-body">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. ADMIN CONSOLIDATED DASHBOARD -->
+    <div id="admin-dashboard" class="hidden">
+      <!-- Top Bar -->
+      <div class="top-nav glass-card">
+        <div class="nav-brand">
+          <span class="logo-emoji">👑</span>
+          <div>
+            <h3>SCOT TOPAZ Admin Panel</h3>
+            <span class="role-badge admin-badge">System Administrator</span>
+          </div>
+        </div>
+        <button class="btn btn-outline" onclick="handleLogout()">Log Out</button>
+      </div>
+
+      <!-- Consolidated Metrics Grid -->
+      <div class="metrics-grid">
+        <div class="metric-card glass-card">
+          <div class="metric-icon">🏢</div>
+          <div class="metric-info">
+            <span class="metric-label">TOTAL SOCIETY COLLECTION</span>
+            <h2 id="admin-total-collected">₹0</h2>
+          </div>
+        </div>
+        <div class="metric-card glass-card">
+          <div class="metric-icon">📈</div>
+          <div class="metric-info">
+            <span class="metric-label">TOTAL PAID FLATS</span>
+            <h2 id="admin-total-ratio">0 / 280</h2>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google Sheets Connection Setup Card -->
+      <div class="glass-card config-card">
+        <div class="table-header">
+          <h3>Google Sheets Apps Script Connection</h3>
+        </div>
+        <div class="config-form">
+          <p class="config-desc">
+            To synchronize with your Google Sheet, paste your deployed <strong>Google Apps Script Web App URL</strong> below. If left empty, the app automatically runs in Offline Demo mode using local storage.
+          </p>
+          <div class="form-group row-group">
+            <input type="url" id="config-api-url" placeholder="https://script.google.com/macros/s/.../exec" style="flex: 1;">
+            <button class="btn btn-primary" onclick="saveApiUrl()">CONNECT SHEET</button>
+          </div>
+          <div id="config-status" class="config-status">Mode: Running in Offline Demo Mode</div>
+        </div>
+      </div>
+
+      <!-- Multi-Wing Standings Grid -->
+      <div class="admin-wings-grid" id="admin-wings-container">
+        <!-- Dynamically populated wing cards -->
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
