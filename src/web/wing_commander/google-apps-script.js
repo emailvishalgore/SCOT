@@ -21,6 +21,8 @@ function doGet(e) {
     return handleGetData(e.parameter.wing);
   } else if (action === "getAdminData") {
     return handleGetAdminData();
+  } else if (action === "updateFlat") {
+    return handleUpdateFlat(e.parameter);
   }
   
   return jsonResponse({ success: false, error: "Invalid action" });

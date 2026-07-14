@@ -428,26 +428,19 @@ function triggerSync(flatRecord) {
   
   saveTimeout = setTimeout(async () => {
     const apiUrl = getApiUrl();
-    const payload = {
-      action: "updateFlat",
+    const params = new URLSearchParams({
+      action: 'updateFlat',
       wing: activeSession.wing,
       flat: flatRecord.flat,
       paid: flatRecord.paid,
-      mode: flatRecord.mode,
-      date: flatRecord.date,
-      amount: flatRecord.amount
-    };
+      mode: flatRecord.mode || '',
+      date: flatRecord.date || '',
+      amount: flatRecord.amount !== undefined && flatRecord.amount !== '' ? flatRecord.amount : ''
+    });
 
     if (apiUrl) {
       try {
-        const res = await fetch(apiUrl, {
-          method: 'POST',
-          mode: 'no-cors', // Apps Script web app endpoint requirement
-          headers: {
-            'Content-Type': 'text/plain'
-          },
-          body: JSON.stringify(payload)
-        });
+        const res = await fetch(`${apiUrl}?${params.toString()}`);
         
         syncBanner.classList.remove('saving');
         syncText.textContent = "All changes saved to Google Sheet";
