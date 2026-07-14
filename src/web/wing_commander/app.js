@@ -280,7 +280,29 @@ async function fetchFlatsData() {
       const res = await fetch(`${apiUrl}?action=getData&wing=${wing}`);
       const data = await res.json();
       showLoading(false);
-      flatsData = data.flats || [];
+      const sheetFlats = data.flats || [];
+      
+      // Auto-generate the 28 flats roster and merge matching sheet data
+      const mergedFlats = [];
+      for (let floor = 1; floor <= 7; floor++) {
+        for (let num = 1; num <= 4; num++) {
+          const flatNo = `${floor}0${num}`;
+          const match = sheetFlats.find(f => String(f.flat) === flatNo);
+          if (match) {
+            mergedFlats.push(match);
+          } else {
+            mergedFlats.push({
+              wing: wing,
+              flat: flatNo,
+              paid: 'No',
+              mode: 'Select',
+              date: '',
+              amount: 5000
+            });
+          }
+        }
+      }
+      flatsData = mergedFlats;
     } catch (err) {
       showLoading(false);
       alert("Error fetching flats data from sheet. Running local fallback.");
