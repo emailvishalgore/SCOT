@@ -56,8 +56,8 @@ function handleAuth(wing, pin) {
   
   for (var i = 1; i < values.length; i++) {
     if (values[i][0].toString().trim().toUpperCase() === wing) {
-      var savedPin = values[i][1].toString().trim();
-      if (savedPin === pin) {
+      var savedPin = values[i][1].toString().trim().padStart(4, '0');
+      if (savedPin === pin.padStart(4, '0')) {
         var role = (wing === "ADMIN") ? "ADMIN" : "COMMANDER";
         return jsonResponse({ success: true, role: role });
       } else {
@@ -87,15 +87,17 @@ function handleRegister(wing, pin) {
       if (savedPin !== "") {
         return jsonResponse({ success: false, error: "Wing is already registered. Please contact Admin." });
       } else {
-        // Set PIN for existing listed wing
-        sheet.getRange(i + 1, 2).setValue(pin);
+        // Set PIN for existing listed wing (format as text to preserve leading zeros)
+        sheet.getRange(i + 1, 2).setNumberFormat('@').setValue(pin);
         return jsonResponse({ success: true });
       }
     }
   }
   
-  // Append new wing configuration
+  // Append new wing configuration (format PIN cell as text to preserve leading zeros)
   sheet.appendRow([wing, pin]);
+  var lastRow = sheet.getLastRow();
+  sheet.getRange(lastRow, 2).setNumberFormat('@').setValue(pin);
   return jsonResponse({ success: true });
 }
 
