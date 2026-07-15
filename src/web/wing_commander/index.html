@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
   <!-- Decorative background blobs -->
@@ -222,6 +222,28 @@
         </div>
       </div>
 
+      <!-- Admin Reports Section -->
+      <div class="glass-card config-card">
+        <div class="table-header">
+          <h3>📊 Reports</h3>
+        </div>
+        <div class="report-buttons">
+          <button class="btn btn-primary" onclick="generateWingSummaryReport()">
+            🏢 Wing-wise Summary
+          </button>
+          <button class="btn btn-outline" onclick="generateDetailedReport()">
+            📋 Detailed Flat-wise Report
+          </button>
+        </div>
+        <div id="report-output" class="report-output hidden">
+          <pre id="report-text"></pre>
+          <div class="report-actions">
+            <button class="btn btn-primary" onclick="copyReport()">📋 Copy to Clipboard</button>
+            <button class="btn btn-outline" onclick="shareReportWhatsApp()">💬 Share on WhatsApp</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Multi-Wing Standings Grid -->
       <div class="admin-wings-grid" id="admin-wings-container">
         <!-- Dynamically populated wing cards -->
@@ -244,6 +266,6 @@
       });
     }
   </script>
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>
