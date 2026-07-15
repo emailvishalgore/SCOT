@@ -522,10 +522,12 @@ _Generated via SCOT TOPAZ Wing Portal_`;
 }
 
 // 5. ADMIN CONSOLIDATED VIEW PANEL
+var adminAllFlats = [];
+var lastReportText = '';
+
 async function loadAdminDashboard() {
   document.getElementById('admin-dashboard').classList.remove('hidden');
   const apiUrl = getApiUrl();
-  let allFlats = [];
 
   if (apiUrl) {
     try {
@@ -533,19 +535,19 @@ async function loadAdminDashboard() {
       const res = await fetch(`${apiUrl}?action=getAdminData`);
       const data = await res.json();
       showLoading(false);
-      allFlats = data.allFlats || [];
+      adminAllFlats = data.allFlats || [];
     } catch (err) {
       showLoading(false);
       alert("Error connecting to sheet. Loading consolidated offline data.");
       const storedDb = JSON.parse(localStorage.getItem('scot_wings_db'));
-      allFlats = storedDb.flats;
+      adminAllFlats = storedDb.flats;
     }
   } else {
     const storedDb = JSON.parse(localStorage.getItem('scot_wings_db'));
-    allFlats = storedDb ? storedDb.flats : [];
+    adminAllFlats = storedDb ? storedDb.flats : [];
   }
 
-  renderAdminGrid(allFlats);
+  renderAdminGrid(adminAllFlats);
 }
 
 function renderAdminGrid(allFlats) {
@@ -603,6 +605,112 @@ function renderAdminGrid(allFlats) {
   // Render top metrics
   document.getElementById('admin-total-collected').textContent = `₹${grandTotal.toLocaleString('en-IN')}`;
   document.getElementById('admin-total-ratio').textContent = `${grandPaidRatio} / 280 flats`;
+}
+
+// ── ADMIN REPORTS ──
+
+function generateWingSummaryReport() {
+  const wings = ['N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'];
+  const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  let grandCollected = 0;
+  let grandPaid = 0;
+  const totalFlatsAll = wings.length * 28;
+
+  let lines = [];
+  lines.push(`*🏢 SCOT TOPAZ — Wing-wise Collection Summary*`);
+  lines.push(`📅 Date: ${dateStr}`);
+  lines.push(``);
+
+  wings.forEach(wing => {
+    const wingFlats = adminAllFlats.filter(f => f.wing.toUpperCase() === wing);
+    const paidCount = wingFlats.filter(f => f.paid === 'Yes').length;
+    const collected = wingFlats.filter(f => f.paid === 'Yes').reduce((s, f) => s + (parseFloat(f.amount) || 0), 0);
+    const pct = Math.round((paidCount / 28) * 100);
+    grandCollected += collected;
+    grandPaid += paidCount;
+
+    const bar = pct >= 75 ? '🟢' : pct >= 40 ? '🟡' : '🔴';
+    lines.push(`${bar} *Wing ${wing}:* ${paidCount}/28 paid (${pct}%) — ₹${collected.toLocaleString('en-IN')}`);
+  });
+
+  lines.push(``);
+  lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+  const grandPct = Math.round((grandPaid / totalFlatsAll) * 100);
+  lines.push(`💰 *Grand Total:* ₹${grandCollected.toLocaleString('en-IN')}`);
+  lines.push(`📈 *Overall:* ${grandPaid}/${totalFlatsAll} flats paid (${grandPct}%)`);
+
+  lastReportText = lines.join('\n');
+  showReport(lastReportText);
+}
+
+function generateDetailedReport() {
+  const wings = ['N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'];
+  const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  let grandCollected = 0;
+  let grandPaid = 0;
+
+  let lines = [];
+  lines.push(`*📋 SCOT TOPAZ — Detailed Flat-wise Collection Report*`);
+  lines.push(`📅 Date: ${dateStr}`);
+
+  wings.forEach(wing => {
+    const wingFlats = adminAllFlats.filter(f => f.wing.toUpperCase() === wing);
+    if (wingFlats.length === 0) return;
+
+    const paidCount = wingFlats.filter(f => f.paid === 'Yes').length;
+    const collected = wingFlats.filter(f => f.paid === 'Yes').reduce((s, f) => s + (parseFloat(f.amount) || 0), 0);
+    grandCollected += collected;
+    grandPaid += paidCount;
+
+    lines.push(``);
+    lines.push(`━━━ *Wing ${wing}* (${paidCount}/28 paid, ₹${collected.toLocaleString('en-IN')}) ━━━`);
+
+    // Sort flats numerically
+    const sorted = wingFlats.slice().sort((a, b) => {
+      const numA = parseInt(a.flat.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.flat.replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
+
+    sorted.forEach(f => {
+      const icon = f.paid === 'Yes' ? '✅' : '⬜';
+      const amt = f.paid === 'Yes' && f.amount ? ` ₹${parseFloat(f.amount).toLocaleString('en-IN')}` : '';
+      const mode = f.paid === 'Yes' && f.mode && f.mode !== 'Select' ? ` (${f.mode})` : '';
+      const date = f.paid === 'Yes' && f.date ? ` ${f.date}` : '';
+      lines.push(`${icon} Flat ${f.flat}${amt}${mode}${date}`);
+    });
+  });
+
+  lines.push(``);
+  lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+  lines.push(`💰 *Grand Total:* ₹${grandCollected.toLocaleString('en-IN')}`);
+  lines.push(`📈 *Overall:* ${grandPaid}/280 flats paid`);
+
+  lastReportText = lines.join('\n');
+  showReport(lastReportText);
+}
+
+function showReport(text) {
+  const output = document.getElementById('report-output');
+  const pre = document.getElementById('report-text');
+  pre.textContent = text;
+  output.classList.remove('hidden');
+}
+
+function copyReport() {
+  navigator.clipboard.writeText(lastReportText).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  });
+}
+
+function shareReportWhatsApp() {
+  const encoded = encodeURIComponent(lastReportText);
+  window.open(`https://wa.me/?text=${encoded}`, '_blank');
 }
 
 function showLoading(show) {
