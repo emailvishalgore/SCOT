@@ -375,15 +375,15 @@ function renderFlatsRoster() {
 function recalculateSummary() {
   const totalFlats = 28;
   const paidCount = flatsData.filter(f => f.paid === 'Yes').length;
+  const unpaidCount = totalFlats - paidCount;
   
   const totalCollected = flatsData
     .filter(f => f.paid === 'Yes')
     .reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
-  const totalPending = flatsData.reduce((sum, f) => sum + (f.paid === 'Yes' ? Math.max(0, 5000 - (parseFloat(f.amount) || 0)) : 5000), 0);
   const progressPct = Math.round((paidCount / totalFlats) * 100);
 
   document.getElementById('metric-collected').textContent = `₹${totalCollected.toLocaleString('en-IN')}`;
-  document.getElementById('metric-pending').textContent = `₹${totalPending.toLocaleString('en-IN')}`;
+  document.getElementById('metric-pending').textContent = `${unpaidCount}`;
   document.getElementById('metric-progress-pct').textContent = `${progressPct}%`;
   document.getElementById('metric-progress-bar').style.width = `${progressPct}%`;
   document.getElementById('metric-summary-text').textContent = `${paidCount} of 28 flats paid`;
@@ -479,7 +479,6 @@ function shareWhatsAppSummary() {
   const totalCollected = flatsData
     .filter(f => f.paid === 'Yes')
     .reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
-  const totalPending = flatsData.reduce((sum, f) => sum + (f.paid === 'Yes' ? Math.max(0, 5000 - (parseFloat(f.amount) || 0)) : 5000), 0);
   const pct = Math.round((paidCount / totalFlats) * 100);
 
   // Mode breakdown
@@ -501,7 +500,6 @@ function shareWhatsAppSummary() {
 ⏳ *Pending Units:* ${pendingCount} of 28
 
 💰 *Total Collected:* ₹${totalCollected.toLocaleString('en-IN')}
-💸 *Pending Amount:* ₹${totalPending.toLocaleString('en-IN')}
 
 *Modes of Payment:*
 💵 Cash: ${cashCount} flats
