@@ -521,6 +521,59 @@ _Generated via SCOT TOPAZ Wing Portal_`;
   });
 }
 
+// ── WING COMMANDER FLAT STATUS SUMMARY ──
+var lastCommanderReportText = '';
+
+function generateFlatStatusSummary() {
+  const wing = activeSession.wing;
+  const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const paidCount = flatsData.filter(f => f.paid === 'Yes').length;
+  const unpaidCount = 28 - paidCount;
+  const pct = Math.round((paidCount / 28) * 100);
+
+  let lines = [];
+  lines.push(`*🏠 SCOT TOPAZ Wing ${wing} — Flat Status*`);
+  lines.push(`📅 ${dateStr}`);
+  lines.push(`✅ Paid: ${paidCount} | ⬜ Unpaid: ${unpaidCount} | ${pct}%`);
+  lines.push(``);
+
+  // Sort flats numerically
+  const sorted = flatsData.slice().sort((a, b) => {
+    const numA = parseInt(a.flat.replace(/\D/g, '')) || 0;
+    const numB = parseInt(b.flat.replace(/\D/g, '')) || 0;
+    return numA - numB;
+  });
+
+  sorted.forEach(f => {
+    const icon = f.paid === 'Yes' ? '✅' : '⬜';
+    lines.push(`${icon} Flat ${f.flat}`);
+  });
+
+  lines.push(``);
+  lines.push(`_${paidCount}/28 paid (${pct}%)_`);
+
+  lastCommanderReportText = lines.join('\n');
+
+  const output = document.getElementById('commander-report-output');
+  const pre = document.getElementById('commander-report-text');
+  pre.textContent = lastCommanderReportText;
+  output.classList.remove('hidden');
+}
+
+function copyCommanderReport() {
+  navigator.clipboard.writeText(lastCommanderReportText).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  });
+}
+
+function shareCommanderReportWhatsApp() {
+  const encoded = encodeURIComponent(lastCommanderReportText);
+  window.open(`https://wa.me/?text=${encoded}`, '_blank');
+}
+
 // 5. ADMIN CONSOLIDATED VIEW PANEL
 var adminAllFlats = [];
 var lastReportText = '';
