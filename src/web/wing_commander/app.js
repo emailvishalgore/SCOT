@@ -333,6 +333,7 @@ function loadLocalFlatsData(wing) {
 function renderFlatsRoster() {
   const tbody = document.getElementById('flats-table-body');
   tbody.innerHTML = '';
+  const isReadOnly = activeSession.role === 'ADMIN';
 
   flatsData.sort((a, b) => parseInt(a.flat) - parseInt(b.flat));
 
@@ -342,20 +343,22 @@ function renderFlatsRoster() {
     // Highlight flat cell
     const isPaid = row.paid === 'Yes';
     const cellClass = isPaid ? 'status-yes' : 'status-no';
+    const disableEdit = isReadOnly || !isPaid;
+    const disableAll = isReadOnly;
 
     tr.innerHTML = `
       <td class="flat-cell" data-label="Flat">${row.flat}</td>
       <td data-label="Paid?">
-        <select class="table-select ${cellClass}" onchange="updateFlatCell('${row.flat}', 'paid', this.value)">
+        <select class="table-select ${cellClass}" ${disableAll ? 'disabled' : ''} onchange="updateFlatCell('${row.flat}', 'paid', this.value)">
           <option value="Yes" ${row.paid === 'Yes' ? 'selected' : ''}>Yes (Paid)</option>
           <option value="No" ${row.paid === 'No' ? 'selected' : ''}>No (Pending)</option>
         </select>
       </td>
       <td data-label="Amount (₹)">
-        <input type="number" class="table-input" placeholder="0" value="${row.amount !== undefined && row.amount !== null ? row.amount : ''}" ${!isPaid ? 'disabled' : ''} onchange="updateFlatCell('${row.flat}', 'amount', this.value)">
+        <input type="number" class="table-input" placeholder="0" value="${row.amount !== undefined && row.amount !== null ? row.amount : ''}" ${disableEdit ? 'disabled' : ''} onchange="updateFlatCell('${row.flat}', 'amount', this.value)">
       </td>
       <td data-label="Mode">
-        <select class="table-select" ${!isPaid ? 'disabled' : ''} onchange="updateFlatCell('${row.flat}', 'mode', this.value)">
+        <select class="table-select" ${disableEdit ? 'disabled' : ''} onchange="updateFlatCell('${row.flat}', 'mode', this.value)">
           <option value="Select" ${row.mode === 'Select' ? 'selected' : ''}>Select Mode...</option>
           <option value="Cash" ${row.mode === 'Cash' ? 'selected' : ''}>Cash</option>
           <option value="UPI" ${row.mode === 'UPI' ? 'selected' : ''}>UPI</option>
@@ -363,7 +366,7 @@ function renderFlatsRoster() {
         </select>
       </td>
       <td data-label="Paid Date">
-        <input type="date" class="table-input" value="${row.date || ''}" ${!isPaid ? 'disabled' : ''} onchange="updateFlatCell('${row.flat}', 'date', this.value)">
+        <input type="date" class="table-input" value="${row.date || ''}" ${disableEdit ? 'disabled' : ''} onchange="updateFlatCell('${row.flat}', 'date', this.value)">
       </td>
     `;
     tbody.appendChild(tr);
@@ -628,7 +631,7 @@ function renderAdminGrid(allFlats) {
     card.className = 'admin-wing-card glass-card';
     card.onclick = () => {
       // Admin bypasses login to view this wing
-      activeSession = { wing, role: 'COMMANDER' };
+      activeSession = { wing, role: 'ADMIN' };
       document.getElementById('admin-dashboard').classList.add('hidden');
       loadCommanderDashboard();
     };
