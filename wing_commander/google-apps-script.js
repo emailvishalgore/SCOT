@@ -169,15 +169,29 @@ function handleUpdateFlat(data) {
   var date = data.date;
   var amount = data.amount !== "" ? Number(data.amount) : "";
   
-  // Search if row exists
+  var foundIndex = -1;
+  
+  // Search if row exists, handling and cleaning duplicate rows
   for (var i = 1; i < values.length; i++) {
     if (values[i][0].toString().trim().toUpperCase() === wing && values[i][1].toString().trim().toUpperCase() === flat) {
-      sheet.getRange(i + 1, 3).setValue(paid);
-      sheet.getRange(i + 1, 4).setValue(mode);
-      sheet.getRange(i + 1, 5).setValue(date);
-      sheet.getRange(i + 1, 6).setValue(amount);
-      return jsonResponse({ success: true });
+      if (foundIndex === -1) {
+        foundIndex = i;
+        sheet.getRange(i + 1, 3).setValue(paid);
+        sheet.getRange(i + 1, 4).setValue(mode);
+        sheet.getRange(i + 1, 5).setValue(date);
+        sheet.getRange(i + 1, 6).setValue(amount);
+      } else {
+        // Delete the duplicate row
+        sheet.deleteRow(i + 1);
+        // Adjust array since row was deleted
+        values.splice(i, 1);
+        i--;
+      }
     }
+  }
+  
+  if (foundIndex !== -1) {
+    return jsonResponse({ success: true });
   }
   
   // If not found, append a new row
