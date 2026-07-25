@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#6366f1">
+  <title>SCOT TOPAZ - Events Team Portal</title>
+  <!-- Google Fonts: Fredoka & Nunito -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+  <!-- Decorative background blobs -->
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
+  <!-- Main Container -->
+  <div class="app-container">
+    
+    <!-- 1. AUTH GATE -->
+    <div id="auth-screen" class="glass-card auth-card">
+      <div class="brand-header">
+        <img src="../../assets/images/logo.png" alt="SCOT Logo" class="brand-logo">
+        <h2>SCOT TOPAZ</h2>
+        <p>Events Coordinator Hub</p>
+      </div>
+
+      <!-- Tab selector -->
+      <div class="auth-tabs">
+        <button id="tab-login" class="tab-btn active" onclick="switchAuthTab('login')">LOGIN</button>
+        <button id="tab-register" class="tab-btn" onclick="switchAuthTab('register')">REGISTER CHAMPION</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="login-role">Select Champion Scope</label>
+          <select id="login-role" required>
+            <option value="" disabled selected>Choose role...</option>
+            <option value="ADMIN">SCOT Admin (Full Access)</option>
+            <option value="EVENT_CHAMP_SPORTS">Event Champion - Sports</option>
+            <option value="EVENT_CHAMP_CULTURAL">Event Champion - Cultural</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="login-pin">4-Digit Security PIN</label>
+          <input type="password" id="login-pin" pattern="[0-9]{4}" maxlength="4" placeholder="••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">LOG IN</button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="register-form" class="hidden" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label for="reg-role">Select Role to Register</label>
+          <select id="reg-role" required>
+            <option value="" disabled selected>Choose role...</option>
+            <option value="ADMIN">SCOT Admin (Full Access)</option>
+            <option value="EVENT_CHAMP_SPORTS">Event Champion - Sports</option>
+            <option value="EVENT_CHAMP_CULTURAL">Event Champion - Cultural</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="reg-pin">Set 4-Digit Security PIN</label>
+          <input type="password" id="reg-pin" pattern="[0-9]{4}" maxlength="4" placeholder="e.g. 1234" required>
+          <small class="helper-text">Your secure PIN for scoring & tournament approvals.</small>
+        </div>
+        <button type="submit" class="btn btn-secondary btn-block">REGISTER ROLE</button>
+      </form>
+
+      <div id="auth-error" class="error-banner hidden"></div>
+    </div>
+
+    <!-- 2. EVENTS TEAM APP SHELL -->
+    <div id="app-shell" class="hidden">
+      <!-- Top App Bar -->
+      <header class="app-header glass-card">
+        <div class="nav-brand">
+          <img src="../../assets/images/logo.png" alt="SCOT Logo" class="brand-logo-small">
+          <div>
+            <h3 id="app-header-title">SCOT TOPAZ</h3>
+            <span id="role-badge" class="role-badge">Event Champion</span>
+          </div>
+        </div>
+        <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="handleLogout()">Log Out</button>
+      </header>
+
+      <!-- Page Views Container -->
+      <main id="page-content" class="page-content">
+        <!-- Injected dynamically via Router -->
+      </main>
+
+      <!-- Bottom Tab Navigation Bar -->
+      <nav class="bottom-nav glass-card">
+        <button id="nav-dashboard" class="nav-item active" onclick="navigate('#/dashboard')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+          <span>Dashboard</span>
+        </button>
+        <button id="nav-registrations" class="nav-item" onclick="navigate('#/registrations')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>Registrations</span>
+        </button>
+        <button id="nav-fixtures" class="nav-item" onclick="navigate('#/fixtures')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3z"></path><path d="M6 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3z"></path></svg>
+          <span>Fixtures</span>
+        </button>
+        <button id="nav-competitions" class="nav-item" onclick="navigate('#/competitions')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          <span>Competitions</span>
+        </button>
+        <button id="nav-more" class="nav-item" onclick="navigate('#/more')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+          <span>More</span>
+        </button>
+      </nav>
+
+      <!-- Sync Status Indicator -->
+      <div id="sync-status" class="sync-status glass-card">
+        <span class="sync-dot"></span>
+        <span id="sync-text">Loading configuration...</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Dynamic Bottom Sheet / Modal Overlay -->
+  <div id="modal-backdrop" class="modal-backdrop hidden" onclick="closeModal()"></div>
+  <div id="bottom-sheet" class="bottom-sheet hidden">
+    <div class="bottom-sheet-handle"></div>
+    <div class="bottom-sheet-header">
+      <h3 id="modal-title">Actions</h3>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body" class="bottom-sheet-content"></div>
+  </div>
+
+  <!-- Global Toast Alerts -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="app.js?v=1"></script>
+</body>
+</html>
