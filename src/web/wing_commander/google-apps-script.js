@@ -219,40 +219,61 @@ function jsonResponse(obj) {
 
 function handleGetPaymentReportPdf() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName("Payment_Report");
-  if (!sheet) {
+  var sheets = ss.getSheets();
+  var targetSheetName = "Payment_Report";
+  
+  // Find target sheet
+  var targetSheet = ss.getSheetByName(targetSheetName);
+  if (!targetSheet) {
     return jsonResponse({ success: false, error: "Payment_Report sheet tab not found. Please create a sheet tab named 'Payment_Report'." });
   }
   
-  var ssId = ss.getId();
-  var sheetId = sheet.getSheetId();
-  
-  // Construct the export URL for PDF format
-  var url = "https://docs.google.com/spreadsheets/d/" + ssId + "/export" +
-            "?format=pdf" +
-            "&portrait=true" +
-            "&size=A4" +
-            "&gridlines=false" +
-            "&fitw=true" +
-            "&gid=" + sheetId;
-            
-  try {
-    var response = UrlFetchApp.fetch(url, {
-      headers: {
-        'Authorization': 'Bearer ' +  ScriptApp.getOAuthToken(),
-        'MuteHttpExceptions': true
-      }
+  // Store the original visibility state of all sheets
+  var originalStates = [];
+  for (var i = 0; i < sheets.length; i++) {
+    originalStates.push({
+      sheet: sheets[i],
+      visible: !sheets[i].isSheetHidden()
     });
-    
-    if (response.getResponseCode() !== 200) {
-      return jsonResponse({ success: false, error: "Failed to export PDF. HTTP code: " + response.getResponseCode() });
+  }
+  
+  // Hide all sheets EXCEPT the target sheet
+  targetSheet.showSheet();
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].getName() !== targetSheetName) {
+      sheets[i].hideSheet();
     }
-    
-    var blob = response.getBlob();
-    var base64 = Utilities.base64Encode(blob.getBytes());
-    return jsonResponse({ success: true, pdfBase64: base64 });
+  }
+  
+  // Generate the PDF blob of the active (only visible) sheet natively
+  var pdfBlob;
+  try {
+    pdfBlob = ss.getAs('application/pdf');
   } catch(e) {
-    return jsonResponse({ success: false, error: "Error exporting PDF: " + e.toString() });
+    // Restore states on error
+    restoreSheetStates(originalStates);
+    return jsonResponse({ success: false, error: "Failed to render PDF natively: " + e.toString() });
+  }
+  
+  // Restore all sheets visibility states
+  restoreSheetStates(originalStates);
+  
+  // Return base64 encoded PDF
+  var base64 = Utilities.base64Encode(pdfBlob.getBytes());
+  return jsonResponse({ success: true, pdfBase64: base64 });
+}
+
+function restoreSheetStates(states) {
+  // Show target sheets first to ensure we don't violate "at least one visible sheet" rule
+  for (var i = 0; i < states.length; i++) {
+    if (states[i].visible) {
+      states[i].sheet.showSheet();
+    }
+  }
+  for (var i = 0; i < states.length; i++) {
+    if (!states[i].visible) {
+      states[i].sheet.hideSheet();
+    }
   }
 }
 
