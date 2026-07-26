@@ -17,7 +17,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // 1. OFFLINE DATABASE ENGINE (Local Storage Fallback)
 function initLocalDb() {
-  const storedDb = localStorage.getItem('scot_event_db');
+  const storedDb = localStorage.getItem('scot_event_db_v2');
   const storedPins = localStorage.getItem('scot_event_pins');
   
   if (storedDb && storedPins) {
@@ -32,40 +32,54 @@ function initLocalDb() {
     'EVENT_CHAMP_CULTURAL': '5555'
   };
 
-  // Pre-seed Events
+  // Pre-seed Events parsed from Event Plan.xlsx
   const events = [
-    { eventName: "Independence Day Fest", description: "Annual national day celebrations & flag hoisting", startDate: "2026-08-15", endDate: "2026-08-15", venue: "Central Ground", status: "ACTIVE" },
-    { eventName: "Sports Tournament", description: "Society sports league for cricket & chess", startDate: "2026-09-01", endDate: "2026-09-05", venue: "Multi-court & Club", status: "PLANNED" },
-    { eventName: "Navratri Utsav", description: "Nine nights of garba & cultural dances", startDate: "2026-10-10", endDate: "2026-10-18", venue: "Central Plaza", status: "PLANNED" }
+    { eventName: "Carrom Tournament", description: "Indoor board games tournament for all age groups", startDate: "2026-08-09", endDate: "2026-08-09", venue: "Clubhouse", status: "ACTIVE" },
+    { eventName: "Table Tennis", description: "Singles and Doubles table tennis matches", startDate: "2026-08-23", endDate: "2026-08-23", venue: "Multi-court Area", status: "PLANNED" },
+    { eventName: "Dahi Handi", description: "Janmashtami handi breaking celebration", startDate: "2026-09-05", endDate: "2026-09-05", venue: "Central Ground", status: "PLANNED" },
+    { eventName: "Ganesh Festival", description: "Ganesh sthapana, dhol tasha, stage performances, and visarjan", startDate: "2026-09-14", endDate: "2026-09-18", venue: "Central Plaza & Stage Arena", status: "PLANNED" },
+    { eventName: "Dandiya Night", description: "Navratri garba & dandiya celebrations", startDate: "2026-10-17", endDate: "2026-10-17", venue: "Central Ground", status: "PLANNED" }
   ];
 
-  // Pre-seed Competitions
+  // Pre-seed Competitions associated with the calendar events
   const competitions = [
-    { eventName: "Independence Day Fest", competitionName: "Singing Showcase", category: "Individual", format: "Direct", status: "ACTIVE" },
-    { eventName: "Sports Tournament", competitionName: "Box Cricket League", category: "Wing-Based", format: "RoundRobin", status: "PLANNED" },
-    { eventName: "Sports Tournament", competitionName: "Chess Championship", category: "Individual", format: "Knockout", status: "PLANNED" }
-  ];
-
-  // Pre-seed Registrations
-  const registrations = [
-    { id: "reg-1", residentName: "Dave Miller", wing: "N", flat: "101", eventName: "Independence Day Fest", competitionName: "Singing Showcase", status: "PENDING" },
-    { id: "reg-2", residentName: "John Doe", wing: "N", flat: "102", eventName: "Independence Day Fest", competitionName: "Singing Showcase", status: "APPROVED" },
-    { id: "reg-3", residentName: "Jane Doe", wing: "N", flat: "102", eventName: "Independence Day Fest", competitionName: "Singing Showcase", status: "APPROVED" },
-    { id: "reg-4", residentName: "Bob Smith", wing: "O", flat: "201", eventName: "Independence Day Fest", competitionName: "Singing Showcase", status: "APPROVED" },
+    { eventName: "Carrom Tournament", competitionName: "Carrom - Singles Below 16", category: "Individual", format: "Knockout", status: "ACTIVE" },
+    { eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", category: "Individual", format: "Knockout", status: "ACTIVE" },
+    { eventName: "Carrom Tournament", competitionName: "Carrom - Singles Senior Citizens", category: "Individual", format: "Knockout", status: "ACTIVE" },
+    { eventName: "Carrom Tournament", competitionName: "Carrom - Doubles Above 16", category: "Individual", format: "Knockout", status: "ACTIVE" },
     
-    // Chess entries
-    { id: "reg-5", residentName: "Alice Cooper", wing: "P", flat: "301", eventName: "Sports Tournament", competitionName: "Chess Championship", status: "APPROVED" },
-    { id: "reg-6", residentName: "Vikas Patel", wing: "Q", flat: "402", eventName: "Sports Tournament", competitionName: "Chess Championship", status: "APPROVED" },
-    { id: "reg-7", residentName: "Amit Shah", wing: "R", flat: "501", eventName: "Sports Tournament", competitionName: "Chess Championship", status: "APPROVED" },
-    { id: "reg-8", residentName: "Karan Johar", wing: "S", flat: "603", eventName: "Sports Tournament", competitionName: "Chess Championship", status: "APPROVED" },
-    { id: "reg-9", residentName: "Rajesh Kumar", wing: "T", flat: "704", eventName: "Sports Tournament", competitionName: "Chess Championship", status: "APPROVED" },
-    { id: "reg-10", residentName: "Sunil Shetty", wing: "U", flat: "104", eventName: "Sports Tournament", competitionName: "Chess Championship", status: "APPROVED" }
+    { eventName: "Table Tennis", competitionName: "TT - Below 16", category: "Individual", format: "Knockout", status: "PLANNED" },
+    { eventName: "Table Tennis", competitionName: "TT - Above 16", category: "Individual", format: "Knockout", status: "PLANNED" },
+    { eventName: "Table Tennis", competitionName: "TT - Doubles Above 16", category: "Individual", format: "Knockout", status: "PLANNED" },
+
+    { eventName: "Ganesh Festival", competitionName: "Wing Wise Stage Performances", category: "Wing-Based", format: "Direct", status: "PLANNED" },
+    { eventName: "Ganesh Festival", competitionName: "Dumbtakshari", category: "Wing-Based", format: "RoundRobin", status: "PLANNED" },
+    { eventName: "Ganesh Festival", competitionName: "Ganesh Festival - Senior Citizen event", category: "Individual", format: "Direct", status: "PLANNED" },
+    { eventName: "Ganesh Festival", competitionName: "Ganesh Festival - Adults Stage Performances", category: "Individual", format: "Direct", status: "PLANNED" }
   ];
 
-  // Pre-seed Fixtures (Round 1 chess matches)
+  // Pre-seed Registrations for Carrom and Ganesh Festival
+  const registrations = [
+    // Carrom Singles Above 16 - 8 players (perfect power of 2 for knockout bracket demo)
+    { id: "reg-c1", residentName: "Rajesh Kumar", wing: "N", flat: "101", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
+    { id: "reg-c2", residentName: "Dave Miller", wing: "O", flat: "201", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
+    { id: "reg-c3", residentName: "John Doe", wing: "P", flat: "302", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
+    { id: "reg-c4", residentName: "Jane Doe", wing: "P", flat: "302", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
+    { id: "reg-c5", residentName: "Bob Smith", wing: "Q", flat: "404", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
+    { id: "reg-c6", residentName: "Alice Cooper", wing: "R", flat: "501", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
+    { id: "reg-c7", residentName: "Vikas Patel", wing: "S", flat: "602", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
+    { id: "reg-c8", residentName: "Amit Shah", wing: "T", flat: "703", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
+
+    // Pending registrations to showcase registration review screen
+    { id: "reg-p1", residentName: "Karan Johar", wing: "U", flat: "102", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Below 16", status: "PENDING" },
+    { id: "reg-p2", residentName: "Sunil Shetty", wing: "V", flat: "203", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Below 16", status: "PENDING" },
+    { id: "reg-p3", residentName: "Anil Kapoor", wing: "W", flat: "304", eventName: "Ganesh Festival", competitionName: "Ganesh Festival - Senior Citizen event", status: "PENDING" }
+  ];
+
+  // Pre-seed Fixtures
   const fixtures = [];
 
-  // Pre-seed Leaderboard
+  // Pre-seed Leaderboard points
   const leaderboard = [
     { wing: "N", points: 25 },
     { wing: "O", points: 15 },
@@ -87,7 +101,7 @@ function initLocalDb() {
     leaderboard
   };
 
-  localStorage.setItem('scot_event_db', JSON.stringify(localDb));
+  localStorage.setItem('scot_event_db_v2', JSON.stringify(localDb));
   localStorage.setItem('scot_event_pins', JSON.stringify(initialPins));
 }
 
