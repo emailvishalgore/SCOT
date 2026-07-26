@@ -23,8 +23,6 @@ function doGet(e) {
     return handleGetAdminData();
   } else if (action === "updateFlat") {
     return handleUpdateFlat(e.parameter);
-  } else if (action === "getPaymentReportPdf") {
-    return handleGetPaymentReportPdf();
   }
   
   return jsonResponse({ success: false, error: "Invalid action" });
@@ -171,29 +169,15 @@ function handleUpdateFlat(data) {
   var date = data.date;
   var amount = data.amount !== "" ? Number(data.amount) : "";
   
-  var foundIndex = -1;
-  
-  // Search if row exists, handling and cleaning duplicate rows
+  // Search if row exists
   for (var i = 1; i < values.length; i++) {
     if (values[i][0].toString().trim().toUpperCase() === wing && values[i][1].toString().trim().toUpperCase() === flat) {
-      if (foundIndex === -1) {
-        foundIndex = i;
-        sheet.getRange(i + 1, 3).setValue(paid);
-        sheet.getRange(i + 1, 4).setValue(mode);
-        sheet.getRange(i + 1, 5).setValue(date);
-        sheet.getRange(i + 1, 6).setValue(amount);
-      } else {
-        // Delete the duplicate row
-        sheet.deleteRow(i + 1);
-        // Adjust array since row was deleted
-        values.splice(i, 1);
-        i--;
-      }
+      sheet.getRange(i + 1, 3).setValue(paid);
+      sheet.getRange(i + 1, 4).setValue(mode);
+      sheet.getRange(i + 1, 5).setValue(date);
+      sheet.getRange(i + 1, 6).setValue(amount);
+      return jsonResponse({ success: true });
     }
-  }
-  
-  if (foundIndex !== -1) {
-    return jsonResponse({ success: true });
   }
   
   // If not found, append a new row
@@ -216,43 +200,3 @@ function jsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
-
-function handleGetPaymentReportPdf() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName("Payment_Report");
-  if (!sheet) {
-    return jsonResponse({ success: false, error: "Payment_Report sheet tab not found. Please create a sheet tab named 'Payment_Report'." });
-  }
-  
-  var ssId = ss.getId();
-  var sheetId = sheet.getSheetId();
-  
-  // Construct the export URL for only this specific sheet tab via gid
-  var url = "https://docs.google.com/spreadsheets/d/" + ssId + "/export" +
-            "?format=pdf" +
-            "&portrait=true" +
-            "&size=A4" +
-            "&gridlines=false" +
-            "&fitw=true" +
-            "&gid=" + sheetId;
-            
-  try {
-    var response = UrlFetchApp.fetch(url, {
-      headers: {
-        'Authorization': 'Bearer ' +  ScriptApp.getOAuthToken(),
-        'MuteHttpExceptions': true
-      }
-    });
-    
-    if (response.getResponseCode() !== 200) {
-      return jsonResponse({ success: false, error: "Failed to export PDF. HTTP code: " + response.getResponseCode() });
-    }
-    
-    var blob = response.getBlob();
-    var base64 = Utilities.base64Encode(blob.getBytes());
-    return jsonResponse({ success: true, pdfBase64: base64 });
-  } catch(e) {
-    return jsonResponse({ success: false, error: "Error exporting PDF: " + e.toString() });
-  }
-}
-

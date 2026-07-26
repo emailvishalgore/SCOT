@@ -581,33 +581,6 @@ function shareCommanderReportWhatsApp() {
 var adminAllFlats = [];
 var lastReportText = '';
 
-function deduplicateFlats(flats) {
-  if (!Array.isArray(flats)) return [];
-  const map = {};
-  flats.forEach(f => {
-    if (!f || !f.wing || !f.flat) return;
-    const key = `${f.wing.trim().toUpperCase()}_${f.flat.trim().toUpperCase()}`;
-    const existing = map[key];
-    if (!existing) {
-      map[key] = f;
-    } else {
-      const isNewPaid = f.paid === 'Yes';
-      const isExistingPaid = existing.paid === 'Yes';
-      if (isNewPaid && !isExistingPaid) {
-        map[key] = f;
-      } else if (isNewPaid && isExistingPaid) {
-        // Both are paid, prefer the one with an amount
-        const newAmt = parseFloat(f.amount) || 0;
-        const extAmt = parseFloat(existing.amount) || 0;
-        if (newAmt > extAmt) {
-          map[key] = f;
-        }
-      }
-    }
-  });
-  return Object.values(map);
-}
-
 async function loadAdminDashboard() {
   document.getElementById('admin-dashboard').classList.remove('hidden');
   const apiUrl = getApiUrl();
@@ -618,16 +591,16 @@ async function loadAdminDashboard() {
       const res = await fetch(`${apiUrl}?action=getAdminData`);
       const data = await res.json();
       showLoading(false);
-      adminAllFlats = deduplicateFlats(data.allFlats || []);
+      adminAllFlats = data.allFlats || [];
     } catch (err) {
       showLoading(false);
       alert("Error connecting to sheet. Loading consolidated offline data.");
       const storedDb = JSON.parse(localStorage.getItem('scot_wings_db'));
-      adminAllFlats = deduplicateFlats(storedDb ? storedDb.flats : []);
+      adminAllFlats = storedDb.flats;
     }
   } else {
     const storedDb = JSON.parse(localStorage.getItem('scot_wings_db'));
-    adminAllFlats = deduplicateFlats(storedDb ? storedDb.flats : []);
+    adminAllFlats = storedDb ? storedDb.flats : [];
   }
 
   renderAdminGrid(adminAllFlats);
@@ -794,150 +767,6 @@ function copyReport() {
 function shareReportWhatsApp() {
   const encoded = encodeURIComponent(lastReportText);
   window.open(`https://wa.me/?text=${encoded}`, '_blank');
-}
-
-// ── PAYMENT REPORT EXPORT FUNCTIONS (PDF & IMAGE) ──
-
-function base64ToBlob(base64, type = 'application/pdf') {
-  const binStr = window.atob(base64);
-  const len = binStr.length;
-  const arr = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    arr[i] = binStr.charCodeAt(i);
-  }
-  return new Blob([arr], { type });
-}
-
-function loadPdfJs() {
-  return new Promise((resolve, reject) => {
-    if (window.pdfjsLib) {
-      resolve();
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.2.146/pdf.min.js';
-    script.onload = () => {
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.2.146/pdf.worker.min.js';
-      resolve();
-    };
-    script.onerror = () => reject(new Error("Failed to load PDF.js library."));
-    document.head.appendChild(script);
-  });
-}
-
-var currentPdfBase64 = null;
-
-async function fetchPaymentReportPdf() {
-  const apiUrl = getApiUrl();
-  if (!apiUrl) {
-    alert("Please link to your Google Sheet in the Admin settings to export reports.");
-    return null;
-  }
-  
-  showLoading(true);
-  try {
-    const res = await fetch(`${apiUrl}?action=getPaymentReportPdf`);
-    const data = await res.json();
-    showLoading(false);
-    
-    if (data.success && data.pdfBase64) {
-      currentPdfBase64 = data.pdfBase64;
-      return data.pdfBase64;
-    } else {
-      alert(data.error || "Failed to generate report from 'Payment_Report' tab.");
-      return null;
-    }
-  } catch (err) {
-    showLoading(false);
-    alert("Connection error: " + err.toString());
-    return null;
-  }
-}
-
-async function downloadPaymentReportPdf() {
-  const pdfBase64 = await fetchPaymentReportPdf();
-  if (!pdfBase64) return;
-  
-  try {
-    const blob = base64ToBlob(pdfBase64, 'application/pdf');
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Payment_Report_${new Date().toISOString().split('T')[0]}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  } catch (err) {
-    alert("Error generating file download: " + err.toString());
-  }
-}
-
-async function generatePaymentReportImage() {
-  const pdfBase64 = await fetchPaymentReportPdf();
-  if (!pdfBase64) return;
-  
-  showLoading(true);
-  try {
-    await loadPdfJs();
-    const pdfData = atob(pdfBase64);
-    const loadingTask = pdfjsLib.getDocument({ data: pdfData });
-    const pdf = await loadingTask.promise;
-    
-    // Render first page
-    const page = await pdf.getPage(1);
-    const viewport = page.getViewport({ scale: 2.0 }); // Render at 2x resolution
-    
-    const canvas = document.getElementById('pdf-canvas');
-    const context = canvas.getContext('2d');
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
-    
-    const renderContext = {
-      canvasContext: context,
-      viewport: viewport
-    };
-    await page.render(renderContext).promise;
-    
-    // Show image preview area
-    document.getElementById('image-report-output').classList.remove('hidden');
-    showLoading(false);
-  } catch (err) {
-    showLoading(false);
-    alert("Error rendering image: " + err.toString());
-  }
-}
-
-function downloadGeneratedImage() {
-  const canvas = document.getElementById('pdf-canvas');
-  try {
-    const url = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Payment_Report_${new Date().toISOString().split('T')[0]}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  } catch (err) {
-    alert("Error downloading image: " + err.toString());
-  }
-}
-
-function copyGeneratedImageToClipboard() {
-  const canvas = document.getElementById('pdf-canvas');
-  canvas.toBlob(blob => {
-    try {
-      navigator.clipboard.write([
-        new ClipboardItem({ 'image/png': blob })
-      ]).then(() => {
-        alert("Image successfully copied to clipboard! You can paste it directly into WhatsApp.");
-      }).catch(err => {
-        alert("Clipboard copy failed. Please download the image manually instead.");
-      });
-    } catch (e) {
-      alert("Clipboard copy is not supported in this browser. Please download the image instead.");
-    }
-  }, 'image/png');
 }
 
 function showLoading(show) {
