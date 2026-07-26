@@ -235,7 +235,7 @@
       <!-- Admin Reports Section -->
       <div class="glass-card config-card">
         <div class="table-header">
-          <h3>📊 Reports</h3>
+          <h3>📊 Reports & Exports</h3>
         </div>
         <div class="report-buttons">
           <button class="btn btn-primary" onclick="generateWingSummaryReport()">
@@ -244,12 +244,33 @@
           <button class="btn btn-outline" onclick="generateDetailedReport()">
             📋 Detailed Flat-wise Report
           </button>
+          <button class="btn btn-secondary" onclick="downloadPaymentReportPdf()">
+            📄 Download PDF Report (Payment_Report)
+          </button>
+          <button class="btn btn-whatsapp" onclick="generatePaymentReportImage()">
+            🖼️ Generate Image Report (Payment_Report)
+          </button>
         </div>
         <div id="report-output" class="report-output hidden">
           <pre id="report-text"></pre>
           <div class="report-actions">
             <button class="btn btn-primary" onclick="copyReport()">📋 Copy to Clipboard</button>
             <button class="btn btn-outline" onclick="shareReportWhatsApp()">💬 Share on WhatsApp</button>
+          </div>
+        </div>
+        
+        <!-- Image Preview Area -->
+        <div id="image-report-output" class="report-output hidden" style="text-align: center;">
+          <h4 style="color: white; margin-bottom: 12px; font-family: 'Fredoka', sans-serif;">Generated Image Report Preview</h4>
+          <div style="background: white; padding: 10px; border-radius: 8px; display: inline-block; max-width: 100%; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <canvas id="pdf-canvas" style="max-width: 100%; height: auto; display: block; border: 1px solid #ddd;"></canvas>
+          </div>
+          <p style="color: var(--text-muted); font-size: 12px; margin-top: 10px; margin-bottom: 15px;">
+            Tip: You can copy this image to the clipboard and paste it directly into WhatsApp!
+          </p>
+          <div class="report-actions" style="justify-content: center;">
+            <button class="btn btn-primary" onclick="downloadGeneratedImage()">💾 Download Image</button>
+            <button class="btn btn-outline" onclick="copyGeneratedImageToClipboard()">📋 Copy Image to Clipboard</button>
           </div>
         </div>
       </div>
@@ -276,6 +297,6 @@
       });
     }
   </script>
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>
