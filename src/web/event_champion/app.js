@@ -19,8 +19,9 @@ window.addEventListener('DOMContentLoaded', () => {
 function initLocalDb() {
   // Clear any old stale database keys from previous loads
   localStorage.removeItem('scot_event_db');
+  localStorage.removeItem('scot_event_db_v3');
   
-  const storedDb = localStorage.getItem('scot_event_db_v2');
+  const storedDb = localStorage.getItem('scot_event_db_v3');
   const storedPins = localStorage.getItem('scot_event_pins');
   
   if (storedDb && storedPins) {
@@ -61,39 +62,24 @@ function initLocalDb() {
     { eventName: "Ganesh Festival", competitionName: "Ganesh Festival - Adults Stage Performances", category: "Individual", format: "Direct", status: "PLANNED" }
   ];
 
-  // Pre-seed Registrations for Carrom and Ganesh Festival
-  const registrations = [
-    // Carrom Singles Above 16 - 8 players (perfect power of 2 for knockout bracket demo)
-    { id: "reg-c1", residentName: "Rajesh Kumar", wing: "N", flat: "101", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
-    { id: "reg-c2", residentName: "Dave Miller", wing: "O", flat: "201", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
-    { id: "reg-c3", residentName: "John Doe", wing: "P", flat: "302", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
-    { id: "reg-c4", residentName: "Jane Doe", wing: "P", flat: "302", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
-    { id: "reg-c5", residentName: "Bob Smith", wing: "Q", flat: "404", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
-    { id: "reg-c6", residentName: "Alice Cooper", wing: "R", flat: "501", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
-    { id: "reg-c7", residentName: "Vikas Patel", wing: "S", flat: "602", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
-    { id: "reg-c8", residentName: "Amit Shah", wing: "T", flat: "703", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Above 16", status: "APPROVED" },
+  // Pre-seed Registrations (EMPTY array as requested to remove all dummy data)
+  const registrations = [];
 
-    // Pending registrations to showcase registration review screen
-    { id: "reg-p1", residentName: "Karan Johar", wing: "U", flat: "102", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Below 16", status: "PENDING" },
-    { id: "reg-p2", residentName: "Sunil Shetty", wing: "V", flat: "203", eventName: "Carrom Tournament", competitionName: "Carrom - Singles Below 16", status: "PENDING" },
-    { id: "reg-p3", residentName: "Anil Kapoor", wing: "W", flat: "304", eventName: "Ganesh Festival", competitionName: "Ganesh Festival - Senior Citizen event", status: "PENDING" }
-  ];
-
-  // Pre-seed Fixtures
+  // Pre-seed Fixtures (EMPTY)
   const fixtures = [];
 
   // Pre-seed Leaderboard points
   const leaderboard = [
-    { wing: "N", points: 25 },
-    { wing: "O", points: 15 },
-    { wing: "P", points: 30 },
-    { wing: "Q", points: 12 },
-    { wing: "R", points: 8 },
-    { wing: "S", points: 20 },
-    { wing: "T", points: 5 },
-    { wing: "U", points: 17 },
+    { wing: "N", points: 0 },
+    { wing: "O", points: 0 },
+    { wing: "P", points: 0 },
+    { wing: "Q", points: 0 },
+    { wing: "R", points: 0 },
+    { wing: "S", points: 0 },
+    { wing: "T", points: 0 },
+    { wing: "U", points: 0 },
     { wing: "V", points: 0 },
-    { wing: "W", points: 3 }
+    { wing: "W", points: 0 }
   ];
 
   localDb = {
@@ -104,7 +90,7 @@ function initLocalDb() {
     leaderboard
   };
 
-  localStorage.setItem('scot_event_db_v2', JSON.stringify(localDb));
+  localStorage.setItem('scot_event_db_v3', JSON.stringify(localDb));
   localStorage.setItem('scot_event_pins', JSON.stringify(initialPins));
 }
 
@@ -311,7 +297,7 @@ async function fetchData() {
           leaderboard: data.leaderboard || []
         };
         
-        localStorage.setItem('scot_event_db_v2', JSON.stringify(localDb));
+        localStorage.setItem('scot_event_db_v3', JSON.stringify(localDb));
         
         if (syncText) syncText.textContent = "Data synced with Google Sheet";
       } else {
@@ -339,7 +325,7 @@ function triggerSync(action, payload) {
   if (syncBanner) syncBanner.classList.add('saving');
   if (syncText) syncText.textContent = "Saving changes...";
   
-  localStorage.setItem('scot_event_db_v2', JSON.stringify(localDb));
+  localStorage.setItem('scot_event_db_v3', JSON.stringify(localDb));
 
   if (saveTimeout) clearTimeout(saveTimeout);
   
@@ -383,15 +369,15 @@ function renderCurrentRoute() {
   if (hash === '#/dashboard') {
     document.getElementById('nav-dashboard').classList.add('active');
     renderDashboard(container);
+  } else if (hash === '#/calendar') {
+    document.getElementById('nav-calendar').classList.add('active');
+    renderCalendar(container);
   } else if (hash === '#/registrations') {
     document.getElementById('nav-registrations').classList.add('active');
     renderRegistrations(container);
   } else if (hash === '#/fixtures') {
     document.getElementById('nav-fixtures').classList.add('active');
     renderFixtures(container);
-  } else if (hash === '#/competitions') {
-    document.getElementById('nav-competitions').classList.add('active');
-    renderCompetitions(container);
   } else if (hash === '#/more') {
     document.getElementById('nav-more').classList.add('active');
     renderMore(container);
@@ -534,7 +520,7 @@ function renderFixtures(container) {
   let fixturesHtml = '';
   
   if (compNames.length === 0) {
-    fixturesHtml = `<p style="text-align:center; padding:20px; color:var(--text-muted);">No tournament fixtures have been generated yet. Setup competitions first.</p>`;
+    fixturesHtml = `<p style="text-align:center; padding:20px; color:var(--text-muted);">No match fixtures scheduled yet. Setup competitions below and click 'Generate Brackets' to schedule.</p>`;
   } else {
     fixturesHtml = rounds.map(rNum => {
       const roundMatches = filteredFixtures.filter(f => f.round === rNum);
@@ -573,14 +559,46 @@ function renderFixtures(container) {
     }).join('');
   }
 
+  // Generate active competitions list with generate/view options
+  const activeCompsHtml = localDb.competitions.map(c => {
+    const hasFixtures = localDb.fixtures.some(f => f.competitionName === c.competitionName);
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed rgba(0,0,0,0.06);">
+        <div>
+          <span style="font-weight:700; font-size:13px; color:var(--text-main);">${c.competitionName}</span>
+          <div style="font-size:10px; color:var(--text-muted);">${c.eventName} &middot; Mode: <strong>${c.format}</strong></div>
+        </div>
+        <div>
+          ${!hasFixtures ? `
+            <button class="btn btn-primary btn-sm" style="padding:4px 8px; font-size:11px;" onclick="generateTournamentFixtures('${c.competitionName}')">Generate Brackets</button>
+          ` : `
+            <span style="font-size:11px; color:var(--success); font-weight:700; cursor:pointer;" onclick="filterFixtures('${c.competitionName}')">✓ Active (View)</span>
+          `}
+        </div>
+      </div>
+    `;
+  }).join('');
+
   container.innerHTML = `
-    <div class="fab-container">
-      <div class="title-wrap">
-        <h2>Match Fixtures & Brackets</h2>
-        <p>Record game results and tournament placements</p>
+    <!-- Active Tournaments Setup Panel -->
+    <div class="glass-card" style="padding:16px; margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid rgba(0,0,0,0.04); padding-bottom:8px;">
+        <h3 style="font-family:'Fredoka',sans-serif; font-size:15px; color:var(--primary);">Tournament Formats</h3>
+        <button class="btn btn-primary btn-sm" style="padding:6px 10px; font-size:12px;" onclick="openNewCompetitionModal()">+ Setup Comp</button>
+      </div>
+      <div style="max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:4px;">
+        ${activeCompsHtml || '<p style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px 0;">No active competitions setup.</p>'}
       </div>
     </div>
     
+    <!-- Match List Section -->
+    <div class="fab-container" style="margin-top:20px; margin-bottom:10px;">
+      <div class="title-wrap">
+        <h3 style="font-family:'Fredoka',sans-serif; font-size:16px;">Match Fixtures & Brackets</h3>
+        <p>Record game results and tournament placements</p>
+      </div>
+    </div>
+
     <div class="filter-chips-row">
       ${chipsHtml}
     </div>
@@ -599,7 +617,6 @@ function filterFixtures(name) {
 function openRecordScoreModal(matchId) {
   const match = localDb.fixtures.find(f => f.id === matchId);
   if (!match) return;
-  
   const content = `
     <form onsubmit="saveMatchScore(event, '${matchId}')">
       <div style="margin-bottom:12px;">
@@ -718,48 +735,54 @@ function awardLeaderboardPoints(winnerName, compName) {
   }
 }
 
-// --- 5.4 COMPETITIONS SETUP VIEW ---
-function renderCompetitions(container) {
-  const compItems = localDb.competitions.map(c => {
-    // Check if fixtures are generated for this competition
-    const hasFixtures = localDb.fixtures.some(f => f.competitionName === c.competitionName);
+// --- 5.4 CALENDAR VIEW (READ ONLY) ---
+function renderCalendar(container) {
+  const calendarEvents = [
+    { date: "9th Aug 2026", day: "Sunday", time: "9:30 AM", event: "Carrom Tournament", type: "Sports", wingWise: "No", mode: "Individual", categories: "Singles Below 16, Singles Above 16, Singles Senior Citizens, Doubles Above 16", points: "Winner: 30 pts, Runner: 20 pts", manager: "Sports Committee" },
+    { date: "23rd Aug 2026", day: "Sunday", time: "9:30 AM", event: "Table Tennis", type: "Sports", wingWise: "No", mode: "Individual", categories: "Below 16, Above 16, Doubles Above 16", points: "Winner: 30 pts, Runner: 20 pts", manager: "Sports Committee" },
+    { date: "5th Sep 2026", day: "Saturday", time: "7:00 PM", event: "Dahi Handi", type: "Cultural", wingWise: "N/A", mode: "N/A", categories: "General Celebration", points: "N/A", manager: "Cultural Committee" },
+    { date: "14th Sep 2026", day: "Monday", time: "1:00 PM", event: "Ganesh Sthapana & Dhol Tasha", type: "Cultural", wingWise: "N/A", mode: "N/A", categories: "Festival Inauguration", points: "N/A", manager: "Cultural Committee" },
+    { date: "14th Sep 2026", day: "Monday", time: "7:30 PM", event: "Wing Wise Performances", type: "Cultural", wingWise: "Yes", mode: "Group", categories: "Inter-wing Showcase", points: "1st: 100 pts, 2nd: 70 pts, 3rd: 50 pts", manager: "Cultural Committee" },
+    { date: "15th Sep 2026", day: "Tuesday", time: "11:00 AM", event: "Senior Citizen Event", type: "Cultural", wingWise: "No", mode: "Individual", categories: "Senior Citizens", points: "Winner: 30 pts, Runner: 20 pts", manager: "Senior Citizen Group" },
+    { date: "15th Sep 2026", day: "Tuesday", time: "7:30 PM", event: "Dumbtakshari", type: "Cultural", wingWise: "Yes", mode: "Group", categories: "Multiple Groups", points: "Winner: 50 pts, Runner: 30 pts", manager: "Cultural Committee" },
+    { date: "16th Sep 2026", day: "Wednesday", time: "5:00 PM", event: "Kids Event", type: "Cultural", wingWise: "No", mode: "Individual", categories: "Below 10 years", points: "N/A", manager: "Youth Club" },
+    { date: "16th Sep 2026", day: "Wednesday", time: "7:30 PM", event: "Kids Stage Performances", type: "Cultural", wingWise: "No", mode: "Both", categories: "Below 16 years", points: "N/A", manager: "Cultural Committee" },
+    { date: "17th Sep 2026", day: "Thursday", time: "7:30 PM", event: "Adults Stage Performances", type: "Cultural", wingWise: "No", mode: "Both", categories: "Above 16 years", points: "Winner: 50 pts, Runner: 30 pts", manager: "Cultural Committee" },
+    { date: "18th Sep 2026", day: "Friday", time: "3:00 PM", event: "Ganesh Visarjan & Dhol Tasha", type: "Cultural", wingWise: "N/A", mode: "N/A", categories: "Visarjan Procession", points: "N/A", manager: "Cultural Committee" },
+    { date: "18th Sep 2026", day: "Friday", time: "7:30 PM", event: "Gala Dinner", type: "Cultural", wingWise: "N/A", mode: "N/A", categories: "Community Feast", points: "N/A", manager: "Logistics Team" },
+    { date: "17th Oct 2026", day: "Saturday", time: "7:00 PM", event: "Dandiya Night", type: "Cultural", wingWise: "N/A", mode: "N/A", categories: "Garba & Dandiya Raas", points: "N/A", manager: "Cultural Committee" }
+  ];
+
+  const calendarItems = calendarEvents.map(e => {
+    const isSports = e.type === 'Sports';
+    const typeBadge = isSports ? 'badge-primary' : 'badge-success';
     
     return `
-      <div class="list-item-card">
+      <div class="list-item-card" style="border-left: 5px solid ${isSports ? 'var(--primary)' : 'var(--success)'};">
         <div class="list-item-header">
           <div>
-            <span class="list-item-title">${c.competitionName}</span>
-            <div class="list-item-subtitle">${c.eventName} &middot; Category: ${c.category}</div>
+            <span class="list-item-title" style="font-size: 16px;">${e.event}</span>
+            <div class="list-item-subtitle">${e.date} (${e.day}) at ${e.time}</div>
           </div>
-          <span class="badge badge-primary">${c.format}</span>
+          <span class="badge ${typeBadge}">${e.type}</span>
         </div>
-        
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; border-top:1px dashed rgba(0,0,0,0.04); padding-top:8px;">
-          <span style="font-size:11px; font-weight:700; color:var(--text-muted);">
-            Status: ${hasFixtures ? 'Fixtures Active' : 'Setup Required'}
-          </span>
-          
-          ${!hasFixtures ? `
-            <button class="btn btn-primary btn-sm" onclick="generateTournamentFixtures('${c.competitionName}')">Generate Brackets</button>
-          ` : `
-            <button class="btn btn-outline btn-sm" onclick="navigate('#/fixtures'); filterFixtures('${c.competitionName}');">View Fixtures</button>
-          `}
+        <div style="font-size: 12px; line-height: 1.6; color: var(--text-main); margin-top: 8px;">
+          <div>📍 Mode: <strong>${e.mode}</strong> &middot; Wing-Wise: <strong>${e.wingWise}</strong></div>
+          <div>👥 Categories: <span style="color: var(--text-muted);">${e.categories}</span></div>
+          <div>🏆 Points: <span class="num-mono" style="color: var(--accent-orange);">${e.points}</span></div>
+          <div>👤 Manager: <strong>${e.manager}</strong></div>
         </div>
       </div>
     `;
   }).join('');
 
   container.innerHTML = `
-    <div class="fab-container">
-      <div class="title-wrap">
-        <h2>Competition Formats</h2>
-        <p>Set tournament brackets and scoring rules</p>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="openNewCompetitionModal()">+ Setup Comp</button>
+    <div class="title-wrap" style="margin-bottom:16px;">
+      <h2>6-Month Event Calendar</h2>
+      <p>View-only schedule of society activities & championship points</p>
     </div>
-    
     <div style="margin-top:12px;">
-      ${compItems || '<p style="text-align:center; padding:20px; color:var(--text-muted);">No competitions configured.</p>'}
+      ${calendarItems}
     </div>
   `;
 }
