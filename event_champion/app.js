@@ -17,6 +17,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // 1. OFFLINE DATABASE ENGINE (Local Storage Fallback)
 function initLocalDb() {
+  // Clear any old stale database keys from previous loads
+  localStorage.removeItem('scot_event_db');
+  
   const storedDb = localStorage.getItem('scot_event_db_v2');
   const storedPins = localStorage.getItem('scot_event_pins');
   
@@ -282,6 +285,8 @@ function showAuthError(msg) {
   banner.classList.remove('hidden');
 }
 
+
+
 // 3. SYNCHRONIZATION ENGINE
 async function fetchData() {
   const apiUrl = getApiUrl();
@@ -297,20 +302,23 @@ async function fetchData() {
       const data = await res.json();
       
       if (data.success) {
-        localDb.events = data.events || localDb.events;
-        localDb.competitions = data.competitions || localDb.competitions;
-        localDb.registrations = data.registrations || localDb.registrations;
-        localDb.fixtures = data.fixtures || localDb.fixtures;
-        localDb.leaderboard = data.leaderboard || localDb.leaderboard;
+        // Strict overwrite using live sheet data. No dummy fallback!
+        localDb = {
+          events: data.events || [],
+          competitions: data.competitions || [],
+          registrations: data.registrations || [],
+          fixtures: data.fixtures || [],
+          leaderboard: data.leaderboard || []
+        };
         
-        localStorage.setItem('scot_event_db', JSON.stringify(localDb));
+        localStorage.setItem('scot_event_db_v2', JSON.stringify(localDb));
         
         if (syncText) syncText.textContent = "Data synced with Google Sheet";
       } else {
-        if (syncText) syncText.textContent = "Sync failed. Running offline.";
+        if (syncText) syncText.textContent = "Sync failed. Check sheet connection.";
       }
     } catch (err) {
-      if (syncText) syncText.textContent = "Offline. Local storage active.";
+      if (syncText) syncText.textContent = "Offline. Using cached sheet data.";
     }
   } else {
     if (syncText) syncText.textContent = "Offline Mode. Local storage active.";
@@ -331,7 +339,7 @@ function triggerSync(action, payload) {
   if (syncBanner) syncBanner.classList.add('saving');
   if (syncText) syncText.textContent = "Saving changes...";
   
-  localStorage.setItem('scot_event_db', JSON.stringify(localDb));
+  localStorage.setItem('scot_event_db_v2', JSON.stringify(localDb));
 
   if (saveTimeout) clearTimeout(saveTimeout);
   
