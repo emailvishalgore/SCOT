@@ -282,7 +282,7 @@ async function fetchFlatsData() {
       const res = await fetch(`${apiUrl}?action=getData&wing=${wing}`);
       const data = await res.json();
       showLoading(false);
-      const sheetFlats = data.flats || [];
+      const sheetFlats = deduplicateFlats(data.flats || []);
       
       // Auto-generate the 28 flats roster and merge matching sheet data
       const mergedFlats = [];
@@ -581,6 +581,33 @@ function shareCommanderReportWhatsApp() {
 var adminAllFlats = [];
 var lastReportText = '';
 
+function deduplicateFlats(flats) {
+  if (!Array.isArray(flats)) return [];
+  const map = {};
+  flats.forEach(f => {
+    if (!f || !f.wing || !f.flat) return;
+    const key = `${f.wing.trim().toUpperCase()}_${f.flat.trim().toUpperCase()}`;
+    const existing = map[key];
+    if (!existing) {
+      map[key] = f;
+    } else {
+      const isNewPaid = f.paid === 'Yes';
+      const isExistingPaid = existing.paid === 'Yes';
+      if (isNewPaid && !isExistingPaid) {
+        map[key] = f;
+      } else if (isNewPaid && isExistingPaid) {
+        // Both are paid, prefer the one with an amount
+        const newAmt = parseFloat(f.amount) || 0;
+        const extAmt = parseFloat(existing.amount) || 0;
+        if (newAmt > extAmt) {
+          map[key] = f;
+        }
+      }
+    }
+  });
+  return Object.values(map);
+}
+
 async function loadAdminDashboard() {
   document.getElementById('admin-dashboard').classList.remove('hidden');
   const apiUrl = getApiUrl();
@@ -591,16 +618,16 @@ async function loadAdminDashboard() {
       const res = await fetch(`${apiUrl}?action=getAdminData`);
       const data = await res.json();
       showLoading(false);
-      adminAllFlats = data.allFlats || [];
+      adminAllFlats = deduplicateFlats(data.allFlats || []);
     } catch (err) {
       showLoading(false);
       alert("Error connecting to sheet. Loading consolidated offline data.");
       const storedDb = JSON.parse(localStorage.getItem('scot_wings_db'));
-      adminAllFlats = storedDb.flats;
+      adminAllFlats = deduplicateFlats(storedDb ? storedDb.flats : []);
     }
   } else {
     const storedDb = JSON.parse(localStorage.getItem('scot_wings_db'));
-    adminAllFlats = storedDb ? storedDb.flats : [];
+    adminAllFlats = deduplicateFlats(storedDb ? storedDb.flats : []);
   }
 
   renderAdminGrid(adminAllFlats);
