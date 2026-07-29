@@ -109,21 +109,35 @@ function handleGetData(wing) {
   }
   var range = sheet.getDataRange();
   var values = range.getValues();
-  var flats = [];
+  var flatsMap = {};
   
   wing = wing.trim().toUpperCase();
   
   for (var i = 1; i < values.length; i++) {
-    if (values[i][0].toString().trim().toUpperCase() === wing) {
-      flats.push({
+    var rowWing = values[i][0].toString().trim().toUpperCase();
+    var rowFlat = values[i][1].toString().trim().toUpperCase();
+    if (rowWing === wing) {
+      var record = {
         wing: values[i][0].toString(),
         flat: values[i][1].toString(),
         paid: values[i][2].toString(),
         mode: values[i][3].toString(),
         date: formatDate(values[i][4]),
         amount: values[i][5] !== "" ? Number(values[i][5]) : ""
-      });
+      };
+      
+      // Deduplicate: Keep record with paid="Yes" or more details
+      var existing = flatsMap[rowFlat];
+      if (!existing || (record.paid === 'Yes' && existing.paid !== 'Yes') || (record.paid === 'Yes' && existing.paid === 'Yes' && record.amount !== '')) {
+        flatsMap[rowFlat] = record;
+      }
     }
+  }
+  
+  // Convert map back to list
+  var flats = [];
+  for (var key in flatsMap) {
+    flats.push(flatsMap[key]);
   }
   return jsonResponse({ success: true, flats: flats });
 }
@@ -136,53 +150,94 @@ function handleGetAdminData() {
   }
   var range = sheet.getDataRange();
   var values = range.getValues();
-  var allFlats = [];
+  var allFlatsMap = {};
   
   for (var i = 1; i < values.length; i++) {
-    allFlats.push({
+    var rowWing = values[i][0].toString().trim().toUpperCase();
+    var rowFlat = values[i][1].toString().trim().toUpperCase();
+    var key = rowWing + "_" + rowFlat;
+    
+    var record = {
       wing: values[i][0].toString(),
       flat: values[i][1].toString(),
       paid: values[i][2].toString(),
       mode: values[i][3].toString(),
       date: formatDate(values[i][4]),
       amount: values[i][5] !== "" ? Number(values[i][5]) : ""
-    });
+    };
+    
+    var existing = allFlatsMap[key];
+    if (!existing || (record.paid === 'Yes' && existing.paid !== 'Yes') || (record.paid === 'Yes' && existing.paid === 'Yes' && record.amount !== '')) {
+      allFlatsMap[key] = record;
+    }
+  }
+  
+  var allFlats = [];
+  for (var key in allFlatsMap) {
+    allFlats.push(allFlatsMap[key]);
   }
   return jsonResponse({ success: true, allFlats: allFlats });
 }
 
 function handleUpdateFlat(data) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(FLATS_DATA_SHEET);
-  if (!sheet) {
-    sheet = ss.insertSheet(FLATS_DATA_SHEET);
-    sheet.appendRow(["Wing", "Flat", "Paid", "PaymentMode", "PaidDate", "Amount"]);
+  var lock = LockService.getScriptLock();
+  try {
+    // Wait for up to 10 seconds to acquire lock
+    lock.waitLock(10000);
+  } catch (e) {
+    return jsonResponse({ success: false, error: "Could not obtain script lock: " + e.toString() });
   }
   
-  var range = sheet.getDataRange();
-  var values = range.getValues();
-  
-  var wing = data.wing.trim().toUpperCase();
-  var flat = data.flat.trim().toUpperCase();
-  var paid = data.paid;
-  var mode = data.mode;
-  var date = data.date;
-  var amount = data.amount !== "" ? Number(data.amount) : "";
-  
-  // Search if row exists
-  for (var i = 1; i < values.length; i++) {
-    if (values[i][0].toString().trim().toUpperCase() === wing && values[i][1].toString().trim().toUpperCase() === flat) {
-      sheet.getRange(i + 1, 3).setValue(paid);
-      sheet.getRange(i + 1, 4).setValue(mode);
-      sheet.getRange(i + 1, 5).setValue(date);
-      sheet.getRange(i + 1, 6).setValue(amount);
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(FLATS_DATA_SHEET);
+    if (!sheet) {
+      sheet = ss.insertSheet(FLATS_DATA_SHEET);
+      sheet.appendRow(["Wing", "Flat", "Paid", "PaymentMode", "PaidDate", "Amount"]);
+    }
+    
+    var range = sheet.getDataRange();
+    var values = range.getValues();
+    
+    var wing = data.wing.trim().toUpperCase();
+    var flat = data.flat.trim().toUpperCase();
+    var paid = data.paid;
+    var mode = data.mode;
+    var date = data.date;
+    var amount = data.amount !== "" ? Number(data.amount) : "";
+    
+    var foundIndex = -1;
+    
+    // Search if row exists, handling and cleaning duplicate rows
+    for (var i = 1; i < values.length; i++) {
+      if (values[i][0].toString().trim().toUpperCase() === wing && values[i][1].toString().trim().toUpperCase() === flat) {
+        if (foundIndex === -1) {
+          foundIndex = i;
+          sheet.getRange(i + 1, 3).setValue(paid);
+          sheet.getRange(i + 1, 4).setValue(mode);
+          sheet.getRange(i + 1, 5).setValue(date);
+          sheet.getRange(i + 1, 6).setValue(amount);
+        } else {
+          // Delete duplicate row
+          sheet.deleteRow(i + 1);
+          // Adjust array size and index
+          values.splice(i, 1);
+          i--;
+        }
+      }
+    }
+    
+    if (foundIndex !== -1) {
       return jsonResponse({ success: true });
     }
+    
+    // If not found, append new row
+    sheet.appendRow([wing, flat, paid, mode, date, amount]);
+    return jsonResponse({ success: true });
+  } finally {
+    // Always release the lock
+    lock.releaseLock();
   }
-  
-  // If not found, append a new row
-  sheet.appendRow([wing, flat, paid, mode, date, amount]);
-  return jsonResponse({ success: true });
 }
 
 function formatDate(dateVal) {
