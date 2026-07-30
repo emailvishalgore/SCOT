@@ -303,6 +303,8 @@ function handleDebugSheet() {
   }
   
   return jsonResponse({
+    spreadsheetName: ss.getName(),
+    spreadsheetUrl: ss.getUrl(),
     flatsDataRowsCount: values.length,
     r403Matches: r403Matches
   });
