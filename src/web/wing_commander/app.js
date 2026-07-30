@@ -276,6 +276,10 @@ async function fetchFlatsData() {
   const apiUrl = getApiUrl();
   const wing = activeSession.wing;
 
+  // Retrieve local database for offline-first merging
+  const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
+  const localFlats = storedDb.flats || [];
+
   if (apiUrl) {
     try {
       showLoading(true);
@@ -284,14 +288,23 @@ async function fetchFlatsData() {
       showLoading(false);
       const sheetFlats = deduplicateFlats(data.flats || []);
       
-      // Auto-generate the 28 flats roster and merge matching sheet data
+      // Auto-generate the 28 flats roster and merge matching sheet/local data
       const mergedFlats = [];
       for (let floor = 1; floor <= 7; floor++) {
         for (let num = 1; num <= 4; num++) {
           const flatNo = `${floor}0${num}`;
-          const match = sheetFlats.find(f => String(f.flat) === flatNo);
-          if (match) {
-            mergedFlats.push(match);
+          
+          // Check for unsynced local edit first
+          const localMatch = localFlats.find(f => f.wing === wing && String(f.flat) === flatNo);
+          const sheetMatch = sheetFlats.find(f => String(f.flat) === flatNo);
+          
+          if (localMatch && localMatch.synced === false) {
+            // Keep unsynced local data and trigger background sync retry
+            mergedFlats.push(localMatch);
+            triggerSync(localMatch);
+          } else if (sheetMatch) {
+            sheetMatch.synced = true; // remote data is naturally synced
+            mergedFlats.push(sheetMatch);
           } else {
             mergedFlats.push({
               wing: wing,
@@ -299,7 +312,8 @@ async function fetchFlatsData() {
               paid: 'No',
               mode: 'Select',
               date: '',
-              amount: ''
+              amount: '',
+              synced: true
             });
           }
         }
@@ -325,7 +339,8 @@ function loadLocalFlatsData(wing) {
       paid: f.paid || 'No',
       mode: f.mode || 'Select',
       date: f.date || '',
-      amount: f.amount !== undefined ? f.amount : ''
+      amount: f.amount !== undefined ? f.amount : '',
+      synced: f.synced !== undefined ? f.synced : true
     }));
 }
 
@@ -407,6 +422,9 @@ function updateFlatCell(flatNo, field, value) {
       flat[field] = value;
     }
     
+    // Mark as unsynced locally before sending
+    flat.synced = false;
+    
     // Save to local storage database immediately
     const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
     const idx = storedDb.flats.findIndex(f => f.wing === activeSession.wing && f.flat === flat.flat);
@@ -464,6 +482,15 @@ function triggerSync(flatRecord) {
         // Use mode: 'no-cors' to bypass CORS blocks on redirects. Google Apps Script executes the request successfully.
         await fetch(`${apiUrl}?${params.toString()}`, { mode: 'no-cors' });
         
+        // Mark as synced locally
+        flatRecord.synced = true;
+        const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
+        const idx = storedDb.flats.findIndex(f => f.wing === activeSession.wing && f.flat === flatRecord.flat);
+        if (idx !== -1) {
+          storedDb.flats[idx] = flatRecord;
+          localStorage.setItem('scot_wings_db', JSON.stringify(storedDb));
+        }
+
         // Only update banner to saved if there are no other pending syncs
         if (Object.keys(pendingSyncs).length === 0) {
           syncBanner.classList.remove('saving');
