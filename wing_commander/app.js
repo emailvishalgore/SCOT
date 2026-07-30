@@ -4,7 +4,7 @@
 let activeSession = null; // { wing: 'N', role: 'COMMANDER' }
 let flatsData = [];
 let localDb = null; // Offline database copy
-let saveTimeout = null;
+const pendingSyncs = {};
 
 // Initialize App
 window.addEventListener('DOMContentLoaded', () => {
@@ -440,9 +440,14 @@ function triggerSync(flatRecord) {
   syncBanner.classList.add('saving');
   syncText.textContent = "Syncing changes...";
 
-  if (saveTimeout) clearTimeout(saveTimeout);
+  const flatKey = flatRecord.flat;
+  if (pendingSyncs[flatKey]) {
+    clearTimeout(pendingSyncs[flatKey]);
+  }
   
-  saveTimeout = setTimeout(async () => {
+  pendingSyncs[flatKey] = setTimeout(async () => {
+    delete pendingSyncs[flatKey];
+    
     const apiUrl = getApiUrl();
     const params = new URLSearchParams({
       action: 'updateFlat',
@@ -459,15 +464,22 @@ function triggerSync(flatRecord) {
         // Use mode: 'no-cors' to bypass CORS blocks on redirects. Google Apps Script executes the request successfully.
         await fetch(`${apiUrl}?${params.toString()}`, { mode: 'no-cors' });
         
-        syncBanner.classList.remove('saving');
-        syncText.textContent = "All changes saved to Google Sheet";
+        // Only update banner to saved if there are no other pending syncs
+        if (Object.keys(pendingSyncs).length === 0) {
+          syncBanner.classList.remove('saving');
+          syncText.textContent = "All changes saved to Google Sheet";
+        }
       } catch (err) {
-        syncBanner.classList.remove('saving');
-        syncText.textContent = "Saved locally. Sync pending (reconnecting...)";
+        if (Object.keys(pendingSyncs).length === 0) {
+          syncBanner.classList.remove('saving');
+          syncText.textContent = "Saved locally. Sync pending (reconnecting...)";
+        }
       }
     } else {
-      syncBanner.classList.remove('saving');
-      syncText.textContent = "All changes saved locally";
+      if (Object.keys(pendingSyncs).length === 0) {
+        syncBanner.classList.remove('saving');
+        syncText.textContent = "All changes saved locally";
+      }
     }
   }, 1000); // Debounce to allow user to finish typing/picking
 }
