@@ -23,6 +23,8 @@ function doGet(e) {
     return handleGetAdminData();
   } else if (action === "updateFlat") {
     return handleUpdateFlat(e.parameter);
+  } else if (action === "debugSheet") {
+    return handleDebugSheet();
   }
   
   return jsonResponse({ success: false, error: "Invalid action" });
@@ -264,4 +266,17 @@ function formatDate(dateVal) {
 function jsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function handleDebugSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheets = ss.getSheets();
+  var sheetNames = sheets.map(function(s) { return s.getName(); });
+  var flatsDataSheet = ss.getSheetByName(FLATS_DATA_SHEET);
+  var flatsDataRows = flatsDataSheet ? flatsDataSheet.getDataRange().getValues() : [];
+  return jsonResponse({
+    sheetNames: sheetNames,
+    flatsDataRowsCount: flatsDataRows.length,
+    lastRows: flatsDataRows.slice(-15) // Show last 15 rows
+  });
 }
