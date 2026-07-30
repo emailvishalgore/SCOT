@@ -199,18 +199,28 @@ function handleUpdateFlat(data) {
     var range = sheet.getDataRange();
     var values = range.getValues();
     
-    var wing = data.wing.trim().toUpperCase();
-    var flat = data.flat.trim().toUpperCase();
-    var paid = data.paid;
-    var mode = data.mode;
-    var date = data.date;
-    var amount = data.amount !== "" ? Number(data.amount) : "";
+    // Validate inputs safely to avoid runtime NaN/undefined crashes
+    var wing = data.wing ? data.wing.toString().trim().toUpperCase() : "";
+    var flat = data.flat ? data.flat.toString().trim().toUpperCase() : "";
+    var paid = data.paid ? data.paid.toString().trim() : "";
+    var mode = data.mode ? data.mode.toString().trim() : "";
+    var date = data.date ? data.date.toString().trim() : "";
+    
+    var amount = "";
+    if (data.amount !== undefined && data.amount !== null && data.amount !== "") {
+      var parsed = Number(data.amount);
+      if (!isNaN(parsed)) {
+        amount = parsed;
+      }
+    }
     
     var foundIndex = -1;
     
-    // Search if row exists, handling and cleaning duplicate rows
+    // Search if row exists, handling and cleaning duplicate rows safely
     for (var i = 1; i < values.length; i++) {
-      if (values[i][0].toString().trim().toUpperCase() === wing && values[i][1].toString().trim().toUpperCase() === flat) {
+      var rowWing = values[i][0] ? values[i][0].toString().trim().toUpperCase() : "";
+      var rowFlat = values[i][1] ? values[i][1].toString().trim().toUpperCase() : "";
+      if (rowWing === wing && rowFlat === flat) {
         if (foundIndex === -1) {
           foundIndex = i;
           sheet.getRange(i + 1, 3).setValue(paid);
