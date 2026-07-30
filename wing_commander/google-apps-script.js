@@ -270,13 +270,21 @@ function jsonResponse(obj) {
 
 function handleDebugSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheets = ss.getSheets();
-  var sheetNames = sheets.map(function(s) { return s.getName(); });
-  var flatsDataSheet = ss.getSheetByName(FLATS_DATA_SHEET);
-  var flatsDataRows = flatsDataSheet ? flatsDataSheet.getDataRange().getValues() : [];
+  var sheet = ss.getSheetByName(FLATS_DATA_SHEET);
+  if (!sheet) return jsonResponse({ error: "No flats data sheet" });
+  var values = sheet.getDataRange().getValues();
+  
+  var r403Matches = [];
+  for (var i = 1; i < values.length; i++) {
+    var rowWing = values[i][0] ? values[i][0].toString().trim().toUpperCase() : "";
+    var rowFlat = values[i][1] ? values[i][1].toString().trim().toUpperCase() : "";
+    if (rowWing === "R" && rowFlat === "403") {
+      r403Matches.push({ rowIndex: i + 1, row: values[i] });
+    }
+  }
+  
   return jsonResponse({
-    sheetNames: sheetNames,
-    flatsDataRowsCount: flatsDataRows.length,
-    lastRows: flatsDataRows.slice(-15) // Show last 15 rows
+    flatsDataRowsCount: values.length,
+    r403Matches: r403Matches
   });
 }
