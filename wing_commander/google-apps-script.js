@@ -240,12 +240,31 @@ function handleUpdateFlat(data) {
     }
     
     if (foundIndex !== -1) {
-      return jsonResponse({ success: true });
+      return jsonResponse({
+        success: true,
+        action: "updated",
+        rowIndex: foundIndex + 1,
+        parsedWing: wing,
+        parsedFlat: flat,
+        parsedPaid: paid,
+        parsedMode: mode,
+        parsedDate: date,
+        parsedAmount: amount
+      });
     }
     
     // If not found, append new row
     sheet.appendRow([wing, flat, paid, mode, date, amount]);
-    return jsonResponse({ success: true });
+    return jsonResponse({
+      success: true,
+      action: "appended",
+      parsedWing: wing,
+      parsedFlat: flat,
+      parsedPaid: paid,
+      parsedMode: mode,
+      parsedDate: date,
+      parsedAmount: amount
+    });
   } finally {
     // Always release the lock
     lock.releaseLock();
