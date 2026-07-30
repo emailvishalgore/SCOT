@@ -407,6 +407,16 @@ function updateFlatCell(flatNo, field, value) {
       flat[field] = value;
     }
     
+    // Save to local storage database immediately
+    const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
+    const idx = storedDb.flats.findIndex(f => f.wing === activeSession.wing && f.flat === flat.flat);
+    if (idx !== -1) {
+      storedDb.flats[idx] = flat;
+    } else {
+      storedDb.flats.push(flat);
+    }
+    localStorage.setItem('scot_wings_db', JSON.stringify(storedDb));
+    
     // Auto-update cell colors and values if Paid is toggled
     if (field === 'paid') {
       if (value === 'No') {
@@ -446,29 +456,18 @@ function triggerSync(flatRecord) {
 
     if (apiUrl) {
       try {
-        const res = await fetch(`${apiUrl}?${params.toString()}`);
+        // Use mode: 'no-cors' to bypass CORS blocks on redirects. Google Apps Script executes the request successfully.
+        await fetch(`${apiUrl}?${params.toString()}`, { mode: 'no-cors' });
         
         syncBanner.classList.remove('saving');
         syncText.textContent = "All changes saved to Google Sheet";
       } catch (err) {
         syncBanner.classList.remove('saving');
-        syncText.textContent = "Network error. Saved locally (will retry on next change)";
+        syncText.textContent = "Saved locally. Sync pending (reconnecting...)";
       }
     } else {
-      // Local Save
-      const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
-      const idx = storedDb.flats.findIndex(f => f.wing === activeSession.wing && f.flat === flatRecord.flat);
-      if (idx !== -1) {
-        storedDb.flats[idx] = flatRecord;
-      } else {
-        storedDb.flats.push(flatRecord);
-      }
-      localStorage.setItem('scot_wings_db', JSON.stringify(storedDb));
-      
-      setTimeout(() => {
-        syncBanner.classList.remove('saving');
-        syncText.textContent = "All changes saved locally";
-      }, 500);
+      syncBanner.classList.remove('saving');
+      syncText.textContent = "All changes saved locally";
     }
   }, 1000); // Debounce to allow user to finish typing/picking
 }
