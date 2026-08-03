@@ -636,15 +636,39 @@ var adminAllFlats = [];
 var lastReportText = '';
 
 function deduplicateFlats(flats) {
-  if (!Array.isArray(flats)) return [];
+  if (!Array.isArray(flats)) flats = [];
   const map = {};
-  // Keep last occurrence (most recent) for each wing+flat key
   flats.forEach(f => {
     if (!f || !f.wing || !f.flat) return;
     const key = `${f.wing.trim().toUpperCase()}_${f.flat.trim().toUpperCase()}`;
-    map[key] = f; // Always overwrite with latest entry
+    map[key] = f;
   });
-  return Object.values(map);
+
+  const wings = ['N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'];
+  const fullList = [];
+
+  wings.forEach(wing => {
+    for (let floor = 1; floor <= 7; floor++) {
+      for (let num = 1; num <= 4; num++) {
+        const flatNo = `${floor}0${num}`;
+        const key = `${wing}_${flatNo}`;
+        if (map[key]) {
+          fullList.push(map[key]);
+        } else {
+          fullList.push({
+            wing: wing,
+            flat: flatNo,
+            paid: 'No',
+            mode: 'Select',
+            date: '',
+            amount: ''
+          });
+        }
+      }
+    }
+  });
+
+  return fullList;
 }
 
 async function loadAdminDashboard() {
