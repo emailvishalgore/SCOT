@@ -596,8 +596,8 @@ function generateFlatStatusSummary() {
 
   // Sort flats numerically
   const sorted = flatsData.slice().sort((a, b) => {
-    const numA = parseInt(a.flat.replace(/\D/g, '')) || 0;
-    const numB = parseInt(b.flat.replace(/\D/g, '')) || 0;
+    const numA = parseInt(String(a.flat).replace(/\D/g, '')) || 0;
+    const numB = parseInt(String(b.flat).replace(/\D/g, '')) || 0;
     return numA - numB;
   });
 
@@ -639,8 +639,11 @@ function deduplicateFlats(flats) {
   if (!Array.isArray(flats)) flats = [];
   const map = {};
   flats.forEach(f => {
-    if (!f || !f.wing || !f.flat) return;
-    const key = `${f.wing.trim().toUpperCase()}_${f.flat.trim().toUpperCase()}`;
+    if (!f || f.wing === undefined || f.wing === null || f.flat === undefined || f.flat === null) return;
+    const wStr = String(f.wing).trim().toUpperCase();
+    const fStr = String(f.flat).trim().toUpperCase();
+    if (!wStr || !fStr) return;
+    const key = `${wStr}_${fStr}`;
     map[key] = f;
   });
 
@@ -832,8 +835,8 @@ function generateDetailedReport() {
 
     // Sort flats numerically
     const sorted = wingFlats.slice().sort((a, b) => {
-      const numA = parseInt(a.flat.replace(/\D/g, '')) || 0;
-      const numB = parseInt(b.flat.replace(/\D/g, '')) || 0;
+      const numA = parseInt(String(a.flat).replace(/\D/g, '')) || 0;
+      const numB = parseInt(String(b.flat).replace(/\D/g, '')) || 0;
       return numA - numB;
     });
 
@@ -871,8 +874,8 @@ function generateOutstandingReport() {
   wings.forEach(wing => {
     const wingFlats = adminAllFlats.filter(f => f.wing && f.wing.toUpperCase() === wing);
     const outstanding = wingFlats.filter(f => (f.paid || '').toString().trim() !== 'Yes').sort((a, b) => {
-      const numA = parseInt(a.flat.replace(/\D/g, '')) || 0;
-      const numB = parseInt(b.flat.replace(/\D/g, '')) || 0;
+      const numA = parseInt(String(a.flat).replace(/\D/g, '')) || 0;
+      const numB = parseInt(String(b.flat).replace(/\D/g, '')) || 0;
       return numA - numB;
     });
 
