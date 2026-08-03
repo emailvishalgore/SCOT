@@ -128,11 +128,8 @@ function handleGetData(wing) {
         amount: values[i][5] !== "" ? Number(values[i][5]) : ""
       };
       
-      // Deduplicate: Keep record with paid="Yes" or more details
-      var existing = flatsMap[rowFlat];
-      if (!existing || (record.paid === 'Yes' && existing.paid !== 'Yes') || (record.paid === 'Yes' && existing.paid === 'Yes' && record.amount !== '')) {
-        flatsMap[rowFlat] = record;
-      }
+      // Deduplicate: Keep the last record
+      flatsMap[rowFlat] = record;
     }
   }
   
@@ -168,10 +165,8 @@ function handleGetAdminData() {
       amount: values[i][5] !== "" ? Number(values[i][5]) : ""
     };
     
-    var existing = allFlatsMap[key];
-    if (!existing || (record.paid === 'Yes' && existing.paid !== 'Yes') || (record.paid === 'Yes' && existing.paid === 'Yes' && record.amount !== '')) {
-      allFlatsMap[key] = record;
-    }
+    // Deduplicate: Keep the last record
+    allFlatsMap[key] = record;
   }
   
   var allFlats = [];
