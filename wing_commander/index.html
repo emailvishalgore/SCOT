@@ -118,6 +118,20 @@
             <h2 id="metric-pending">28</h2>
           </div>
         </div>
+        <div class="metric-card glass-card">
+          <div class="metric-icon">🏚️</div>
+          <div class="metric-info">
+            <span class="metric-label">VACANT</span>
+            <h2 id="metric-vacant">0</h2>
+          </div>
+        </div>
+        <div class="metric-card glass-card">
+          <div class="metric-icon">🚫</div>
+          <div class="metric-info">
+            <span class="metric-label">NOT PAYING</span>
+            <h2 id="metric-notpaying">0</h2>
+          </div>
+        </div>
         <div class="metric-card glass-card full-width-metric">
           <div class="progress-info">
             <span class="metric-label">COLLECTION PROGRESS</span>
@@ -244,6 +258,9 @@
           <button class="btn btn-outline" onclick="generateDetailedReport()">
             📋 Detailed Flat-wise Report
           </button>
+          <button class="btn btn-outline" onclick="generateOutstandingReport()" style="border-color: #f59e0b; color: #f59e0b;">
+            ⚠️ Outstanding Flats Report
+          </button>
         </div>
         <div id="report-output" class="report-output hidden">
           <pre id="report-text"></pre>
@@ -276,6 +293,6 @@
       });
     }
   </script>
-  <script src="app.js?v=19"></script>
+  <script src="app.js?v=20"></script>
 </body>
 </html>

@@ -355,18 +355,20 @@ function renderFlatsRoster() {
   flatsData.forEach(row => {
     const tr = document.createElement('tr');
     
-    // Highlight flat cell
+    // Highlight flat cell based on status
     const isPaid = row.paid === 'Yes';
-    const cellClass = isPaid ? 'status-yes' : 'status-no';
+    const statusClass = row.paid === 'Yes' ? 'status-yes' : row.paid === 'Vacant' ? 'status-vacant' : row.paid === 'Not paying' ? 'status-notpaying' : 'status-no';
     const disableEdit = isReadOnly || !isPaid;
     const disableAll = isReadOnly;
 
     tr.innerHTML = `
       <td class="flat-cell" data-label="Flat">${row.flat}</td>
       <td data-label="Paid?">
-        <select class="table-select ${cellClass}" ${disableAll ? 'disabled' : ''} onchange="updateFlatCell('${row.flat}', 'paid', this.value)">
+        <select class="table-select ${statusClass}" ${disableAll ? 'disabled' : ''} onchange="updateFlatCell('${row.flat}', 'paid', this.value)">
           <option value="Yes" ${row.paid === 'Yes' ? 'selected' : ''}>Yes (Paid)</option>
           <option value="No" ${row.paid === 'No' ? 'selected' : ''}>No (Pending)</option>
+          <option value="Vacant" ${row.paid === 'Vacant' ? 'selected' : ''}>Vacant</option>
+          <option value="Not paying" ${row.paid === 'Not paying' ? 'selected' : ''}>Not Paying</option>
         </select>
       </td>
       <td data-label="Amount (₹)">
@@ -393,7 +395,9 @@ function renderFlatsRoster() {
 function recalculateSummary() {
   const totalFlats = 28;
   const paidCount = flatsData.filter(f => f.paid === 'Yes').length;
-  const unpaidCount = totalFlats - paidCount;
+  const unpaidCount = flatsData.filter(f => f.paid === 'No' || !f.paid).length;
+  const vacantCount = flatsData.filter(f => f.paid === 'Vacant').length;
+  const notPayingCount = flatsData.filter(f => f.paid === 'Not paying').length;
   
   const totalCollected = flatsData
     .filter(f => f.paid === 'Yes')
@@ -405,6 +409,12 @@ function recalculateSummary() {
   document.getElementById('metric-progress-pct').textContent = `${progressPct}%`;
   document.getElementById('metric-progress-bar').style.width = `${progressPct}%`;
   document.getElementById('metric-summary-text').textContent = `${paidCount} of 28 flats paid`;
+  
+  // Update breakdown counters if they exist
+  const vacantEl = document.getElementById('metric-vacant');
+  const notPayingEl = document.getElementById('metric-notpaying');
+  if (vacantEl) vacantEl.textContent = `${vacantCount}`;
+  if (notPayingEl) notPayingEl.textContent = `${notPayingCount}`;
   
   const tableTotal = document.getElementById('table-total-amount');
   if (tableTotal) {
@@ -437,7 +447,7 @@ function updateFlatCell(flatNo, field, value) {
     
     // Auto-update cell colors and values if Paid is toggled
     if (field === 'paid') {
-      if (value === 'No') {
+      if (value !== 'Yes') {
         flat.amount = '';
         flat.mode = 'Select';
         flat.date = '';
@@ -516,7 +526,9 @@ function shareWhatsAppSummary() {
   const wing = activeSession.wing;
   const totalFlats = 28;
   const paidCount = flatsData.filter(f => f.paid === 'Yes').length;
-  const pendingCount = totalFlats - paidCount;
+  const unpaidCount = flatsData.filter(f => f.paid === 'No' || !f.paid).length;
+  const vacantCount = flatsData.filter(f => f.paid === 'Vacant').length;
+  const notPayingCount = flatsData.filter(f => f.paid === 'Not paying').length;
   const totalCollected = flatsData
     .filter(f => f.paid === 'Yes')
     .reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
@@ -538,7 +550,9 @@ function shareWhatsAppSummary() {
 📅 Date: ${dateStr}
 
 ✅ *Paid Units:* ${paidCount} of 28 (${pct}%)
-⏳ *Pending Units:* ${pendingCount} of 28
+⏳ *Pending Units:* ${unpaidCount} of 28
+🏚️ *Vacant Units:* ${vacantCount}
+🚫 *Not Paying:* ${notPayingCount}
 
 💰 *Total Collected:* ₹${totalCollected.toLocaleString('en-IN')}
 
@@ -569,13 +583,15 @@ function generateFlatStatusSummary() {
   const wing = activeSession.wing;
   const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   const paidCount = flatsData.filter(f => f.paid === 'Yes').length;
-  const unpaidCount = 28 - paidCount;
+  const unpaidCount = flatsData.filter(f => f.paid === 'No' || !f.paid).length;
+  const vacantCount = flatsData.filter(f => f.paid === 'Vacant').length;
+  const notPayingCount = flatsData.filter(f => f.paid === 'Not paying').length;
   const pct = Math.round((paidCount / 28) * 100);
 
   let lines = [];
   lines.push(`*🏠 SCOT TOPAZ Wing ${wing} — Flat Status*`);
   lines.push(`📅 ${dateStr}`);
-  lines.push(`✅ Paid: ${paidCount} | ⬜ Unpaid: ${unpaidCount} | ${pct}%`);
+  lines.push(`✅ Paid: ${paidCount} | ❌ Unpaid: ${unpaidCount} | 🏚️ Vacant: ${vacantCount} | 🚫 Not Paying: ${notPayingCount} | ${pct}%`);
   lines.push(``);
 
   // Sort flats numerically
@@ -586,7 +602,7 @@ function generateFlatStatusSummary() {
   });
 
   sorted.forEach(f => {
-    const icon = f.paid === 'Yes' ? '✅' : '⬜';
+    const icon = f.paid === 'Yes' ? '✅' : f.paid === 'Vacant' ? '🏚️' : f.paid === 'Not paying' ? '🚫' : '❌';
     lines.push(`${icon} Flat ${f.flat}`);
   });
 
@@ -622,26 +638,11 @@ var lastReportText = '';
 function deduplicateFlats(flats) {
   if (!Array.isArray(flats)) return [];
   const map = {};
+  // Keep last occurrence (most recent) for each wing+flat key
   flats.forEach(f => {
     if (!f || !f.wing || !f.flat) return;
     const key = `${f.wing.trim().toUpperCase()}_${f.flat.trim().toUpperCase()}`;
-    const existing = map[key];
-    if (!existing) {
-      map[key] = f;
-    } else {
-      const isNewPaid = f.paid === 'Yes';
-      const isExistingPaid = existing.paid === 'Yes';
-      if (isNewPaid && !isExistingPaid) {
-        map[key] = f;
-      } else if (isNewPaid && isExistingPaid) {
-        // Both are paid, prefer the one with an amount
-        const newAmt = parseFloat(f.amount) || 0;
-        const extAmt = parseFloat(existing.amount) || 0;
-        if (newAmt > extAmt) {
-          map[key] = f;
-        }
-      }
-    }
+    map[key] = f; // Always overwrite with latest entry
   });
   return Object.values(map);
 }
@@ -683,6 +684,9 @@ function renderAdminGrid(allFlats) {
     const wingFlats = allFlats.filter(f => f.wing === wing);
     const totalFlats = 28;
     const paidCount = wingFlats.filter(f => f.paid === 'Yes').length;
+    const unpaidCount = wingFlats.filter(f => f.paid === 'No' || !f.paid).length;
+    const vacantCount = wingFlats.filter(f => f.paid === 'Vacant').length;
+    const notPayingCount = wingFlats.filter(f => f.paid === 'Not paying').length;
     const collected = wingFlats
       .filter(f => f.paid === 'Yes')
       .reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
@@ -690,6 +694,13 @@ function renderAdminGrid(allFlats) {
 
     grandTotal += collected;
     grandPaidRatio += paidCount;
+
+    // Build status breakdown text
+    const statusParts = [];
+    if (unpaidCount > 0) statusParts.push(`❌ ${unpaidCount} Unpaid`);
+    if (vacantCount > 0) statusParts.push(`🏚️ ${vacantCount} Vacant`);
+    if (notPayingCount > 0) statusParts.push(`🚫 ${notPayingCount} Not Paying`);
+    const statusBreakdown = statusParts.length > 0 ? statusParts.join(' · ') : 'All Paid! ✅';
 
     // Create wing status card
     const card = document.createElement('div');
@@ -716,6 +727,7 @@ function renderAdminGrid(allFlats) {
           <strong>${paidCount} / 28 paid</strong>
         </div>
       </div>
+      <div class="wing-status-breakdown">${statusBreakdown}</div>
       <div class="progress-track" style="margin-top: 8px;">
         <div class="progress-bar" style="width: ${progressPct}%"></div>
       </div>
@@ -746,13 +758,19 @@ function generateWingSummaryReport() {
   wings.forEach(wing => {
     const wingFlats = adminAllFlats.filter(f => f.wing.toUpperCase() === wing);
     const paidCount = wingFlats.filter(f => f.paid === 'Yes').length;
+    const unpaidCount = wingFlats.filter(f => f.paid === 'No' || !f.paid).length;
+    const vacantCount = wingFlats.filter(f => f.paid === 'Vacant').length;
+    const notPayingCount = wingFlats.filter(f => f.paid === 'Not paying').length;
     const collected = wingFlats.filter(f => f.paid === 'Yes').reduce((s, f) => s + (parseFloat(f.amount) || 0), 0);
     const pct = Math.round((paidCount / 28) * 100);
     grandCollected += collected;
     grandPaid += paidCount;
 
     const bar = pct >= 75 ? '🟢' : pct >= 40 ? '🟡' : '🔴';
-    lines.push(`${bar} *Wing ${wing}:* ${paidCount}/28 paid (${pct}%) — ₹${collected.toLocaleString('en-IN')}`);
+    let statusDetail = `${paidCount}/28 paid (${pct}%)`;
+    if (vacantCount > 0) statusDetail += ` | 🏚️${vacantCount} vacant`;
+    if (notPayingCount > 0) statusDetail += ` | 🚫${notPayingCount} not paying`;
+    lines.push(`${bar} *Wing ${wing}:* ${statusDetail} — ₹${collected.toLocaleString('en-IN')}`);
   });
 
   lines.push(``);
@@ -796,7 +814,7 @@ function generateDetailedReport() {
     });
 
     sorted.forEach(f => {
-      const icon = f.paid === 'Yes' ? '✅' : '⬜';
+      const icon = f.paid === 'Yes' ? '✅' : f.paid === 'Vacant' ? '🏚️' : f.paid === 'Not paying' ? '🚫' : '❌';
       const amt = f.paid === 'Yes' && f.amount ? ` ₹${parseFloat(f.amount).toLocaleString('en-IN')}` : '';
       const mode = f.paid === 'Yes' && f.mode && f.mode !== 'Select' ? ` (${f.mode})` : '';
       const date = f.paid === 'Yes' && f.date ? ` ${f.date}` : '';
@@ -808,6 +826,58 @@ function generateDetailedReport() {
   lines.push(`━━━━━━━━━━━━━━━━━━━━`);
   lines.push(`💰 *Grand Total:* ₹${grandCollected.toLocaleString('en-IN')}`);
   lines.push(`📈 *Overall:* ${grandPaid}/280 flats paid`);
+
+  lastReportText = lines.join('\n');
+  showReport(lastReportText);
+}
+
+function generateOutstandingReport() {
+  const wings = ['N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'];
+  const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  let totalUnpaid = 0, totalVacant = 0, totalNotPaying = 0;
+
+  let lines = [];
+  lines.push(`*⚠️ SCOT TOPAZ — Outstanding Flats Report*`);
+  lines.push(`📅 Date: ${dateStr}`);
+  lines.push(``);
+  lines.push(`_Shows only flats that are Unpaid, Vacant, or Not Paying_`);
+
+  wings.forEach(wing => {
+    const wingFlats = adminAllFlats.filter(f => f.wing.toUpperCase() === wing);
+    const outstanding = wingFlats.filter(f => f.paid !== 'Yes').sort((a, b) => {
+      const numA = parseInt(a.flat.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.flat.replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
+
+    if (outstanding.length === 0) return;
+
+    const unpaid = outstanding.filter(f => f.paid === 'No' || !f.paid).length;
+    const vacant = outstanding.filter(f => f.paid === 'Vacant').length;
+    const notPaying = outstanding.filter(f => f.paid === 'Not paying').length;
+    totalUnpaid += unpaid;
+    totalVacant += vacant;
+    totalNotPaying += notPaying;
+
+    lines.push(``);
+    lines.push(`━━━ *Wing ${wing}* (${outstanding.length} outstanding) ━━━`);
+
+    outstanding.forEach(f => {
+      const icon = f.paid === 'Vacant' ? '🏚️' : f.paid === 'Not paying' ? '🚫' : '❌';
+      const label = f.paid === 'Vacant' ? 'Vacant' : f.paid === 'Not paying' ? 'Not Paying' : 'Unpaid';
+      lines.push(`${icon} Flat ${f.flat} — ${label}`);
+    });
+  });
+
+  const totalOutstanding = totalUnpaid + totalVacant + totalNotPaying;
+  lines.push(``);
+  lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+  lines.push(`📊 *Summary:*`);
+  lines.push(`❌ Unpaid: ${totalUnpaid} flats`);
+  lines.push(`🏚️ Vacant: ${totalVacant} flats`);
+  lines.push(`🚫 Not Paying: ${totalNotPaying} flats`);
+  lines.push(`⚠️ *Total Outstanding: ${totalOutstanding} of 280 flats*`);
 
   lastReportText = lines.join('\n');
   showReport(lastReportText);
