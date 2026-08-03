@@ -295,8 +295,8 @@ async function fetchFlatsData() {
           const flatNo = `${floor}0${num}`;
           
           // Check for unsynced local edit first
-          const localMatch = localFlats.find(f => f.wing === wing && String(f.flat) === flatNo);
-          const sheetMatch = sheetFlats.find(f => String(f.flat) === flatNo);
+          const localMatch = localFlats.find(f => (f.wing || '').toString().trim().toUpperCase() === wing.toUpperCase() && String(f.flat) === flatNo);
+          const sheetMatch = sheetFlats.find(f => (f.wing || '').toString().trim().toUpperCase() === wing.toUpperCase() && String(f.flat) === flatNo);
           
           if (localMatch && localMatch.synced === false) {
             // Keep unsynced local data and trigger background sync retry
@@ -332,7 +332,7 @@ async function fetchFlatsData() {
 function loadLocalFlatsData(wing) {
   const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
   flatsData = (storedDb.flats || [])
-    .filter(f => f.wing === wing)
+    .filter(f => (f.wing || '').toString().trim().toUpperCase() === wing.toUpperCase())
     .map(f => ({
       wing: f.wing,
       flat: f.flat,
@@ -705,7 +705,7 @@ function renderAdminGrid(allFlats) {
   let grandPaidRatio = 0;
 
   wings.forEach(wing => {
-    const wingFlats = allFlats.filter(f => f.wing === wing);
+    const wingFlats = allFlats.filter(f => f.wing && f.wing.trim().toUpperCase() === wing);
     const totalFlats = 28;
     const paidCount = wingFlats.filter(f => f.paid === 'Yes').length;
     const unpaidCount = wingFlats.filter(f => f.paid === 'No' || !f.paid).length;
@@ -780,7 +780,7 @@ function generateWingSummaryReport() {
   lines.push(``);
 
   wings.forEach(wing => {
-    const wingFlats = adminAllFlats.filter(f => f.wing.toUpperCase() === wing);
+    const wingFlats = adminAllFlats.filter(f => f.wing && f.wing.trim().toUpperCase() === wing);
     const paidCount = wingFlats.filter(f => f.paid === 'Yes').length;
     const unpaidCount = wingFlats.filter(f => f.paid === 'No' || !f.paid).length;
     const vacantCount = wingFlats.filter(f => f.paid === 'Vacant').length;
@@ -819,7 +819,7 @@ function generateDetailedReport() {
   lines.push(`📅 Date: ${dateStr}`);
 
   wings.forEach(wing => {
-    const wingFlats = adminAllFlats.filter(f => f.wing.toUpperCase() === wing);
+    const wingFlats = adminAllFlats.filter(f => f.wing && f.wing.trim().toUpperCase() === wing);
     if (wingFlats.length === 0) return;
 
     const paidCount = wingFlats.filter(f => f.paid === 'Yes').length;
