@@ -15,6 +15,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // 1. OFFLINE DATABASE ENGINE (Local Storage Fallback)
 function initLocalDb() {
+  // Automatic cache buster: clear stale local storage from early testing
+  const CURRENT_DB_VER = 'v25_fresh_sync';
+  if (localStorage.getItem('scot_db_ver') !== CURRENT_DB_VER) {
+    localStorage.removeItem('scot_wings_db');
+    localStorage.setItem('scot_db_ver', CURRENT_DB_VER);
+  }
+
   // Clear out old pre-populated pins from early testing
   const storedPins = localStorage.getItem('scot_wings_pins');
   if (storedPins) {
@@ -298,13 +305,16 @@ async function fetchFlatsData() {
           const localMatch = localFlats.find(f => (f.wing || '').toString().trim().toUpperCase() === wing.toUpperCase() && String(f.flat) === flatNo);
           const sheetMatch = sheetFlats.find(f => (f.wing || '').toString().trim().toUpperCase() === wing.toUpperCase() && String(f.flat) === flatNo);
           
-          if (localMatch && localMatch.synced === false) {
-            // Keep unsynced local data and trigger background sync retry
+          const isPendingLocalEdit = pendingSyncs[flatNo] !== undefined;
+
+          if (isPendingLocalEdit && localMatch) {
             mergedFlats.push(localMatch);
-            triggerSync(localMatch);
           } else if (sheetMatch) {
             sheetMatch.synced = true; // remote data is naturally synced
             mergedFlats.push(sheetMatch);
+          } else if (localMatch && localMatch.synced === false && localMatch.paid && localMatch.paid !== 'No') {
+            mergedFlats.push(localMatch);
+            triggerSync(localMatch);
           } else {
             mergedFlats.push({
               wing: wing,
@@ -319,6 +329,14 @@ async function fetchFlatsData() {
         }
       }
       flatsData = mergedFlats;
+
+      // Keep localStorage DB cache in sync with fresh sheet data
+      try {
+        const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
+        const otherFlats = (storedDb.flats || []).filter(f => (f.wing || '').toString().trim().toUpperCase() !== wing.toUpperCase());
+        storedDb.flats = otherFlats.concat(mergedFlats);
+        localStorage.setItem('scot_wings_db', JSON.stringify(storedDb));
+      } catch (e) {}
     } catch (err) {
       showLoading(false);
       alert("Error fetching flats data from sheet. Running local fallback.");
@@ -685,6 +703,9 @@ async function loadAdminDashboard() {
       const data = await res.json();
       showLoading(false);
       adminAllFlats = deduplicateFlats(data.allFlats || []);
+      try {
+        localStorage.setItem('scot_wings_db', JSON.stringify({ flats: adminAllFlats }));
+      } catch (e) {}
     } catch (err) {
       showLoading(false);
       alert("Error connecting to sheet. Loading consolidated offline data.");
