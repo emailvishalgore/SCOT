@@ -856,6 +856,7 @@ function generateDetailedReport() {
 }
 
 function generateOutstandingReport() {
+  adminAllFlats = deduplicateFlats(adminAllFlats);
   const wings = ['N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'];
   const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -868,8 +869,8 @@ function generateOutstandingReport() {
   lines.push(`_Shows only flats that are Unpaid, Vacant, or Not Paying_`);
 
   wings.forEach(wing => {
-    const wingFlats = adminAllFlats.filter(f => f.wing.toUpperCase() === wing);
-    const outstanding = wingFlats.filter(f => f.paid !== 'Yes').sort((a, b) => {
+    const wingFlats = adminAllFlats.filter(f => f.wing && f.wing.toUpperCase() === wing);
+    const outstanding = wingFlats.filter(f => (f.paid || '').toString().trim() !== 'Yes').sort((a, b) => {
       const numA = parseInt(a.flat.replace(/\D/g, '')) || 0;
       const numB = parseInt(b.flat.replace(/\D/g, '')) || 0;
       return numA - numB;
@@ -877,9 +878,13 @@ function generateOutstandingReport() {
 
     if (outstanding.length === 0) return;
 
-    const unpaid = outstanding.filter(f => f.paid === 'No' || !f.paid).length;
-    const vacant = outstanding.filter(f => f.paid === 'Vacant').length;
-    const notPaying = outstanding.filter(f => f.paid === 'Not paying').length;
+    const unpaid = outstanding.filter(f => {
+      const p = (f.paid || '').toString().trim();
+      return p === 'No' || p === '' || p === 'Select';
+    }).length;
+    const vacant = outstanding.filter(f => (f.paid || '').toString().trim() === 'Vacant').length;
+    const notPaying = outstanding.filter(f => (f.paid || '').toString().trim() === 'Not paying').length;
+
     totalUnpaid += unpaid;
     totalVacant += vacant;
     totalNotPaying += notPaying;
@@ -888,8 +893,9 @@ function generateOutstandingReport() {
     lines.push(`━━━ *Wing ${wing}* (${outstanding.length} outstanding) ━━━`);
 
     outstanding.forEach(f => {
-      const icon = f.paid === 'Vacant' ? '🏚️' : f.paid === 'Not paying' ? '🚫' : '❌';
-      const label = f.paid === 'Vacant' ? 'Vacant' : f.paid === 'Not paying' ? 'Not Paying' : 'Unpaid';
+      const p = (f.paid || '').toString().trim();
+      const icon = p === 'Vacant' ? '🏚️' : p === 'Not paying' ? '🚫' : '❌';
+      const label = p === 'Vacant' ? 'Vacant' : p === 'Not paying' ? 'Not Paying' : 'Unpaid (Pending)';
       lines.push(`${icon} Flat ${f.flat} — ${label}`);
     });
   });
@@ -898,7 +904,7 @@ function generateOutstandingReport() {
   lines.push(``);
   lines.push(`━━━━━━━━━━━━━━━━━━━━`);
   lines.push(`📊 *Summary:*`);
-  lines.push(`❌ Unpaid: ${totalUnpaid} flats`);
+  lines.push(`❌ Unpaid (Pending): ${totalUnpaid} flats`);
   lines.push(`🏚️ Vacant: ${totalVacant} flats`);
   lines.push(`🚫 Not Paying: ${totalNotPaying} flats`);
   lines.push(`⚠️ *Total Outstanding: ${totalOutstanding} of 280 flats*`);
