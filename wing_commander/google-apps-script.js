@@ -23,6 +23,8 @@ function doGet(e) {
     return handleGetAdminData();
   } else if (action === "updateFlat") {
     return handleUpdateFlat(e.parameter);
+  } else if (action === "debugSheet") {
+    return handleDebugSheet();
   }
   
   return jsonResponse({ success: false, error: "Invalid action" });
@@ -109,21 +111,32 @@ function handleGetData(wing) {
   }
   var range = sheet.getDataRange();
   var values = range.getValues();
-  var flats = [];
+  var flatsMap = {};
   
   wing = wing.trim().toUpperCase();
   
   for (var i = 1; i < values.length; i++) {
-    if (values[i][0].toString().trim().toUpperCase() === wing) {
-      flats.push({
+    var rowWing = values[i][0].toString().trim().toUpperCase();
+    var rowFlat = values[i][1].toString().trim().toUpperCase();
+    if (rowWing === wing) {
+      var record = {
         wing: values[i][0].toString(),
         flat: values[i][1].toString(),
         paid: values[i][2].toString(),
         mode: values[i][3].toString(),
         date: formatDate(values[i][4]),
         amount: values[i][5] !== "" ? Number(values[i][5]) : ""
-      });
+      };
+      
+      // Deduplicate: Keep the last record
+      flatsMap[rowFlat] = record;
     }
+  }
+  
+  // Convert map back to list
+  var flats = [];
+  for (var key in flatsMap) {
+    flats.push(flatsMap[key]);
   }
   return jsonResponse({ success: true, flats: flats });
 }
@@ -136,53 +149,121 @@ function handleGetAdminData() {
   }
   var range = sheet.getDataRange();
   var values = range.getValues();
-  var allFlats = [];
+  var allFlatsMap = {};
   
   for (var i = 1; i < values.length; i++) {
-    allFlats.push({
+    var rowWing = values[i][0].toString().trim().toUpperCase();
+    var rowFlat = values[i][1].toString().trim().toUpperCase();
+    var key = rowWing + "_" + rowFlat;
+    
+    var record = {
       wing: values[i][0].toString(),
       flat: values[i][1].toString(),
       paid: values[i][2].toString(),
       mode: values[i][3].toString(),
       date: formatDate(values[i][4]),
       amount: values[i][5] !== "" ? Number(values[i][5]) : ""
-    });
+    };
+    
+    // Deduplicate: Keep the last record
+    allFlatsMap[key] = record;
+  }
+  
+  var allFlats = [];
+  for (var key in allFlatsMap) {
+    allFlats.push(allFlatsMap[key]);
   }
   return jsonResponse({ success: true, allFlats: allFlats });
 }
 
 function handleUpdateFlat(data) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(FLATS_DATA_SHEET);
-  if (!sheet) {
-    sheet = ss.insertSheet(FLATS_DATA_SHEET);
-    sheet.appendRow(["Wing", "Flat", "Paid", "PaymentMode", "PaidDate", "Amount"]);
+  var lock = LockService.getScriptLock();
+  try {
+    // Wait for up to 10 seconds to acquire lock
+    lock.waitLock(10000);
+  } catch (e) {
+    return jsonResponse({ success: false, error: "Could not obtain script lock: " + e.toString() });
   }
   
-  var range = sheet.getDataRange();
-  var values = range.getValues();
-  
-  var wing = data.wing.trim().toUpperCase();
-  var flat = data.flat.trim().toUpperCase();
-  var paid = data.paid;
-  var mode = data.mode;
-  var date = data.date;
-  var amount = data.amount !== "" ? Number(data.amount) : "";
-  
-  // Search if row exists
-  for (var i = 1; i < values.length; i++) {
-    if (values[i][0].toString().trim().toUpperCase() === wing && values[i][1].toString().trim().toUpperCase() === flat) {
-      sheet.getRange(i + 1, 3).setValue(paid);
-      sheet.getRange(i + 1, 4).setValue(mode);
-      sheet.getRange(i + 1, 5).setValue(date);
-      sheet.getRange(i + 1, 6).setValue(amount);
-      return jsonResponse({ success: true });
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(FLATS_DATA_SHEET);
+    if (!sheet) {
+      sheet = ss.insertSheet(FLATS_DATA_SHEET);
+      sheet.appendRow(["Wing", "Flat", "Paid", "PaymentMode", "PaidDate", "Amount"]);
     }
+    
+    var range = sheet.getDataRange();
+    var values = range.getValues();
+    
+    // Validate inputs safely to avoid runtime NaN/undefined crashes
+    var wing = data.wing ? data.wing.toString().trim().toUpperCase() : "";
+    var flat = data.flat ? data.flat.toString().trim().toUpperCase() : "";
+    var paid = data.paid ? data.paid.toString().trim() : "";
+    var mode = data.mode ? data.mode.toString().trim() : "";
+    var date = data.date ? data.date.toString().trim() : "";
+    
+    var amount = "";
+    if (data.amount !== undefined && data.amount !== null && data.amount !== "") {
+      var parsed = Number(data.amount);
+      if (!isNaN(parsed)) {
+        amount = parsed;
+      }
+    }
+    
+    var foundIndex = -1;
+    
+    // Search if row exists, handling and cleaning duplicate rows safely
+    for (var i = 1; i < values.length; i++) {
+      var rowWing = values[i][0] ? values[i][0].toString().trim().toUpperCase() : "";
+      var rowFlat = values[i][1] ? values[i][1].toString().trim().toUpperCase() : "";
+      if (rowWing === wing && rowFlat === flat) {
+        if (foundIndex === -1) {
+          foundIndex = i;
+          sheet.getRange(i + 1, 3).setValue(paid);
+          sheet.getRange(i + 1, 4).setValue(mode);
+          sheet.getRange(i + 1, 5).setValue(date);
+          sheet.getRange(i + 1, 6).setValue(amount);
+        } else {
+          // Delete duplicate row
+          sheet.deleteRow(i + 1);
+          // Adjust array size and index
+          values.splice(i, 1);
+          i--;
+        }
+      }
+    }
+    
+    if (foundIndex !== -1) {
+      return jsonResponse({
+        success: true,
+        action: "updated",
+        rowIndex: foundIndex + 1,
+        parsedWing: wing,
+        parsedFlat: flat,
+        parsedPaid: paid,
+        parsedMode: mode,
+        parsedDate: date,
+        parsedAmount: amount
+      });
+    }
+    
+    // If not found, append new row
+    sheet.appendRow([wing, flat, paid, mode, date, amount]);
+    return jsonResponse({
+      success: true,
+      action: "appended",
+      parsedWing: wing,
+      parsedFlat: flat,
+      parsedPaid: paid,
+      parsedMode: mode,
+      parsedDate: date,
+      parsedAmount: amount
+    });
+  } finally {
+    // Always release the lock
+    lock.releaseLock();
   }
-  
-  // If not found, append a new row
-  sheet.appendRow([wing, flat, paid, mode, date, amount]);
-  return jsonResponse({ success: true });
 }
 
 function formatDate(dateVal) {
@@ -199,4 +280,27 @@ function formatDate(dateVal) {
 function jsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function handleDebugSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(FLATS_DATA_SHEET);
+  if (!sheet) return jsonResponse({ error: "No flats data sheet" });
+  var values = sheet.getDataRange().getValues();
+  
+  var r403Matches = [];
+  for (var i = 1; i < values.length; i++) {
+    var rowWing = values[i][0] ? values[i][0].toString().trim().toUpperCase() : "";
+    var rowFlat = values[i][1] ? values[i][1].toString().trim().toUpperCase() : "";
+    if (rowWing === "R" && rowFlat === "403") {
+      r403Matches.push({ rowIndex: i + 1, row: values[i] });
+    }
+  }
+  
+  return jsonResponse({
+    spreadsheetName: ss.getName(),
+    spreadsheetUrl: ss.getUrl(),
+    flatsDataRowsCount: values.length,
+    r403Matches: r403Matches
+  });
 }

@@ -4,7 +4,7 @@
 let activeSession = null; // { wing: 'N', role: 'COMMANDER' }
 let flatsData = [];
 let localDb = null; // Offline database copy
-let saveTimeout = null;
+const pendingSyncs = {};
 
 // Initialize App
 window.addEventListener('DOMContentLoaded', () => {
@@ -15,6 +15,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // 1. OFFLINE DATABASE ENGINE (Local Storage Fallback)
 function initLocalDb() {
+  // Automatic cache buster: clear stale local storage from early testing
+  const CURRENT_DB_VER = 'v25_fresh_sync';
+  if (localStorage.getItem('scot_db_ver') !== CURRENT_DB_VER) {
+    localStorage.removeItem('scot_wings_db');
+    localStorage.setItem('scot_db_ver', CURRENT_DB_VER);
+  }
+
   // Clear out old pre-populated pins from early testing
   const storedPins = localStorage.getItem('scot_wings_pins');
   if (storedPins) {
@@ -276,22 +283,38 @@ async function fetchFlatsData() {
   const apiUrl = getApiUrl();
   const wing = activeSession.wing;
 
+  // Retrieve local database for offline-first merging
+  const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
+  const localFlats = storedDb.flats || [];
+
   if (apiUrl) {
     try {
       showLoading(true);
       const res = await fetch(`${apiUrl}?action=getData&wing=${wing}`);
       const data = await res.json();
       showLoading(false);
-      const sheetFlats = data.flats || [];
+      const sheetFlats = deduplicateFlats(data.flats || []);
       
-      // Auto-generate the 28 flats roster and merge matching sheet data
+      // Auto-generate the 28 flats roster and merge matching sheet/local data
       const mergedFlats = [];
       for (let floor = 1; floor <= 7; floor++) {
         for (let num = 1; num <= 4; num++) {
           const flatNo = `${floor}0${num}`;
-          const match = sheetFlats.find(f => String(f.flat) === flatNo);
-          if (match) {
-            mergedFlats.push(match);
+          
+          // Check for unsynced local edit first
+          const localMatch = localFlats.find(f => (f.wing || '').toString().trim().toUpperCase() === wing.toUpperCase() && String(f.flat) === flatNo);
+          const sheetMatch = sheetFlats.find(f => (f.wing || '').toString().trim().toUpperCase() === wing.toUpperCase() && String(f.flat) === flatNo);
+          
+          const isPendingLocalEdit = pendingSyncs[flatNo] !== undefined;
+
+          if (isPendingLocalEdit && localMatch) {
+            mergedFlats.push(localMatch);
+          } else if (sheetMatch) {
+            sheetMatch.synced = true; // remote data is naturally synced
+            mergedFlats.push(sheetMatch);
+          } else if (localMatch && localMatch.synced === false && localMatch.paid && localMatch.paid !== 'No') {
+            mergedFlats.push(localMatch);
+            triggerSync(localMatch);
           } else {
             mergedFlats.push({
               wing: wing,
@@ -299,12 +322,21 @@ async function fetchFlatsData() {
               paid: 'No',
               mode: 'Select',
               date: '',
-              amount: ''
+              amount: '',
+              synced: true
             });
           }
         }
       }
       flatsData = mergedFlats;
+
+      // Keep localStorage DB cache in sync with fresh sheet data
+      try {
+        const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
+        const otherFlats = (storedDb.flats || []).filter(f => (f.wing || '').toString().trim().toUpperCase() !== wing.toUpperCase());
+        storedDb.flats = otherFlats.concat(mergedFlats);
+        localStorage.setItem('scot_wings_db', JSON.stringify(storedDb));
+      } catch (e) {}
     } catch (err) {
       showLoading(false);
       alert("Error fetching flats data from sheet. Running local fallback.");
@@ -318,14 +350,15 @@ async function fetchFlatsData() {
 function loadLocalFlatsData(wing) {
   const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
   flatsData = (storedDb.flats || [])
-    .filter(f => f.wing === wing)
+    .filter(f => (f.wing || '').toString().trim().toUpperCase() === wing.toUpperCase())
     .map(f => ({
       wing: f.wing,
       flat: f.flat,
       paid: f.paid || 'No',
       mode: f.mode || 'Select',
       date: f.date || '',
-      amount: f.amount !== undefined ? f.amount : ''
+      amount: f.amount !== undefined ? f.amount : '',
+      synced: f.synced !== undefined ? f.synced : true
     }));
 }
 
@@ -340,18 +373,20 @@ function renderFlatsRoster() {
   flatsData.forEach(row => {
     const tr = document.createElement('tr');
     
-    // Highlight flat cell
+    // Highlight flat cell based on status
     const isPaid = row.paid === 'Yes';
-    const cellClass = isPaid ? 'status-yes' : 'status-no';
+    const statusClass = row.paid === 'Yes' ? 'status-yes' : row.paid === 'Vacant' ? 'status-vacant' : row.paid === 'Not paying' ? 'status-notpaying' : 'status-no';
     const disableEdit = isReadOnly || !isPaid;
     const disableAll = isReadOnly;
 
     tr.innerHTML = `
       <td class="flat-cell" data-label="Flat">${row.flat}</td>
       <td data-label="Paid?">
-        <select class="table-select ${cellClass}" ${disableAll ? 'disabled' : ''} onchange="updateFlatCell('${row.flat}', 'paid', this.value)">
+        <select class="table-select ${statusClass}" ${disableAll ? 'disabled' : ''} onchange="updateFlatCell('${row.flat}', 'paid', this.value)">
           <option value="Yes" ${row.paid === 'Yes' ? 'selected' : ''}>Yes (Paid)</option>
           <option value="No" ${row.paid === 'No' ? 'selected' : ''}>No (Pending)</option>
+          <option value="Vacant" ${row.paid === 'Vacant' ? 'selected' : ''}>Vacant</option>
+          <option value="Not paying" ${row.paid === 'Not paying' ? 'selected' : ''}>Not Paying</option>
         </select>
       </td>
       <td data-label="Amount (₹)">
@@ -378,7 +413,9 @@ function renderFlatsRoster() {
 function recalculateSummary() {
   const totalFlats = 28;
   const paidCount = flatsData.filter(f => f.paid === 'Yes').length;
-  const unpaidCount = totalFlats - paidCount;
+  const unpaidCount = flatsData.filter(f => f.paid === 'No' || !f.paid).length;
+  const vacantCount = flatsData.filter(f => f.paid === 'Vacant').length;
+  const notPayingCount = flatsData.filter(f => f.paid === 'Not paying').length;
   
   const totalCollected = flatsData
     .filter(f => f.paid === 'Yes')
@@ -390,6 +427,12 @@ function recalculateSummary() {
   document.getElementById('metric-progress-pct').textContent = `${progressPct}%`;
   document.getElementById('metric-progress-bar').style.width = `${progressPct}%`;
   document.getElementById('metric-summary-text').textContent = `${paidCount} of 28 flats paid`;
+  
+  // Update breakdown counters if they exist
+  const vacantEl = document.getElementById('metric-vacant');
+  const notPayingEl = document.getElementById('metric-notpaying');
+  if (vacantEl) vacantEl.textContent = `${vacantCount}`;
+  if (notPayingEl) notPayingEl.textContent = `${notPayingCount}`;
   
   const tableTotal = document.getElementById('table-total-amount');
   if (tableTotal) {
@@ -407,9 +450,22 @@ function updateFlatCell(flatNo, field, value) {
       flat[field] = value;
     }
     
+    // Mark as unsynced locally before sending
+    flat.synced = false;
+    
+    // Save to local storage database immediately
+    const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
+    const idx = storedDb.flats.findIndex(f => f.wing === activeSession.wing && f.flat === flat.flat);
+    if (idx !== -1) {
+      storedDb.flats[idx] = flat;
+    } else {
+      storedDb.flats.push(flat);
+    }
+    localStorage.setItem('scot_wings_db', JSON.stringify(storedDb));
+    
     // Auto-update cell colors and values if Paid is toggled
     if (field === 'paid') {
-      if (value === 'No') {
+      if (value !== 'Yes') {
         flat.amount = '';
         flat.mode = 'Select';
         flat.date = '';
@@ -430,9 +486,14 @@ function triggerSync(flatRecord) {
   syncBanner.classList.add('saving');
   syncText.textContent = "Syncing changes...";
 
-  if (saveTimeout) clearTimeout(saveTimeout);
+  const flatKey = flatRecord.flat;
+  if (pendingSyncs[flatKey]) {
+    clearTimeout(pendingSyncs[flatKey]);
+  }
   
-  saveTimeout = setTimeout(async () => {
+  pendingSyncs[flatKey] = setTimeout(async () => {
+    delete pendingSyncs[flatKey];
+    
     const apiUrl = getApiUrl();
     const params = new URLSearchParams({
       action: 'updateFlat',
@@ -446,29 +507,34 @@ function triggerSync(flatRecord) {
 
     if (apiUrl) {
       try {
-        const res = await fetch(`${apiUrl}?${params.toString()}`);
+        // Use mode: 'no-cors' to bypass CORS blocks on redirects. Google Apps Script executes the request successfully.
+        await fetch(`${apiUrl}?${params.toString()}`, { mode: 'no-cors' });
         
-        syncBanner.classList.remove('saving');
-        syncText.textContent = "All changes saved to Google Sheet";
+        // Mark as synced locally
+        flatRecord.synced = true;
+        const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
+        const idx = storedDb.flats.findIndex(f => f.wing === activeSession.wing && f.flat === flatRecord.flat);
+        if (idx !== -1) {
+          storedDb.flats[idx] = flatRecord;
+          localStorage.setItem('scot_wings_db', JSON.stringify(storedDb));
+        }
+
+        // Only update banner to saved if there are no other pending syncs
+        if (Object.keys(pendingSyncs).length === 0) {
+          syncBanner.classList.remove('saving');
+          syncText.textContent = "All changes saved to Google Sheet";
+        }
       } catch (err) {
-        syncBanner.classList.remove('saving');
-        syncText.textContent = "Network error. Saved locally (will retry on next change)";
+        if (Object.keys(pendingSyncs).length === 0) {
+          syncBanner.classList.remove('saving');
+          syncText.textContent = "Saved locally. Sync pending (reconnecting...)";
+        }
       }
     } else {
-      // Local Save
-      const storedDb = JSON.parse(localStorage.getItem('scot_wings_db') || '{"flats":[]}');
-      const idx = storedDb.flats.findIndex(f => f.wing === activeSession.wing && f.flat === flatRecord.flat);
-      if (idx !== -1) {
-        storedDb.flats[idx] = flatRecord;
-      } else {
-        storedDb.flats.push(flatRecord);
-      }
-      localStorage.setItem('scot_wings_db', JSON.stringify(storedDb));
-      
-      setTimeout(() => {
+      if (Object.keys(pendingSyncs).length === 0) {
         syncBanner.classList.remove('saving');
         syncText.textContent = "All changes saved locally";
-      }, 500);
+      }
     }
   }, 1000); // Debounce to allow user to finish typing/picking
 }
@@ -478,7 +544,9 @@ function shareWhatsAppSummary() {
   const wing = activeSession.wing;
   const totalFlats = 28;
   const paidCount = flatsData.filter(f => f.paid === 'Yes').length;
-  const pendingCount = totalFlats - paidCount;
+  const unpaidCount = flatsData.filter(f => f.paid === 'No' || !f.paid).length;
+  const vacantCount = flatsData.filter(f => f.paid === 'Vacant').length;
+  const notPayingCount = flatsData.filter(f => f.paid === 'Not paying').length;
   const totalCollected = flatsData
     .filter(f => f.paid === 'Yes')
     .reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
@@ -500,7 +568,9 @@ function shareWhatsAppSummary() {
 📅 Date: ${dateStr}
 
 ✅ *Paid Units:* ${paidCount} of 28 (${pct}%)
-⏳ *Pending Units:* ${pendingCount} of 28
+⏳ *Pending Units:* ${unpaidCount} of 28
+🏚️ *Vacant Units:* ${vacantCount}
+🚫 *Not Paying:* ${notPayingCount}
 
 💰 *Total Collected:* ₹${totalCollected.toLocaleString('en-IN')}
 
@@ -531,24 +601,26 @@ function generateFlatStatusSummary() {
   const wing = activeSession.wing;
   const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   const paidCount = flatsData.filter(f => f.paid === 'Yes').length;
-  const unpaidCount = 28 - paidCount;
+  const unpaidCount = flatsData.filter(f => f.paid === 'No' || !f.paid).length;
+  const vacantCount = flatsData.filter(f => f.paid === 'Vacant').length;
+  const notPayingCount = flatsData.filter(f => f.paid === 'Not paying').length;
   const pct = Math.round((paidCount / 28) * 100);
 
   let lines = [];
   lines.push(`*🏠 SCOT TOPAZ Wing ${wing} — Flat Status*`);
   lines.push(`📅 ${dateStr}`);
-  lines.push(`✅ Paid: ${paidCount} | ⬜ Unpaid: ${unpaidCount} | ${pct}%`);
+  lines.push(`✅ Paid: ${paidCount} | ❌ Unpaid: ${unpaidCount} | 🏚️ Vacant: ${vacantCount} | 🚫 Not Paying: ${notPayingCount} | ${pct}%`);
   lines.push(``);
 
   // Sort flats numerically
   const sorted = flatsData.slice().sort((a, b) => {
-    const numA = parseInt(a.flat.replace(/\D/g, '')) || 0;
-    const numB = parseInt(b.flat.replace(/\D/g, '')) || 0;
+    const numA = parseInt(String(a.flat).replace(/\D/g, '')) || 0;
+    const numB = parseInt(String(b.flat).replace(/\D/g, '')) || 0;
     return numA - numB;
   });
 
   sorted.forEach(f => {
-    const icon = f.paid === 'Yes' ? '✅' : '⬜';
+    const icon = f.paid === 'Yes' ? '✅' : f.paid === 'Vacant' ? '🏚️' : f.paid === 'Not paying' ? '🚫' : '❌';
     lines.push(`${icon} Flat ${f.flat}`);
   });
 
@@ -581,6 +653,45 @@ function shareCommanderReportWhatsApp() {
 var adminAllFlats = [];
 var lastReportText = '';
 
+function deduplicateFlats(flats) {
+  if (!Array.isArray(flats)) flats = [];
+  const map = {};
+  flats.forEach(f => {
+    if (!f || f.wing === undefined || f.wing === null || f.flat === undefined || f.flat === null) return;
+    const wStr = String(f.wing).trim().toUpperCase();
+    const fStr = String(f.flat).trim().toUpperCase();
+    if (!wStr || !fStr) return;
+    const key = `${wStr}_${fStr}`;
+    map[key] = f;
+  });
+
+  const wings = ['N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'];
+  const fullList = [];
+
+  wings.forEach(wing => {
+    for (let floor = 1; floor <= 7; floor++) {
+      for (let num = 1; num <= 4; num++) {
+        const flatNo = `${floor}0${num}`;
+        const key = `${wing}_${flatNo}`;
+        if (map[key]) {
+          fullList.push(map[key]);
+        } else {
+          fullList.push({
+            wing: wing,
+            flat: flatNo,
+            paid: 'No',
+            mode: 'Select',
+            date: '',
+            amount: ''
+          });
+        }
+      }
+    }
+  });
+
+  return fullList;
+}
+
 async function loadAdminDashboard() {
   document.getElementById('admin-dashboard').classList.remove('hidden');
   const apiUrl = getApiUrl();
@@ -591,16 +702,19 @@ async function loadAdminDashboard() {
       const res = await fetch(`${apiUrl}?action=getAdminData`);
       const data = await res.json();
       showLoading(false);
-      adminAllFlats = data.allFlats || [];
+      adminAllFlats = deduplicateFlats(data.allFlats || []);
+      try {
+        localStorage.setItem('scot_wings_db', JSON.stringify({ flats: adminAllFlats }));
+      } catch (e) {}
     } catch (err) {
       showLoading(false);
       alert("Error connecting to sheet. Loading consolidated offline data.");
       const storedDb = JSON.parse(localStorage.getItem('scot_wings_db'));
-      adminAllFlats = storedDb.flats;
+      adminAllFlats = deduplicateFlats(storedDb ? storedDb.flats : []);
     }
   } else {
     const storedDb = JSON.parse(localStorage.getItem('scot_wings_db'));
-    adminAllFlats = storedDb ? storedDb.flats : [];
+    adminAllFlats = deduplicateFlats(storedDb ? storedDb.flats : []);
   }
 
   renderAdminGrid(adminAllFlats);
@@ -615,9 +729,12 @@ function renderAdminGrid(allFlats) {
   let grandPaidRatio = 0;
 
   wings.forEach(wing => {
-    const wingFlats = allFlats.filter(f => f.wing === wing);
+    const wingFlats = allFlats.filter(f => f.wing && f.wing.trim().toUpperCase() === wing);
     const totalFlats = 28;
     const paidCount = wingFlats.filter(f => f.paid === 'Yes').length;
+    const unpaidCount = wingFlats.filter(f => f.paid === 'No' || !f.paid).length;
+    const vacantCount = wingFlats.filter(f => f.paid === 'Vacant').length;
+    const notPayingCount = wingFlats.filter(f => f.paid === 'Not paying').length;
     const collected = wingFlats
       .filter(f => f.paid === 'Yes')
       .reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
@@ -625,6 +742,13 @@ function renderAdminGrid(allFlats) {
 
     grandTotal += collected;
     grandPaidRatio += paidCount;
+
+    // Build status breakdown text
+    const statusParts = [];
+    if (unpaidCount > 0) statusParts.push(`❌ ${unpaidCount} Unpaid`);
+    if (vacantCount > 0) statusParts.push(`🏚️ ${vacantCount} Vacant`);
+    if (notPayingCount > 0) statusParts.push(`🚫 ${notPayingCount} Not Paying`);
+    const statusBreakdown = statusParts.length > 0 ? statusParts.join(' · ') : 'All Paid! ✅';
 
     // Create wing status card
     const card = document.createElement('div');
@@ -651,6 +775,7 @@ function renderAdminGrid(allFlats) {
           <strong>${paidCount} / 28 paid</strong>
         </div>
       </div>
+      <div class="wing-status-breakdown">${statusBreakdown}</div>
       <div class="progress-track" style="margin-top: 8px;">
         <div class="progress-bar" style="width: ${progressPct}%"></div>
       </div>
@@ -679,15 +804,21 @@ function generateWingSummaryReport() {
   lines.push(``);
 
   wings.forEach(wing => {
-    const wingFlats = adminAllFlats.filter(f => f.wing.toUpperCase() === wing);
+    const wingFlats = adminAllFlats.filter(f => f.wing && f.wing.trim().toUpperCase() === wing);
     const paidCount = wingFlats.filter(f => f.paid === 'Yes').length;
+    const unpaidCount = wingFlats.filter(f => f.paid === 'No' || !f.paid).length;
+    const vacantCount = wingFlats.filter(f => f.paid === 'Vacant').length;
+    const notPayingCount = wingFlats.filter(f => f.paid === 'Not paying').length;
     const collected = wingFlats.filter(f => f.paid === 'Yes').reduce((s, f) => s + (parseFloat(f.amount) || 0), 0);
     const pct = Math.round((paidCount / 28) * 100);
     grandCollected += collected;
     grandPaid += paidCount;
 
     const bar = pct >= 75 ? '🟢' : pct >= 40 ? '🟡' : '🔴';
-    lines.push(`${bar} *Wing ${wing}:* ${paidCount}/28 paid (${pct}%) — ₹${collected.toLocaleString('en-IN')}`);
+    let statusDetail = `${paidCount}/28 paid (${pct}%)`;
+    if (vacantCount > 0) statusDetail += ` | 🏚️${vacantCount} vacant`;
+    if (notPayingCount > 0) statusDetail += ` | 🚫${notPayingCount} not paying`;
+    lines.push(`${bar} *Wing ${wing}:* ${statusDetail} — ₹${collected.toLocaleString('en-IN')}`);
   });
 
   lines.push(``);
@@ -712,7 +843,7 @@ function generateDetailedReport() {
   lines.push(`📅 Date: ${dateStr}`);
 
   wings.forEach(wing => {
-    const wingFlats = adminAllFlats.filter(f => f.wing.toUpperCase() === wing);
+    const wingFlats = adminAllFlats.filter(f => f.wing && f.wing.trim().toUpperCase() === wing);
     if (wingFlats.length === 0) return;
 
     const paidCount = wingFlats.filter(f => f.paid === 'Yes').length;
@@ -725,13 +856,13 @@ function generateDetailedReport() {
 
     // Sort flats numerically
     const sorted = wingFlats.slice().sort((a, b) => {
-      const numA = parseInt(a.flat.replace(/\D/g, '')) || 0;
-      const numB = parseInt(b.flat.replace(/\D/g, '')) || 0;
+      const numA = parseInt(String(a.flat).replace(/\D/g, '')) || 0;
+      const numB = parseInt(String(b.flat).replace(/\D/g, '')) || 0;
       return numA - numB;
     });
 
     sorted.forEach(f => {
-      const icon = f.paid === 'Yes' ? '✅' : '⬜';
+      const icon = f.paid === 'Yes' ? '✅' : f.paid === 'Vacant' ? '🏚️' : f.paid === 'Not paying' ? '🚫' : '❌';
       const amt = f.paid === 'Yes' && f.amount ? ` ₹${parseFloat(f.amount).toLocaleString('en-IN')}` : '';
       const mode = f.paid === 'Yes' && f.mode && f.mode !== 'Select' ? ` (${f.mode})` : '';
       const date = f.paid === 'Yes' && f.date ? ` ${f.date}` : '';
@@ -743,6 +874,64 @@ function generateDetailedReport() {
   lines.push(`━━━━━━━━━━━━━━━━━━━━`);
   lines.push(`💰 *Grand Total:* ₹${grandCollected.toLocaleString('en-IN')}`);
   lines.push(`📈 *Overall:* ${grandPaid}/280 flats paid`);
+
+  lastReportText = lines.join('\n');
+  showReport(lastReportText);
+}
+
+function generateOutstandingReport() {
+  adminAllFlats = deduplicateFlats(adminAllFlats);
+  const wings = ['N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W'];
+  const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  let totalUnpaid = 0, totalVacant = 0, totalNotPaying = 0;
+
+  let lines = [];
+  lines.push(`*⚠️ SCOT TOPAZ — Outstanding Flats Report*`);
+  lines.push(`📅 Date: ${dateStr}`);
+  lines.push(``);
+  lines.push(`_Shows only flats that are Unpaid, Vacant, or Not Paying_`);
+
+  wings.forEach(wing => {
+    const wingFlats = adminAllFlats.filter(f => f.wing && f.wing.toUpperCase() === wing);
+    const outstanding = wingFlats.filter(f => (f.paid || '').toString().trim() !== 'Yes').sort((a, b) => {
+      const numA = parseInt(String(a.flat).replace(/\D/g, '')) || 0;
+      const numB = parseInt(String(b.flat).replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
+
+    if (outstanding.length === 0) return;
+
+    const unpaid = outstanding.filter(f => {
+      const p = (f.paid || '').toString().trim();
+      return p === 'No' || p === '' || p === 'Select';
+    }).length;
+    const vacant = outstanding.filter(f => (f.paid || '').toString().trim() === 'Vacant').length;
+    const notPaying = outstanding.filter(f => (f.paid || '').toString().trim() === 'Not paying').length;
+
+    totalUnpaid += unpaid;
+    totalVacant += vacant;
+    totalNotPaying += notPaying;
+
+    lines.push(``);
+    lines.push(`━━━ *Wing ${wing}* (${outstanding.length} outstanding) ━━━`);
+
+    outstanding.forEach(f => {
+      const p = (f.paid || '').toString().trim();
+      const icon = p === 'Vacant' ? '🏚️' : p === 'Not paying' ? '🚫' : '❌';
+      const label = p === 'Vacant' ? 'Vacant' : p === 'Not paying' ? 'Not Paying' : 'Unpaid (Pending)';
+      lines.push(`${icon} Flat ${f.flat} — ${label}`);
+    });
+  });
+
+  const totalOutstanding = totalUnpaid + totalVacant + totalNotPaying;
+  lines.push(``);
+  lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+  lines.push(`📊 *Summary:*`);
+  lines.push(`❌ Unpaid (Pending): ${totalUnpaid} flats`);
+  lines.push(`🏚️ Vacant: ${totalVacant} flats`);
+  lines.push(`🚫 Not Paying: ${totalNotPaying} flats`);
+  lines.push(`⚠️ *Total Outstanding: ${totalOutstanding} of 280 flats*`);
 
   lastReportText = lines.join('\n');
   showReport(lastReportText);
