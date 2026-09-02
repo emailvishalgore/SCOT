@@ -286,6 +286,17 @@ export const StoreProvider = ({ children }) => {
             }
           });
 
+          // Map locally approved users to ensure Google Sheets polling lag never reverts an approved user back to pending
+          const localApprovedUserMap = {};
+          (prev.users || []).forEach(u => {
+            if (u.status === 'APPROVED') {
+              const kPhone = String(u.phone || '');
+              const kId = String(u.id || '');
+              if (kPhone) localApprovedUserMap[kPhone] = u;
+              if (kId) localApprovedUserMap[kId] = u;
+            }
+          });
+
           // Deduplicate users by phone or ID
           const uniqueUsersMap = {};
           mergedUsers.forEach(u => {
@@ -342,13 +353,20 @@ export const StoreProvider = ({ children }) => {
               return cleanUser;
             }
 
+            const prevApproved = localApprovedUserMap[String(u.phone)] || localApprovedUserMap[String(u.id)];
+
             const validRoles = ['admin', 'scot_member', 'champion', 'wing_captain'];
             let parsedRole = String(u.role || '').toLowerCase();
             if (!validRoles.includes(parsedRole)) {
               parsedRole = 'scot_member';
             }
 
+            if (prevApproved && prevApproved.role) {
+              parsedRole = prevApproved.role;
+            }
+
             const isAdmin = String(u.phone) === '9876543210' || parsedRole === 'admin';
+            const finalStatus = prevApproved ? 'APPROVED' : (u.status || 'PENDING_APPROVAL');
 
             return {
               ...u,
@@ -357,8 +375,8 @@ export const StoreProvider = ({ children }) => {
               flat: isAdmin ? '' : String(u.flat || ''),
               role: parsedRole,
               isChampion: true,
-              status: u.status || 'PENDING_APPROVAL',
-              contributionStatus: u.contributionStatus || (u.status === 'APPROVED' ? 'PAID' : 'UNPAID'),
+              status: finalStatus,
+              contributionStatus: finalStatus === 'APPROVED' ? 'PAID' : 'UNPAID',
               registeredAt: u.registeredAt || '2026-08-15',
               profilePhoto: typeof u.profilePhoto === 'string' ? u.profilePhoto : '',
               fcmToken: u.fcmToken || ''
