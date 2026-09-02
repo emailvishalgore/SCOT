@@ -278,6 +278,14 @@ export const StoreProvider = ({ children }) => {
             mergedUsers.unshift(defaultAdmin);
           }
 
+          // Preserve any local pending signup requests in memory so registrations are never lost before Google Sheets syncs
+          const localPendingUsers = (prev.users || []).filter(u => u.status === 'PENDING_APPROVAL');
+          localPendingUsers.forEach(pu => {
+            if (!mergedUsers.some(u => String(u.phone) === String(pu.phone) || String(u.id) === String(pu.id))) {
+              mergedUsers.push(pu);
+            }
+          });
+
           // Deduplicate users by phone or ID
           const uniqueUsersMap = {};
           mergedUsers.forEach(u => {
