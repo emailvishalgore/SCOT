@@ -256,7 +256,7 @@ export const StoreProvider = ({ children }) => {
       .then(data => {
         setStoreState(prev => {
           const fetchedUsers = (data.users || []).filter(Boolean);
-          const hasAdmin = fetchedUsers.some(u => String(u.phone) === '9876543210');
+          const hasAdmin = fetchedUsers.some(u => String(u.phone) === '9876543210' || String(u.role || '').toLowerCase() === 'admin');
           
           let mergedUsers = [...fetchedUsers];
           if (!hasAdmin) {
@@ -347,13 +347,14 @@ export const StoreProvider = ({ children }) => {
 
           // Flush out any legacy non-organizer regular users from local memory and Google Sheet
           const organizerOnlyUsers = finalUsers.filter(u => {
-            if (String(u.phone) === '9876543210') return true;
-            return u.role === 'admin' || u.role === 'scot_member' || u.role === 'champion' || u.role === 'wing_captain';
+            const r = String(u.role || '').toLowerCase();
+            return String(u.phone) === '9876543210' || r === 'admin' || r === 'scot_member' || r === 'champion' || r === 'wing_captain';
           });
 
           const usersToPurge = (data.users || []).filter(u => {
-            if (!u || String(u.phone) === '9876543210') return false;
+            if (!u) return false;
             const r = String(u.role || '').toLowerCase();
+            if (String(u.phone) === '9876543210' || r === 'admin') return false;
             return r === 'resident' || (!['admin', 'scot_member', 'champion', 'wing_captain'].includes(r));
           });
           usersToPurge.forEach(u => {
