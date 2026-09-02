@@ -775,30 +775,6 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
                             </div>
                           )}
 
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Event Manager Name</label>
-                              <input 
-                                type="text" 
-                                className="input input-sm" 
-                                placeholder="e.g. Rajesh Kumar" 
-                                value={sub.managerName || ''} 
-                                onChange={(e) => handleSubEventChange(idx, 'managerName', e.target.value)} 
-                                required 
-                              />
-                            </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Manager Phone</label>
-                              <input 
-                                type="tel" 
-                                className="input input-sm" 
-                                placeholder="e.g. 9876543210" 
-                                value={sub.managerPhone || ''} 
-                                onChange={(e) => handleSubEventChange(idx, 'managerPhone', e.target.value)} 
-                                />
-                            </div>
-                          </div>
-
                           {/* ⚙️ ADVANCED CONFIGURATIONS (GROUP PARAMS & TOOLTIPS) */}
                           <div style={{ background: '#F1F5F9', padding: '10px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', marginTop: '4px' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', alignItems: 'center' }}>
