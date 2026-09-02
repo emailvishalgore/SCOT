@@ -40,12 +40,38 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
   const [nominationsRequired, setNominationsRequired] = useState(true);
   const [assignedManagerIds, setAssignedManagerIds] = useState([]);
 
+  // Winner & Runner-up Points Allocation states
+  const [winnerPoints, setWinnerPoints] = useState('');
+  const [runnerUpPoints, setRunnerUpPoints] = useState('');
+
   // Standalone event registration type and rules states
   const [eventRegType, setEventRegType] = useState('INDIVIDUAL');
   const [eventMinGroupSize, setEventMinGroupSize] = useState(2);
   const [eventMaxGroupSize, setEventMaxGroupSize] = useState(5);
   const [eventMaxGroupsPerWing, setEventMaxGroupsPerWing] = useState(2);
   const [eventRules, setEventRules] = useState('');
+
+  // Points Formatting Helpers
+  const formatPoints = (winnerPts, runnerPts) => {
+    const w = String(winnerPts || '').trim();
+    const r = String(runnerPts || '').trim();
+    if (w && r) return `Winner: ${w} pts / Runner: ${r} pts`;
+    if (w) return `Winner: ${w} pts`;
+    if (r) return `Runner: ${r} pts`;
+    return '';
+  };
+
+  const parseWinnerPoints = (pointsStr) => {
+    if (!pointsStr) return '';
+    const match = String(pointsStr).match(/Winner:\s*(\d+|\w+|\d+\s*pts?)/i);
+    return match ? match[1].replace(/pts?/i, '').trim() : '';
+  };
+
+  const parseRunnerUpPoints = (pointsStr) => {
+    if (!pointsStr) return '';
+    const match = String(pointsStr).match(/Runner(?:-up)?:\s*(\d+|\w+|\d+\s*pts?)/i);
+    return match ? match[1].replace(/pts?/i, '').trim() : '';
+  };
 
   const generateContextualRules = (name, points = '') => {
     return `📜 OFFICIAL COMPETITION RULES — ${String(name || '').toUpperCase()}
@@ -88,6 +114,8 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
     setEventRules('');
     setNominationsRequired(true);
     setAssignedManagerIds([]);
+    setWinnerPoints('');
+    setRunnerUpPoints('');
     setIsModalOpen(true);
   };
 
@@ -115,6 +143,8 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
     setEventRules(evt.rules || '');
     setNominationsRequired(evt.nominationsRequired !== false);
     setAssignedManagerIds(evt.assignedManagerIds || []);
+    setWinnerPoints(evt.winnerPoints !== undefined ? evt.winnerPoints : parseWinnerPoints(evt.points));
+    setRunnerUpPoints(evt.runnerUpPoints !== undefined ? evt.runnerUpPoints : parseRunnerUpPoints(evt.points));
     setIsModalOpen(true);
   };
 
@@ -125,6 +155,8 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
         id: `sub-dynamic-${Date.now()}-${prev.length}`, 
         name: '', 
         category: '', 
+        winnerPoints: '',
+        runnerUpPoints: '',
         points: '',
         startDate: startDate || '',
         time: time || '',
@@ -153,8 +185,23 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
     }));
   };
 
+  const handleSubEventPointsChange = (idx, winnerVal, runnerVal) => {
+    const formatted = formatPoints(winnerVal, runnerVal);
+    setSubEvents(prev => prev.map((sub, i) => {
+      if (i !== idx) return sub;
+      return { 
+        ...sub, 
+        winnerPoints: winnerVal, 
+        runnerUpPoints: runnerVal, 
+        points: formatted 
+      };
+    }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const formattedPoints = formatPoints(winnerPoints, runnerUpPoints);
 
     const finalEvent = {
       id: editingEvent ? editingEvent.id : `evt-${Date.now()}`,
@@ -177,7 +224,10 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
       maxGroupsPerWing: eventMaxGroupsPerWing,
       rules: eventRules,
       nominationsRequired,
-      assignedManagerIds
+      assignedManagerIds,
+      winnerPoints,
+      runnerUpPoints,
+      points: formattedPoints
     };
 
     setStoreState(prev => {
@@ -412,7 +462,30 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
                       Advanced Configurations & Rules
                     </h3>
                     
-                    <div style={{ background: '#F1F5F9', padding: '10px 12px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
+                    <div style={{ background: '#F1F5F9', padding: '10px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>🥇 Winner Points (pts)</label>
+                          <input 
+                            type="text" 
+                            className="input input-sm" 
+                            placeholder="e.g. 100" 
+                            value={winnerPoints} 
+                            onChange={(e) => setWinnerPoints(e.target.value)} 
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>🥈 Runner-up Points (pts)</label>
+                          <input 
+                            type="text" 
+                            className="input input-sm" 
+                            placeholder="e.g. 70" 
+                            value={runnerUpPoints} 
+                            onChange={(e) => setRunnerUpPoints(e.target.value)} 
+                          />
+                        </div>
+                      </div>
+
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', alignItems: 'center' }}>
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -575,7 +648,7 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
                             <Minus size={14} />
                           </button>
 
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', paddingRight: '28px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '0.75rem', paddingRight: '28px' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Category Name</label>
                               <input 
@@ -588,13 +661,31 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
                               />
                             </div>
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Points Scale (Optional)</label>
+                              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>🥇 Winner Pts</label>
                               <input 
                                 type="text" 
                                 className="input input-sm" 
-                                placeholder="e.g. Winner: 30 pts (Leave blank for Wing Performance / Non-point sub-events)" 
-                                value={sub.points || ''} 
-                                onChange={(e) => handleSubEventChange(idx, 'points', e.target.value)} 
+                                placeholder="e.g. 100" 
+                                value={sub.winnerPoints !== undefined ? sub.winnerPoints : parseWinnerPoints(sub.points)} 
+                                onChange={(e) => {
+                                  const winVal = e.target.value;
+                                  const runVal = sub.runnerUpPoints !== undefined ? sub.runnerUpPoints : parseRunnerUpPoints(sub.points);
+                                  handleSubEventPointsChange(idx, winVal, runVal);
+                                }} 
+                              />
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>🥈 Runner-up Pts</label>
+                              <input 
+                                type="text" 
+                                className="input input-sm" 
+                                placeholder="e.g. 70" 
+                                value={sub.runnerUpPoints !== undefined ? sub.runnerUpPoints : parseRunnerUpPoints(sub.points)} 
+                                onChange={(e) => {
+                                  const winVal = sub.winnerPoints !== undefined ? sub.winnerPoints : parseWinnerPoints(sub.points);
+                                  const runVal = e.target.value;
+                                  handleSubEventPointsChange(idx, winVal, runVal);
+                                }} 
                               />
                             </div>
                           </div>
