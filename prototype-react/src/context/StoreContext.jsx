@@ -10,7 +10,7 @@ const StoreContext = createContext();
 //
 // Leave it as an empty string ("") to continue using browser Local Storage.
 const GOOGLE_SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbwSLPw4RriyysFhmShOttUHvfEqSeDVUEo1ORJ0chvqiyhrZisYHyZInoJL_E5MaDk7/exec";
-const STORE_KEY = 'scot_prototype_react_v11';
+const STORE_KEY = 'scot_prototype_react_v12';
 
 // =========================================================================
 // 🏠 WING COMMANDER FLAT DUES API (READ-ONLY — No writes allowed)
@@ -64,8 +64,12 @@ const getInitialState = () => {
         nominationsRequired: true,
         assignedManagerIds: [],
         subEvents: [
-          { id: 'sub-c-1', name: 'Carrom Singles Above 16', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts', assignedManagerIds: [] },
-          { id: 'sub-c-2', name: 'Carrom Singles Kids (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts', assignedManagerIds: [] }
+          { id: 'sub-c-1', name: 'Carrom Men Singles (Above 16)', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts', winnerPoints: '100', runnerUpPoints: '70', assignedManagerIds: [] },
+          { id: 'sub-c-2', name: 'Carrom Women Singles (Above 16)', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts', winnerPoints: '100', runnerUpPoints: '70', assignedManagerIds: [] },
+          { id: 'sub-c-3', name: 'Carrom Boys Singles (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts', winnerPoints: '60', runnerUpPoints: '40', assignedManagerIds: [] },
+          { id: 'sub-c-4', name: 'Carrom Girls Singles (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts', winnerPoints: '60', runnerUpPoints: '40', assignedManagerIds: [] },
+          { id: 'sub-c-5', name: 'Carrom Open Doubles', category: 'Doubles', points: 'Winner: 100 pts / Runner: 70 pts', winnerPoints: '100', runnerUpPoints: '70', assignedManagerIds: [] },
+          { id: 'sub-c-6', name: 'Carrom Kids (Below 10)', category: 'Below 10', points: 'Winner: 40 pts / Runner: 20 pts', winnerPoints: '40', runnerUpPoints: '20', assignedManagerIds: [] }
         ]
       },
       {
