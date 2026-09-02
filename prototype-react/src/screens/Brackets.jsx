@@ -8,6 +8,7 @@ export default function Brackets({ onShowToast }) {
   const currentUser = state.currentUser;
 
   const isAdminOrChamp = currentUser?.role === 'admin' || currentUser?.role === 'champion' || currentUser?.role === 'scot_member' || currentUser?.role === 'wing_captain' || currentUser?.isChampion;
+  const canGenerateDraws = currentUser?.role === 'admin' || currentUser?.role === 'champion' || currentUser?.role === 'scot_member';
 
   if (!isAdminOrChamp) {
     return (
@@ -248,6 +249,10 @@ export default function Brackets({ onShowToast }) {
 
   // --- Draw Generator ---
   const handleGenerateRandomDraw = () => {
+    if (!canGenerateDraws) {
+      onShowToast('Bracket draw generation is reserved for SCOT Members and Admins.', 'error');
+      return;
+    }
     if (approvedRegistrations.length < 2) {
       onShowToast('Need at least 2 approved participants to generate a draw!', 'error');
       return;
@@ -616,8 +621,8 @@ export default function Brackets({ onShowToast }) {
               </div>
             )}
 
-            {/* 🎲 Draw Generator */}
-            {approvedRegistrations.length >= 2 && (
+            {/* 🎲 Draw Generator (Admins & SCOT Members only) */}
+            {canGenerateDraws && approvedRegistrations.length >= 2 && (
               <div className="card" style={{ marginTop: '1.5rem' }}>
                 <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem' }}>
                   🎲 Tournament Draw Generator
