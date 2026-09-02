@@ -68,7 +68,13 @@ jobs:
         working-directory: src
         run: flutter build web --release --base-href "/SCOT/" --pwa-strategy=none --tree-shake-icons
 
-
+      # 7.5. Copy Wing Champions & Wing Commander sub-apps into Web build output
+      - name: Copy Sub-apps to Web build
+        run: |
+          mkdir -p src/build/web/wing-champions
+          cp -r wing-champions/* src/build/web/wing-champions/
+          mkdir -p src/build/web/wing_commander
+          cp -r src/web/wing_commander/* src/build/web/wing_commander/
 
       # 8. Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
