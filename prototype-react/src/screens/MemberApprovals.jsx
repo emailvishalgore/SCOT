@@ -109,7 +109,11 @@ export default function MemberApprovals({ onShowToast }) {
                       <td><strong style={{ color: 'var(--color-text)' }}>{u.name}</strong></td>
                       <td>{u.wing} ({u.flat})</td>
                       <td>{u.phone}</td>
-                      <td><span className="badge badge-violet">{u.role}</span></td>
+                      <td>
+                        <span className={`badge ${u.role === 'admin' ? 'badge-amber' : (u.role === 'wing_captain' ? 'badge-cyan' : 'badge-violet')}`}>
+                          {u.role === 'admin' ? 'SCOT Admin' : (u.role === 'wing_captain' ? 'Wing Captain' : 'SCOT Member')}
+                        </span>
+                      </td>
                       <td><span className="badge badge-amber">Unverified / Unpaid</span></td>
                       <td style={{ textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
@@ -169,8 +173,8 @@ export default function MemberApprovals({ onShowToast }) {
                     <td>{u.wing} ({u.flat})</td>
                     <td>{u.phone}</td>
                     <td>
-                      <span className={`badge ${u.role === 'admin' ? 'badge-amber' : (u.role === 'champion' ? 'badge-violet' : 'badge-green')}`}>
-                        {u.role}
+                      <span className={`badge ${u.role === 'admin' ? 'badge-amber' : (u.role === 'wing_captain' ? 'badge-cyan' : 'badge-violet')}`}>
+                        {u.role === 'admin' ? 'SCOT Admin' : (u.role === 'wing_captain' ? 'Wing Captain' : 'SCOT Member')}
                       </span>
                     </td>
                     <td><span className="badge badge-green">PAID</span></td>

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function Announcements({ onShowToast }) {
   const { state, postAnnouncement, editAnnouncement, deleteAnnouncement } = useStore();
   const currentUser = state.currentUser || {};
-  const isAdminOrChamp = currentUser.role === 'admin' || currentUser.role === 'champion' || currentUser.isChampion;
+  const isAdminOrChamp = currentUser.role === 'admin' || currentUser.role === 'champion' || currentUser.role === 'scot_member' || currentUser.role === 'wing_captain' || currentUser.isChampion;
   const isAdmin = currentUser.role === 'admin';
   
   const [currentFilter, setCurrentFilter] = useState('all');

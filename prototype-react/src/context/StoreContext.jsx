@@ -324,19 +324,40 @@ export const StoreProvider = ({ children }) => {
               return cleanUser;
             }
 
-            // For clean/normal 14-column rows, align wingId, isChampion, status and contributionStatus
+            // For clean/normal 14-column rows, map to official portal roles (admin, scot_member, wing_captain)
+            const validRoles = ['admin', 'scot_member', 'champion', 'wing_captain'];
+            let parsedRole = String(u.role || '').toLowerCase();
+            if (!validRoles.includes(parsedRole)) {
+              parsedRole = 'scot_member';
+            }
+
             return {
               ...u,
               wingId: u.wingId || (u.wing ? 'wing-' + String(u.wing).split(' ')[1].toLowerCase() : 'wing-n'),
               flat: String(u.flat || ''),
-              role: String(u.role || 'resident'),
-              isChampion: u.isChampion === true || String(u.isChampion).toUpperCase() === 'TRUE' || u.role === 'champion',
+              role: parsedRole,
+              isChampion: true,
               status: u.status || 'PENDING_APPROVAL',
               contributionStatus: u.contributionStatus || (u.status === 'APPROVED' ? 'PAID' : 'UNPAID'),
               registeredAt: u.registeredAt || '2026-08-15',
               profilePhoto: typeof u.profilePhoto === 'string' ? u.profilePhoto : '',
               fcmToken: u.fcmToken || ''
             };
+          });
+
+          // Flush out any legacy non-organizer regular users from local memory and Google Sheet
+          const organizerOnlyUsers = finalUsers.filter(u => {
+            if (String(u.phone) === '9876543210') return true;
+            return u.role === 'admin' || u.role === 'scot_member' || u.role === 'champion' || u.role === 'wing_captain';
+          });
+
+          const usersToPurge = (data.users || []).filter(u => {
+            if (!u || String(u.phone) === '9876543210') return false;
+            const r = String(u.role || '').toLowerCase();
+            return r === 'resident' || (!['admin', 'scot_member', 'champion', 'wing_captain'].includes(r));
+          });
+          usersToPurge.forEach(u => {
+            postToSheet('deleteRow', 'Users', null, 0, u.id);
           });
 
           // Map registrations with default values for votingStatus, mediaTrack, and groupMembers
@@ -446,8 +467,15 @@ export const StoreProvider = ({ children }) => {
     setStoreState(prev => ({ ...prev, currentUser: null }));
   };
 
-  const register = (name, wingId, flat, phone, pin, isChampion, fcmToken = '') => {
+  const register = (name, wingId, flat, phone, pin, roleInput = 'scot_member', fcmToken = '') => {
     const wingObj = state.wings.find(w => w.id === wingId);
+    let assignedRole = 'scot_member';
+    if (typeof roleInput === 'string' && (roleInput === 'admin' || roleInput === 'scot_member' || roleInput === 'champion' || roleInput === 'wing_captain')) {
+      assignedRole = roleInput;
+    } else if (typeof roleInput === 'boolean') {
+      assignedRole = roleInput ? 'scot_member' : 'wing_captain';
+    }
+
     const newUser = {
       id: `user-${Date.now()}`,
       name,
@@ -456,8 +484,8 @@ export const StoreProvider = ({ children }) => {
       wing: wingObj ? wingObj.name : 'Wing N',
       wingId,
       flat,
-      role: isChampion ? 'champion' : 'resident',
-      isChampion,
+      role: assignedRole,
+      isChampion: true,
       status: 'PENDING_APPROVAL',
       contributionStatus: 'UNPAID',
       registeredAt: new Date().toISOString().split('T')[0],

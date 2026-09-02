@@ -7,7 +7,7 @@ export default function Brackets({ onShowToast }) {
   const { state, setStoreState, recordFixtureScore, approveEventRegistration, rejectEventRegistration, postAnnouncement, toggleParticipantVoting, publishParticipantResults, validateFlatDues, registerForEvent } = useStore();
   const currentUser = state.currentUser;
 
-  const isAdminOrChamp = currentUser?.role === 'admin' || currentUser?.role === 'champion' || currentUser?.isChampion;
+  const isAdminOrChamp = currentUser?.role === 'admin' || currentUser?.role === 'champion' || currentUser?.role === 'scot_member' || currentUser?.role === 'wing_captain' || currentUser?.isChampion;
 
   if (!isAdminOrChamp) {
     return (

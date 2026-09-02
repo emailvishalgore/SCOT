@@ -22,6 +22,7 @@ export default function Login({ onLoginSuccess, onShowToast }) {
   const [flat, setFlat] = useState('');
   const [phone, setPhone] = useState('');
   const [pin, setPin] = useState('');
+  const [role, setRole] = useState('scot_member'); // 'scot_member' or 'wing_captain'
 
   // Signin form states
   const [loginPhone, setLoginPhone] = useState('');
@@ -65,8 +66,8 @@ export default function Login({ onLoginSuccess, onShowToast }) {
       console.log('Firebase registration token fetch skipped: ', err);
     }
 
-    // All organizer signups default to 'champion' role
-    const newUser = register(name, wingId, flat, phone, pin, true, token);
+    // Register with selected role ('scot_member' or 'wing_captain')
+    const newUser = register(name, wingId, flat, phone, pin, role, token);
     setPendingUser(newUser);
     setActiveTab('pending');
   };
@@ -274,6 +275,14 @@ export default function Login({ onLoginSuccess, onShowToast }) {
             >
               <div style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: 'var(--color-primary-lighter)', border: '1px solid var(--color-primary-light)', fontSize: '0.78rem', color: 'var(--color-primary-dark)', fontWeight: 600, textAlign: 'left', lineHeight: 1.4 }}>
                 🎯 This registration is for <strong>Event Champions & Wing Coordinators</strong> only. Your account will be reviewed and approved by the SCOT Admin.
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: 700 }}>Requested Role</label>
+                <select className="select" value={role} onChange={(e) => setRole(e.target.value)} required>
+                  <option value="scot_member">SCOT Member (Wing Champion)</option>
+                  <option value="wing_captain">Wing Captain</option>
+                </select>
               </div>
 
               <div className="form-group">

@@ -140,7 +140,7 @@ export default function Sidebar({ currentScreen, onViewScreen, isOpen, onClose }
               {user.name}
             </span>
             <span className="profile-role">
-              {String(user.role || 'champion').toUpperCase()} {user.flat ? `(${user.flat})` : ''}
+              {user.role === 'admin' ? 'SCOT ADMIN' : (user.role === 'wing_captain' ? 'WING CAPTAIN' : 'SCOT MEMBER')} {user.flat ? `(${user.flat})` : ''}
             </span>
           </div>
         </div>
