@@ -4,7 +4,7 @@ import { Shield, PlusCircle, Edit3, Trash, Plus, Minus, Eye } from 'lucide-react
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function EventEditor({ onShowToast, onViewScreen }) {
-  const { state, setStoreState, canEditEvent, canEditSubEvent } = useStore();
+  const { state, setStoreState, canEditEvent, canEditSubEvent, saveEvent, deleteEvent } = useStore();
   const currentUser = state.currentUser;
 
   const isAdminOrChamp = currentUser?.role === 'admin' || currentUser?.role === 'champion' || currentUser?.role === 'scot_member' || currentUser?.role === 'wing_captain' || currentUser?.isChampion;
@@ -230,26 +230,15 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
       points: formattedPoints
     };
 
-    setStoreState(prev => {
-      let nextEvents = [];
-      if (editingEvent) {
-        nextEvents = prev.events.map(e => e.id === editingEvent.id ? finalEvent : e);
-      } else {
-        nextEvents = [...prev.events, finalEvent];
-      }
-      return { ...prev, events: nextEvents };
-    });
+    saveEvent(finalEvent);
 
-    onShowToast(editingEvent ? 'Event updated successfully!' : 'Event scheduled successfully!', 'success');
+    onShowToast(editingEvent ? 'Event updated successfully & synced live to database!' : 'Event scheduled successfully & synced live to database!', 'success');
     setIsModalOpen(false);
   };
 
   const handleDeleteEvent = (eventId) => {
     if (!window.confirm('Are you sure you want to delete this event? This will clear all registrations.')) return;
-    setStoreState(prev => ({
-      ...prev,
-      events: prev.events.filter(e => e.id !== eventId)
-    }));
+    deleteEvent(eventId);
     onShowToast('Event deleted successfully.', 'info');
   };
 

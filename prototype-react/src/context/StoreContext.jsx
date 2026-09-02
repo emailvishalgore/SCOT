@@ -250,19 +250,19 @@ const getInitialState = () => {
   };
 };
 
-export const StoreProvider = ({ children }) => {
-  const [state, setStoreState] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORE_KEY);
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {}
-    return getInitialState();
-  });
+// Completely purge Local Storage on app load to ensure NO browser cached state persists
+try {
+  localStorage.clear();
+} catch (e) {
+  console.warn("Failed to clear local storage:", e);
+}
 
-  // Fetch sheet contents dynamically on load (if URL is set)
-  useEffect(() => {
+export const StoreProvider = ({ children }) => {
+  // Always initialize state fresh from getInitialState() — NO LOCAL STORAGE READ
+  const [state, setStoreState] = useState(() => getInitialState());
+
+  // Real-time Fetch & Synchronization from Google Sheets Live Database
+  const fetchLiveData = () => {
     if (!GOOGLE_SHEETS_API_URL) return;
 
     fetch(`${GOOGLE_SHEETS_API_URL}?action=readAll`)
@@ -278,17 +278,15 @@ export const StoreProvider = ({ children }) => {
             mergedUsers.unshift(defaultAdmin);
           }
 
-          // Deduplicate users by phone or ID to prevent any duplicate entries
+          // Deduplicate users by phone or ID
           const uniqueUsersMap = {};
           mergedUsers.forEach(u => {
             const key = String(u.phone || u.id);
             if (key) uniqueUsersMap[key] = u;
           });
           const finalUsers = Object.values(uniqueUsersMap).map(u => {
-            // Check if the keys are shifted (i.e. if u.role is a number (flat number), which means the spreadsheet has the old header layout)
             const isShifted = u.role && (typeof u.role === 'number' || !isNaN(u.role)) || (u.flat && String(u.flat).startsWith('wing-'));
             if (isShifted) {
-              // In the shifted sheet, status was written as index 9 (column 10). If the sheet has no header, it is in u[""].
               const rawVal = String(u[""] || '').toUpperCase();
               let parsedStatus = 'PENDING_APPROVAL';
               if (rawVal.includes('APPROVED')) {
@@ -296,7 +294,6 @@ export const StoreProvider = ({ children }) => {
               } else if (rawVal.includes('PENDING_APPROVAL')) {
                 parsedStatus = 'PENDING_APPROVAL';
               } else {
-                // Fallback in case status is stored elsewhere
                 parsedStatus = (u.status === 'APPROVED' || u.contributionStatus === 'APPROVED') ? 'APPROVED' : 'PENDING_APPROVAL';
               }
 
@@ -306,10 +303,10 @@ export const StoreProvider = ({ children }) => {
                 phone: u.phone,
                 pin: u.pin,
                 wing: u.wing,
-                wingId: u.flat, // column 6 got wingId
-                flat: String(u.role), // column 7 got flat
-                role: String(u.status || 'resident'), // column 8 got role
-                isChampion: u.profilePhoto === true || String(u.profilePhoto).toUpperCase() === 'TRUE', // column 9 got isChampion
+                wingId: u.flat,
+                flat: String(u.role),
+                role: String(u.status || 'resident'),
+                isChampion: u.profilePhoto === true || String(u.profilePhoto).toUpperCase() === 'TRUE',
                 status: parsedStatus,
                 contributionStatus: parsedStatus === 'APPROVED' ? 'PAID' : 'UNPAID',
                 registeredAt: '2026-08-15',
@@ -317,7 +314,6 @@ export const StoreProvider = ({ children }) => {
                 fcmToken: ''
               };
 
-              // Self-heal the database row in the background by updating it with the clean 14-column layout array
               postToSheet('updateRow', 'Users', [
                 cleanUser.id,
                 cleanUser.name,
@@ -327,7 +323,7 @@ export const StoreProvider = ({ children }) => {
                 cleanUser.wingId,
                 cleanUser.flat,
                 cleanUser.role,
-                cleanUser.isChampion ? 'TRUE' : 'FALSE',
+                cleanUser.isChampion,
                 cleanUser.status,
                 cleanUser.contributionStatus,
                 cleanUser.registeredAt,
@@ -338,7 +334,6 @@ export const StoreProvider = ({ children }) => {
               return cleanUser;
             }
 
-            // For clean/normal 14-column rows, map to official portal roles (admin, scot_member, wing_captain)
             const validRoles = ['admin', 'scot_member', 'champion', 'wing_captain'];
             let parsedRole = String(u.role || '').toLowerCase();
             if (!validRoles.includes(parsedRole)) {
@@ -363,11 +358,6 @@ export const StoreProvider = ({ children }) => {
           });
 
           // Flush out any legacy non-organizer regular users from local memory and Google Sheet
-          const organizerOnlyUsers = finalUsers.filter(u => {
-            const r = String(u.role || '').toLowerCase();
-            return String(u.phone) === '9876543210' || r === 'admin' || r === 'scot_member' || r === 'champion' || r === 'wing_captain';
-          });
-
           const usersToPurge = (data.users || []).filter(u => {
             if (!u) return false;
             const r = String(u.role || '').toLowerCase();
@@ -378,7 +368,7 @@ export const StoreProvider = ({ children }) => {
             postToSheet('deleteRow', 'Users', null, 0, u.id);
           });
 
-          // Map registrations with default values for votingStatus, mediaTrack, and groupMembers
+          // Map registrations with default values
           const rawRegs = (data.registrations || prev.registrations || []).filter(Boolean);
           const finalRegs = rawRegs.map(r => {
             let parsedMembers = [];
@@ -397,8 +387,28 @@ export const StoreProvider = ({ children }) => {
             };
           });
 
+          // Map live events from Google Sheets if available
+          let fetchedEvents = prev.events;
+          if (data.events && Array.isArray(data.events) && data.events.length > 0) {
+            fetchedEvents = data.events.map(e => {
+              let parsedSubEvents = [];
+              let parsedManagers = [];
+              try {
+                if (e.subEvents) parsedSubEvents = typeof e.subEvents === 'string' ? JSON.parse(e.subEvents) : e.subEvents;
+                if (e.assignedManagerIds) parsedManagers = typeof e.assignedManagerIds === 'string' ? JSON.parse(e.assignedManagerIds) : e.assignedManagerIds;
+              } catch (err) {}
+              return {
+                ...e,
+                subEvents: Array.isArray(parsedSubEvents) ? parsedSubEvents : [],
+                assignedManagerIds: Array.isArray(parsedManagers) ? parsedManagers : [],
+                nominationsRequired: e.nominationsRequired === true || String(e.nominationsRequired).toUpperCase() === 'TRUE'
+              };
+            });
+          }
+
           return {
             ...prev,
+            events: fetchedEvents,
             users: finalUsers,
             registrations: finalRegs,
             announcements: (data.announcements || prev.announcements || []).filter(Boolean),
@@ -408,6 +418,13 @@ export const StoreProvider = ({ children }) => {
         });
       })
       .catch(err => console.error("Error loading Google Sheet database:", err));
+  };
+
+  // Run live sync immediately on load and every 15 seconds for real-time multi-device sync
+  useEffect(() => {
+    fetchLiveData();
+    const interval = setInterval(fetchLiveData, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   // Write changes to Local Storage
@@ -1043,6 +1060,49 @@ export const StoreProvider = ({ children }) => {
     return { success: true };
   };
 
+  // Event Management with Real-Time Google Sheets Database Sync
+  const saveEvent = (finalEvent) => {
+    setStoreState(prev => {
+      const exists = prev.events.some(e => e.id === finalEvent.id);
+      const nextEvents = exists 
+        ? prev.events.map(e => e.id === finalEvent.id ? finalEvent : e)
+        : [...prev.events, finalEvent];
+      return { ...prev, events: nextEvents };
+    });
+
+    const rowData = [
+      finalEvent.id,
+      finalEvent.name,
+      finalEvent.type,
+      finalEvent.startDate,
+      finalEvent.endDate || finalEvent.startDate,
+      finalEvent.venue,
+      finalEvent.time,
+      finalEvent.status || 'OPEN',
+      finalEvent.category || 'Sports',
+      finalEvent.description || '',
+      finalEvent.registrationDeadline || finalEvent.startDate,
+      JSON.stringify(finalEvent.subEvents || []),
+      JSON.stringify(finalEvent.assignedManagerIds || []),
+      finalEvent.nominationsRequired ? 'TRUE' : 'FALSE',
+      finalEvent.winnerPoints || '',
+      finalEvent.runnerUpPoints || '',
+      finalEvent.points || '',
+      finalEvent.rules || ''
+    ];
+
+    postToSheet('upsertRow', 'Events', rowData, 0, finalEvent.id);
+  };
+
+  const deleteEvent = (eventId) => {
+    setStoreState(prev => ({
+      ...prev,
+      events: prev.events.filter(e => e.id !== eventId)
+    }));
+
+    postToSheet('deleteRow', 'Events', null, 0, eventId);
+  };
+
   // Permission Helper Functions
   const canEditEvent = (user, event) => {
     if (!user || !event) return false;
@@ -1104,7 +1164,9 @@ export const StoreProvider = ({ children }) => {
       validateFlatDues,
       canEditEvent,
       canEditSubEvent,
-      canSubmitNominations
+      canSubmitNominations,
+      saveEvent,
+      deleteEvent
     }}>
       {children}
     </StoreContext.Provider>
