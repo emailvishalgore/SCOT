@@ -4,7 +4,7 @@ import { Shield, PlusCircle, Edit3, Trash, Plus, Minus, Eye } from 'lucide-react
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function EventEditor({ onShowToast, onViewScreen }) {
-  const { state, setStoreState } = useStore();
+  const { state, setStoreState, canEditEvent, canEditSubEvent } = useStore();
   const currentUser = state.currentUser;
 
   const isAdminOrChamp = currentUser?.role === 'admin' || currentUser?.role === 'champion' || currentUser?.role === 'scot_member' || currentUser?.role === 'wing_captain' || currentUser?.isChampion;
@@ -35,6 +35,10 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
   const [regDeadlineTime, setRegDeadlineTime] = useState('23:59');
   const [subEvents, setSubEvents] = useState([]);
   const [activeTooltipId, setActiveTooltipId] = useState(null);
+
+  // Event Manager Assignment & Nominations Flag states
+  const [nominationsRequired, setNominationsRequired] = useState(true);
+  const [assignedManagerIds, setAssignedManagerIds] = useState([]);
 
   // Standalone event registration type and rules states
   const [eventRegType, setEventRegType] = useState('INDIVIDUAL');
@@ -82,6 +86,8 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
     setEventMaxGroupSize(5);
     setEventMaxGroupsPerWing(2);
     setEventRules('');
+    setNominationsRequired(true);
+    setAssignedManagerIds([]);
     setIsModalOpen(true);
   };
 
@@ -107,6 +113,8 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
     setEventMaxGroupSize(evt.maxGroupSize || 5);
     setEventMaxGroupsPerWing(evt.maxGroupsPerWing || 2);
     setEventRules(evt.rules || '');
+    setNominationsRequired(evt.nominationsRequired !== false);
+    setAssignedManagerIds(evt.assignedManagerIds || []);
     setIsModalOpen(true);
   };
 
@@ -117,7 +125,7 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
         id: `sub-dynamic-${Date.now()}-${prev.length}`, 
         name: '', 
         category: '', 
-        points: 'Winner: 30 pts / Runner: 20 pts',
+        points: '',
         startDate: startDate || '',
         time: time || '',
         managerName: '',
@@ -128,7 +136,8 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
         minGroupSize: 2,
         maxGroupSize: 5,
         maxGroupsPerWing: 2,
-        rules: ''
+        rules: '',
+        assignedManagerIds: []
       }
     ]);
   };
@@ -166,7 +175,9 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
       minGroupSize: eventMinGroupSize,
       maxGroupSize: eventMaxGroupSize,
       maxGroupsPerWing: eventMaxGroupsPerWing,
-      rules: eventRules
+      rules: eventRules,
+      nominationsRequired,
+      assignedManagerIds
     };
 
     setStoreState(prev => {
@@ -225,29 +236,45 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
               </tr>
             </thead>
             <tbody>
-              {state.events.map(evt => (
-                <tr key={evt.id}>
-                  <td><strong style={{ color: 'var(--color-text)' }}>{evt.name}</strong></td>
-                  <td><span className="badge badge-slate">{evt.type}</span></td>
-                  <td><span className={`badge ${evt.category === 'Sports' ? 'badge-green' : 'badge-violet'}`}>{evt.category}</span></td>
-                  <td>{evt.startDate}</td>
-                  <td>{evt.venue}</td>
-                  <td style={{ textAlign: 'center' }}>{evt.subEvents ? evt.subEvents.length : 0}</td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                      <button className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={() => onViewScreen(`events/${evt.id}`)}>
-                        <Eye size={14} /> View
-                      </button>
-                      <button className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={() => handleOpenEdit(evt)}>
-                        <Edit3 size={14} /> Edit
-                      </button>
-                      <button className="btn btn-danger btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={() => handleDeleteEvent(evt.id)}>
-                        <Trash size={14} /> Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {state.events.map(evt => {
+                const isEditable = canEditEvent(currentUser, evt);
+                return (
+                  <tr key={evt.id}>
+                    <td>
+                      <strong style={{ color: 'var(--color-text)' }}>{evt.name}</strong>
+                      {evt.nominationsRequired && (
+                        <span className="badge badge-amber" style={{ marginLeft: '6px', fontSize: '0.65rem' }}>📋 Nominations</span>
+                      )}
+                    </td>
+                    <td><span className="badge badge-slate">{evt.type}</span></td>
+                    <td><span className={`badge ${evt.category === 'Sports' ? 'badge-green' : 'badge-violet'}`}>{evt.category}</span></td>
+                    <td>{evt.startDate}</td>
+                    <td>{evt.venue}</td>
+                    <td style={{ textAlign: 'center' }}>{evt.subEvents ? evt.subEvents.length : 0}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <button className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={() => onViewScreen(`events/${evt.id}`)}>
+                          <Eye size={14} /> View
+                        </button>
+                        {isEditable ? (
+                          <>
+                            <button className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={() => handleOpenEdit(evt)}>
+                              <Edit3 size={14} /> Edit & Manage
+                            </button>
+                            {currentUser?.role === 'admin' && (
+                              <button className="btn btn-danger btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={() => handleDeleteEvent(evt.id)}>
+                                <Trash size={14} /> Delete
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <span className="badge badge-slate" style={{ fontSize: '0.75rem', padding: '4px 8px' }}>👁️ Read-Only</span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -295,6 +322,52 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
                     </select>
                   </div>
                 </div>
+
+                {/* Nominations Checkbox */}
+                <div className="form-group" style={{ background: '#FFFBEB', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #FCD34D' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, color: '#92400E' }}>
+                    <input 
+                      type="checkbox" 
+                      style={{ width: '18px', height: '18px', accentColor: '#D97706' }}
+                      checked={nominationsRequired} 
+                      onChange={(e) => setNominationsRequired(e.target.checked)} 
+                    />
+                    <span>📋 Requires Wing Nominations (Wing Captains can submit wing entries)</span>
+                  </label>
+                </div>
+
+                {/* Event Manager Assignment Checkboxes (Admin View Only) */}
+                {currentUser?.role === 'admin' && (
+                  <div className="form-group" style={{ background: '#F8FAFC', padding: '1rem', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
+                    <label className="form-label" style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      🛡️ Assign Event Managers (SCOT Members / Wing Champions)
+                    </label>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>
+                      Selected members gain full management & editing rights for this event (and all sub-events if umbrella).
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.5rem', maxHeight: '140px', overflowY: 'auto' }}>
+                      {(state.users || []).filter(u => u.role === 'admin' || u.role === 'champion' || u.role === 'scot_member' || u.isChampion).map(m => {
+                        const isChecked = assignedManagerIds.includes(m.id);
+                        return (
+                          <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', background: '#FFFFFF', padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
+                            <input 
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setAssignedManagerIds(prev => [...prev, m.id]);
+                                } else {
+                                  setAssignedManagerIds(prev => prev.filter(id => id !== m.id));
+                                }
+                              }}
+                            />
+                            <span>{m.name} {m.wing ? `(${m.wing})` : ''}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">

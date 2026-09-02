@@ -4,7 +4,7 @@ import { Shield, Trophy, Award, GitBranch, Edit3, CheckCheck, Clock, UserCheck, 
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Brackets({ onShowToast }) {
-  const { state, setStoreState, recordFixtureScore, approveEventRegistration, rejectEventRegistration, postAnnouncement, toggleParticipantVoting, publishParticipantResults, validateFlatDues, registerForEvent } = useStore();
+  const { state, setStoreState, recordFixtureScore, approveEventRegistration, rejectEventRegistration, postAnnouncement, toggleParticipantVoting, publishParticipantResults, validateFlatDues, registerForEvent, canEditEvent, canEditSubEvent, canSubmitNominations } = useStore();
   const currentUser = state.currentUser;
 
   const isAdminOrChamp = currentUser?.role === 'admin' || currentUser?.role === 'champion' || currentUser?.role === 'scot_member' || currentUser?.role === 'wing_captain' || currentUser?.isChampion;
@@ -655,17 +655,19 @@ export default function Brackets({ onShowToast }) {
 
       {activeTab === 'approvals' && (
         <>
-        {/* Manual Participant Entry */}
+        {/* Manual Participant Entry / Wing Nominations */}
         <div className="card" style={{ marginBottom: '1.5rem' }}>
           <div className="flex-between" style={{ marginBottom: '1rem' }}>
             <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.15rem', fontWeight: 700 }}>
-              ➕ Manual Participant Entry
+              {currentUser?.role === 'wing_captain' 
+                ? `📋 Submit ${currentUser.wing || 'Wing'} Nominations` 
+                : '➕ Manual Participant Entry'}
             </h2>
             <button
               className={`btn btn-sm ${showManualEntry ? 'btn-secondary' : 'btn-primary'}`}
               onClick={() => setShowManualEntry(!showManualEntry)}
             >
-              {showManualEntry ? 'Close Form' : 'Add Participant'}
+              {showManualEntry ? 'Close Form' : (currentUser?.role === 'wing_captain' ? 'Submit Nomination' : 'Add Participant')}
             </button>
           </div>
 
@@ -700,7 +702,12 @@ export default function Brackets({ onShowToast }) {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                   <div className="form-group">
                     <label className="form-label" style={{ fontSize: '0.8rem' }}>Wing</label>
-                    <select className="select" value={manualWing} onChange={(e) => { setManualWing(e.target.value); setDuesStatus(null); }}>
+                    <select 
+                      className="select" 
+                      value={currentUser?.role === 'wing_captain' && currentUser?.wing ? currentUser.wing.replace('Wing ', '').trim() : manualWing} 
+                      onChange={(e) => { setManualWing(e.target.value); setDuesStatus(null); }}
+                      disabled={currentUser?.role === 'wing_captain' && !!currentUser?.wing}
+                    >
                       {['N','O','P','Q','R','S','T','U','V','W'].map(w => (
                         <option key={w} value={w}>Wing {w}</option>
                       ))}

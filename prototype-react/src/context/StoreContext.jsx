@@ -61,9 +61,11 @@ const getInitialState = () => {
         category: 'Sports',
         description: 'Annual Inter-Wing Carrom Singles Tournament. Matches will be knockout style, 3 boards per match. Winner gains 100 points for their wing.',
         registrationDeadline: '2026-08-07',
+        nominationsRequired: true,
+        assignedManagerIds: [],
         subEvents: [
-          { id: 'sub-c-1', name: 'Carrom Singles Above 16', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts' },
-          { id: 'sub-c-2', name: 'Carrom Singles Kids (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts' }
+          { id: 'sub-c-1', name: 'Carrom Singles Above 16', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts', assignedManagerIds: [] },
+          { id: 'sub-c-2', name: 'Carrom Singles Kids (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts', assignedManagerIds: [] }
         ]
       },
       {
@@ -78,9 +80,11 @@ const getInitialState = () => {
         category: 'Sports',
         description: 'Annual Inter-Wing Table Tennis Singles Tournament. Best of 3 sets, 11 points per set. Winner earns 100 points for their wing.',
         registrationDeadline: '2026-08-21',
+        nominationsRequired: true,
+        assignedManagerIds: [],
         subEvents: [
-          { id: 'sub-t-1', name: 'TT Singles Above 16', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts' },
-          { id: 'sub-t-2', name: 'TT Singles Kids (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts' }
+          { id: 'sub-t-1', name: 'TT Singles Above 16', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts', assignedManagerIds: [] },
+          { id: 'sub-t-2', name: 'TT Singles Kids (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts', assignedManagerIds: [] }
         ]
       },
       {
@@ -95,6 +99,8 @@ const getInitialState = () => {
         category: 'Cultural',
         description: 'Grand Dahi Handi breaking competition. Wing-wise pyramid construction speed challenge. Special guest drum beats!',
         registrationDeadline: '2026-09-02',
+        nominationsRequired: true,
+        assignedManagerIds: [],
         subEvents: []
       },
       {
@@ -109,16 +115,18 @@ const getInitialState = () => {
         category: 'Cultural',
         description: '5-Day Grand Ganesh Utsav Celebrations featuring Dhol Tasha, Wing-wise Cultural Performances, Dumbtakshari, Senior & Kids Stage Events, Visarjan Procession & Gala Dinner.',
         registrationDeadline: '2026-09-10',
+        nominationsRequired: true,
+        assignedManagerIds: [],
         subEvents: [
-          { id: 'sub-g-1', name: 'Ganesh Sthapana & Dhol Tasha', startDate: '2026-09-14', time: '01:00 PM', category: 'General' },
-          { id: 'sub-g-2', name: 'Wing Wise Performances', startDate: '2026-09-14', time: '07:30 PM', points: 'Winner: 100 pts / Runner: 70 pts / 3rd: 50 pts' },
-          { id: 'sub-g-3', name: 'Senior Citizen Event', startDate: '2026-09-15', time: '11:00 AM', category: 'Senior Citizens', points: 'Winner: 30 pts / Runner: 20 pts' },
-          { id: 'sub-g-4', name: 'Dumbtakshari', startDate: '2026-09-15', time: '07:30 PM', points: 'Winner: 50 pts / Runner: 30 pts' },
-          { id: 'sub-g-5', name: 'Kids Event (Below 10)', startDate: '2026-09-16', time: '05:00 PM', category: 'Below 10' },
-          { id: 'sub-g-6', name: 'Kids Stage Performances', startDate: '2026-09-16', time: '07:30 PM', category: 'Below 16' },
-          { id: 'sub-g-7', name: 'Adults Stage Performances', startDate: '2026-09-17', time: '07:30 PM', category: 'Above 16', points: 'Winner: 50 pts / Runner: 30 pts' },
-          { id: 'sub-g-8', name: 'Ganesh Visarjan & Dhol Tasha', startDate: '2026-09-18', time: '03:00 PM' },
-          { id: 'sub-g-9', name: 'Gala Dinner', startDate: '2026-09-18', time: '07:30 PM' }
+          { id: 'sub-g-1', name: 'Ganesh Sthapana & Dhol Tasha', startDate: '2026-09-14', time: '01:00 PM', category: 'General', assignedManagerIds: [] },
+          { id: 'sub-g-2', name: 'Wing Wise Performances', startDate: '2026-09-14', time: '07:30 PM', points: 'Winner: 100 pts / Runner: 70 pts / 3rd: 50 pts', assignedManagerIds: [] },
+          { id: 'sub-g-3', name: 'Senior Citizen Event', startDate: '2026-09-15', time: '11:00 AM', category: 'Senior Citizens', points: 'Winner: 30 pts / Runner: 20 pts', assignedManagerIds: [] },
+          { id: 'sub-g-4', name: 'Dumbtakshari', startDate: '2026-09-15', time: '07:30 PM', points: 'Winner: 50 pts / Runner: 30 pts', assignedManagerIds: [] },
+          { id: 'sub-g-5', name: 'Kids Event (Below 10)', startDate: '2026-09-16', time: '05:00 PM', category: 'Below 10', assignedManagerIds: [] },
+          { id: 'sub-g-6', name: 'Kids Stage Performances', startDate: '2026-09-16', time: '07:30 PM', category: 'Below 16', assignedManagerIds: [] },
+          { id: 'sub-g-7', name: 'Adults Stage Performances', startDate: '2026-09-17', time: '07:30 PM', category: 'Above 16', points: 'Winner: 50 pts / Runner: 30 pts', assignedManagerIds: [] },
+          { id: 'sub-g-8', name: 'Ganesh Visarjan & Dhol Tasha', startDate: '2026-09-18', time: '03:00 PM', assignedManagerIds: [] },
+          { id: 'sub-g-9', name: 'Gala Dinner', startDate: '2026-09-18', time: '07:30 PM', assignedManagerIds: [] }
         ]
       },
       {
@@ -133,6 +141,8 @@ const getInitialState = () => {
         category: 'Cultural',
         description: 'Grand Navratri Dandiya Raas Night with DJ music, traditional attire contest, food stalls, and prizes.',
         registrationDeadline: '2026-10-15',
+        nominationsRequired: false,
+        assignedManagerIds: [],
         subEvents: []
       },
       {
@@ -331,10 +341,13 @@ export const StoreProvider = ({ children }) => {
               parsedRole = 'scot_member';
             }
 
+            const isAdmin = String(u.phone) === '9876543210' || parsedRole === 'admin';
+
             return {
               ...u,
-              wingId: u.wingId || (u.wing ? 'wing-' + String(u.wing).split(' ')[1].toLowerCase() : 'wing-n'),
-              flat: String(u.flat || ''),
+              wing: isAdmin ? '' : (u.wing || ''),
+              wingId: isAdmin ? '' : (u.wingId || (u.wing ? 'wing-' + String(u.wing).split(' ')[1].toLowerCase() : '')),
+              flat: isAdmin ? '' : String(u.flat || ''),
               role: parsedRole,
               isChampion: true,
               status: u.status || 'PENDING_APPROVAL',
@@ -1026,6 +1039,35 @@ export const StoreProvider = ({ children }) => {
     return { success: true };
   };
 
+  // Permission Helper Functions
+  const canEditEvent = (user, event) => {
+    if (!user || !event) return false;
+    if (user.role === 'admin') return true;
+    
+    const mainManagers = event.assignedManagerIds || [];
+    if (mainManagers.includes(user.id)) return true;
+
+    const subEvents = event.subEvents || [];
+    return subEvents.some(sub => (sub.assignedManagerIds || []).includes(user.id));
+  };
+
+  const canEditSubEvent = (user, event, subEvent) => {
+    if (!user || !event) return false;
+    if (user.role === 'admin') return true;
+
+    const mainManagers = event.assignedManagerIds || [];
+    if (mainManagers.includes(user.id)) return true;
+
+    const subManagers = subEvent?.assignedManagerIds || [];
+    return subManagers.includes(user.id);
+  };
+
+  const canSubmitNominations = (user, event) => {
+    if (!user || !event) return false;
+    if (event.nominationsRequired === false) return false;
+    return user.role === 'admin' || user.role === 'champion' || user.role === 'scot_member' || user.role === 'wing_captain';
+  };
+
   return (
     <StoreContext.Provider value={{
       state,
@@ -1055,7 +1097,10 @@ export const StoreProvider = ({ children }) => {
       toggleParticipantVoting,
       uploadRegistrationMedia,
       publishParticipantResults,
-      validateFlatDues
+      validateFlatDues,
+      canEditEvent,
+      canEditSubEvent,
+      canSubmitNominations
     }}>
       {children}
     </StoreContext.Provider>

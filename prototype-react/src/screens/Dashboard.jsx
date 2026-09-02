@@ -1,15 +1,19 @@
 import React from 'react';
 import { useStore } from '../context/StoreContext';
-import { Calendar, CheckCircle2, Trophy, Award, MapPin, ArrowRight } from 'lucide-react';
+import { Calendar, CheckCircle2, Trophy, Award, MapPin, ArrowRight, UserPlus, ClipboardList } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Dashboard({ onViewScreen }) {
-  const { state } = useStore();
+  const { state, canEditEvent, canSubmitNominations } = useStore();
   const user = state.currentUser || { name: 'Rahul Sharma', flat: 'N-402', wing: 'Wing N' };
   const events = state.events || [];
   const leaderboard = state.leaderboard || [];
+  const announcements = state.announcements || [];
+  const registrations = state.registrations || [];
 
-  const userRegs = (state.registrations || []).filter(r => r.residentId === user.id);
+  const userRegs = registrations.filter(r => r.registeredByUserId === user.id);
+  const assignedEvents = events.filter(e => canEditEvent(user, e));
+  const nominationEvents = events.filter(e => canSubmitNominations(user, e));
 
   // Calculate wing rank and points
   const sortedLeaderboard = [...leaderboard].sort((a, b) => b.points - a.points);
@@ -99,6 +103,61 @@ export default function Dashboard({ onViewScreen }) {
         {/* Left Column: Events & Notices */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
+          {/* 🎯 Assigned Events to Manage (SCOT Members / Champions) */}
+          {user.role !== 'admin' && assignedEvents.length > 0 && (
+            <div className="card" style={{ background: '#FAF5FF', border: '1.5px solid var(--color-primary-light)' }}>
+              <div className="flex-between" style={{ marginBottom: '0.75rem' }}>
+                <div>
+                  <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-primary-dark)' }}>
+                    🎯 My Assigned Events to Manage ({assignedEvents.length})
+                  </h2>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>You have been assigned as Event Manager for these events.</p>
+                </div>
+                <button className="btn btn-primary btn-sm" onClick={() => onViewScreen('admin/events')}>
+                  Manage All
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.75rem' }}>
+                {assignedEvents.map(evt => (
+                  <div key={evt.id} style={{ background: '#FFFFFF', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <strong style={{ fontSize: '0.9rem', color: 'var(--color-text)' }}>{evt.name}</strong>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{evt.startDate} • {evt.venue}</span>
+                    <button className="btn btn-secondary btn-xs" style={{ marginTop: '6px', alignSelf: 'flex-start' }} onClick={() => onViewScreen('admin/events')}>
+                      ✏️ Edit & Manage
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 📋 Wing Nominations Open (Wing Captains) */}
+          {user.role === 'wing_captain' && nominationEvents.length > 0 && (
+            <div className="card" style={{ background: '#FFFBEB', border: '1.5px solid #FCD34D' }}>
+              <div className="flex-between" style={{ marginBottom: '0.75rem' }}>
+                <div>
+                  <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.15rem', fontWeight: 800, color: '#92400E' }}>
+                    📋 Wing Nominations Open ({nominationEvents.length})
+                  </h2>
+                  <p style={{ fontSize: '0.8rem', color: '#B45309' }}>Submit participant entries for {user.wing || 'your Wing'}.</p>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.75rem' }}>
+                {nominationEvents.map(evt => (
+                  <div key={evt.id} style={{ background: '#FFFFFF', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #FDE68A', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <strong style={{ fontSize: '0.9rem', color: 'var(--color-text)' }}>{evt.name}</strong>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Deadline: {evt.registrationDeadline || evt.startDate}</span>
+                    <button className="btn btn-primary btn-xs" style={{ marginTop: '6px', alignSelf: 'flex-start' }} onClick={() => onViewScreen('admin/competitions')}>
+                      📋 Submit Wing Nominations
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Upcoming Events Preview */}
           <div className="card">
             <div className="flex-between" style={{ marginBottom: '1rem' }}>
