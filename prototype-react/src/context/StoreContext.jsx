@@ -365,17 +365,6 @@ export const StoreProvider = ({ children }) => {
             };
           });
 
-          // Flush out any legacy non-organizer regular users from local memory and Google Sheet
-          const usersToPurge = (data.users || []).filter(u => {
-            if (!u) return false;
-            const r = String(u.role || '').toLowerCase();
-            if (String(u.phone) === '9876543210' || r === 'admin') return false;
-            return r === 'resident' || (!['admin', 'scot_member', 'champion', 'wing_captain'].includes(r));
-          });
-          usersToPurge.forEach(u => {
-            postToSheet('deleteRow', 'Users', null, 0, u.id);
-          });
-
           // Map registrations with default values
           const rawRegs = (data.registrations || prev.registrations || []).filter(Boolean);
           const finalRegs = rawRegs.map(r => {
