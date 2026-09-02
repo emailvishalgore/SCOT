@@ -738,6 +738,43 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
                             </div>
                           </div>
 
+                          {/* Sub-Event Manager Assignment Checkboxes (Admin View Only) */}
+                          {currentUser?.role === 'admin' && (
+                            <div className="form-group" style={{ background: '#FFFFFF', padding: '0.75rem', borderRadius: '6px', border: '1px solid #E2E8F0', marginTop: '0.25rem' }}>
+                              <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                                🛡️ Sub-Event Managers (SCOT Members / Wing Champions)
+                              </label>
+                              <p style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginBottom: '0.5rem' }}>
+                                Assign specific managers for this sub-category (overrides or adds to main umbrella event managers).
+                              </p>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.35rem', maxHeight: '100px', overflowY: 'auto' }}>
+                                {(state.users || []).filter(u => u.role === 'admin' || u.role === 'champion' || u.role === 'scot_member' || u.isChampion).map(m => {
+                                  const subManagers = sub.assignedManagerIds || [];
+                                  const isChecked = subManagers.includes(m.id);
+                                  return (
+                                    <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', background: '#F8FAFC', padding: '4px 8px', borderRadius: '4px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
+                                      <input 
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={(e) => {
+                                          const currentSubManagers = sub.assignedManagerIds || [];
+                                          let nextSubManagers = [];
+                                          if (e.target.checked) {
+                                            nextSubManagers = [...currentSubManagers, m.id];
+                                          } else {
+                                            nextSubManagers = currentSubManagers.filter(id => id !== m.id);
+                                          }
+                                          handleSubEventChange(idx, 'assignedManagerIds', nextSubManagers);
+                                        }}
+                                      />
+                                      <span>{m.name} {m.wing ? `(${m.wing})` : ''}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Event Manager Name</label>
