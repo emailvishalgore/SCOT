@@ -332,9 +332,11 @@ export default function Login({ onLoginSuccess, onShowToast }) {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>4-Digit PIN</label>
+                  <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>4-Digit PIN (Numeric Only)</label>
                   <input 
                     type="password" 
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className="input" 
                     placeholder="1234" 
                     value={pin} 
@@ -370,22 +372,27 @@ export default function Login({ onLoginSuccess, onShowToast }) {
                 <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Mobile Phone</label>
                 <input 
                   type="tel" 
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   className="input" 
                   placeholder="e.g. 9876543210" 
                   value={loginPhone} 
-                  onChange={(e) => setLoginPhone(e.target.value)} 
+                  onChange={(e) => setLoginPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                  maxLength={10}
                   required 
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Security PIN</label>
+                <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Security PIN (Numeric Only)</label>
                 <input 
                   type="password" 
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   className="input" 
-                  placeholder="Enter 4-digit PIN" 
+                  placeholder="Enter 4-digit numeric PIN" 
                   value={loginPin} 
-                  onChange={(e) => setLoginPin(e.target.value)} 
+                  onChange={(e) => setLoginPin(e.target.value.replace(/\D/g, '').slice(0, 4))} 
                   maxLength={4} 
                   required 
                 />

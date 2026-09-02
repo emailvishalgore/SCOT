@@ -34,8 +34,8 @@ export default function Events({ onViewScreen }) {
 
   // Partition events into upcoming and past
   const today = new Date().toISOString().split('T')[0];
-  const upcomingEvents = sortedEvents.filter(evt => evt.endDate >= today);
-  const pastEvents = sortedEvents.filter(evt => evt.endDate < today);
+  const upcomingEvents = sortedEvents.filter(evt => evt.status === 'OPEN' || evt.status === 'PLANNED' || evt.endDate >= today);
+  const pastEvents = sortedEvents.filter(evt => evt.status === 'COMPLETED' || (evt.status !== 'OPEN' && evt.status !== 'PLANNED' && evt.endDate < today));
 
   const timelineEvents = timelineTab === 'upcoming' ? upcomingEvents : pastEvents;
 

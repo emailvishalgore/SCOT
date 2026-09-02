@@ -1,6 +1,6 @@
 import React from 'react';
 import { useStore } from '../context/StoreContext';
-import { LayoutDashboard, Trophy, Megaphone, Shield, Edit, GitBranch, UserCheck, LogOut, X } from 'lucide-react';
+import { LayoutDashboard, Trophy, Megaphone, Shield, Edit, GitBranch, UserCheck, LogOut, X, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
 import TextRoll from './TextRoll';
 
@@ -31,6 +31,7 @@ export default function Sidebar({ currentScreen, onViewScreen, isOpen, onClose }
   // All users see the organizer tools
   const organizerLinks = [
     { title: 'Dashboard', screen: 'dashboard', icon: <LayoutDashboard size={18} /> },
+    { title: 'Events Hub', screen: 'events', icon: <Calendar size={18} /> },
     { title: 'Event Editor', screen: 'admin/events', icon: <Edit size={18} /> },
     { title: 'Brackets & Scores', screen: 'admin/competitions', icon: <GitBranch size={18} /> },
     { title: 'Leaderboard', screen: 'leaderboard', icon: <Trophy size={18} /> },
