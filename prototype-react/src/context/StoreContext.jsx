@@ -560,15 +560,33 @@ export const StoreProvider = ({ children }) => {
   };
 
   const approveUser = (id) => {
+    let targetUser = state.users.find(u => u.id === id);
+    if (!targetUser) return;
+
+    const approvedUser = { ...targetUser, status: 'APPROVED', contributionStatus: 'PAID' };
+
     setStoreState(prev => ({
       ...prev,
-      users: prev.users.map(u => u.id === id ? { ...u, status: 'APPROVED', contributionStatus: 'PAID' } : u)
+      users: prev.users.map(u => u.id === id ? approvedUser : u)
     }));
 
-    const updatedData = Array(14).fill(null);
-    updatedData[9] = 'APPROVED';
-    updatedData[10] = 'PAID';
-    postToSheet('updateRow', 'Users', updatedData, 0, id);
+    const fullRowData = [
+      approvedUser.id,
+      approvedUser.name,
+      approvedUser.phone,
+      approvedUser.pin,
+      approvedUser.wing || '',
+      approvedUser.wingId || '',
+      approvedUser.flat || '',
+      approvedUser.role || 'scot_member',
+      approvedUser.isChampion ? 'TRUE' : 'FALSE',
+      'APPROVED',
+      'PAID',
+      approvedUser.registeredAt || '2026-08-15',
+      approvedUser.profilePhoto || '',
+      approvedUser.fcmToken || ''
+    ];
+    postToSheet('updateRow', 'Users', fullRowData, 0, id);
   };
 
   const rejectUser = (id) => {
@@ -677,25 +695,59 @@ export const StoreProvider = ({ children }) => {
   };
 
   const approveEventRegistration = (regId) => {
+    let targetReg = state.registrations.find(r => r.id === regId);
+    if (!targetReg) return;
+
+    const approvedReg = { ...targetReg, status: 'APPROVED' };
+
     setStoreState(prev => ({
       ...prev,
-      registrations: prev.registrations.map(r => r.id === regId ? { ...r, status: 'APPROVED' } : r)
+      registrations: prev.registrations.map(r => r.id === regId ? approvedReg : r)
     }));
 
-    const updatedData = Array(12).fill(null);
-    updatedData[7] = 'APPROVED';
-    postToSheet('updateRow', 'Registrations', updatedData, 0, regId);
+    const fullRowData = [
+      approvedReg.id,
+      approvedReg.eventId,
+      approvedReg.subEventId || '',
+      approvedReg.registeredByUserId || '',
+      approvedReg.name,
+      approvedReg.gender || 'Male',
+      approvedReg.ageCategory || 'Above 16',
+      'APPROVED',
+      approvedReg.registeredAt || '2026-08-15',
+      approvedReg.votingStatus || 'NOT_STARTED',
+      approvedReg.mediaTrack || '',
+      JSON.stringify(approvedReg.groupMembers || [])
+    ];
+    postToSheet('updateRow', 'Registrations', fullRowData, 0, regId);
   };
 
   const rejectEventRegistration = (regId) => {
+    let targetReg = state.registrations.find(r => r.id === regId);
+    if (!targetReg) return;
+
+    const rejectedReg = { ...targetReg, status: 'REJECTED' };
+
     setStoreState(prev => ({
       ...prev,
-      registrations: prev.registrations.map(r => r.id === regId ? { ...r, status: 'REJECTED' } : r)
+      registrations: prev.registrations.map(r => r.id === regId ? rejectedReg : r)
     }));
 
-    const updatedData = Array(12).fill(null);
-    updatedData[7] = 'REJECTED';
-    postToSheet('updateRow', 'Registrations', updatedData, 0, regId);
+    const fullRowData = [
+      rejectedReg.id,
+      rejectedReg.eventId,
+      rejectedReg.subEventId || '',
+      rejectedReg.registeredByUserId || '',
+      rejectedReg.name,
+      rejectedReg.gender || 'Male',
+      rejectedReg.ageCategory || 'Above 16',
+      'REJECTED',
+      rejectedReg.registeredAt || '2026-08-15',
+      rejectedReg.votingStatus || 'NOT_STARTED',
+      rejectedReg.mediaTrack || '',
+      JSON.stringify(rejectedReg.groupMembers || [])
+    ];
+    postToSheet('updateRow', 'Registrations', fullRowData, 0, regId);
   };
 
   const postAnnouncement = (title, scope, content, image = '') => {
@@ -818,14 +870,17 @@ export const StoreProvider = ({ children }) => {
   const updateProfile = (name, phone, profilePhoto) => {
     if (!state.currentUser) return;
     const userId = state.currentUser.id;
+    let updatedUserObj = null;
+
     setStoreState(prev => {
       const updatedUsers = prev.users.map(u => {
         if (u.id === userId) {
-          return { ...u, name, phone, profilePhoto };
+          updatedUserObj = { ...u, name, phone, profilePhoto: profilePhoto || u.profilePhoto };
+          return updatedUserObj;
         }
         return u;
       });
-      const updatedCurrentUser = { ...prev.currentUser, name, phone, profilePhoto };
+      const updatedCurrentUser = { ...prev.currentUser, name, phone, profilePhoto: profilePhoto || prev.currentUser.profilePhoto };
       return {
         ...prev,
         users: updatedUsers,
@@ -833,21 +888,37 @@ export const StoreProvider = ({ children }) => {
       };
     });
 
-    const updatedData = Array(13).fill(null);
-    updatedData[1] = name;
-    updatedData[2] = phone;
-    if (profilePhoto) updatedData[12] = profilePhoto;
-    postToSheet('updateRow', 'Users', updatedData, 0, userId);
+    if (!updatedUserObj) {
+      updatedUserObj = { ...state.currentUser, name, phone, profilePhoto };
+    }
+
+    const fullRowData = [
+      updatedUserObj.id,
+      updatedUserObj.name,
+      updatedUserObj.phone,
+      updatedUserObj.pin,
+      updatedUserObj.wing || '',
+      updatedUserObj.wingId || '',
+      updatedUserObj.flat || '',
+      updatedUserObj.role || 'scot_member',
+      updatedUserObj.isChampion ? 'TRUE' : 'FALSE',
+      updatedUserObj.status || 'APPROVED',
+      updatedUserObj.contributionStatus || 'PAID',
+      updatedUserObj.registeredAt || '2026-08-15',
+      updatedUserObj.profilePhoto || '',
+      updatedUserObj.fcmToken || ''
+    ];
+    postToSheet('updateRow', 'Users', fullRowData, 0, userId);
   };
 
   const updateUserFcmToken = (userId, token) => {
+    let targetUser = state.users.find(u => u.id === userId);
+    if (!targetUser) return;
+
+    const updatedUser = { ...targetUser, fcmToken: token };
+
     setStoreState(prev => {
-      const updatedUsers = prev.users.map(u => {
-        if (u.id === userId) {
-          return { ...u, fcmToken: token };
-        }
-        return u;
-      });
+      const updatedUsers = prev.users.map(u => u.id === userId ? updatedUser : u);
       const updatedCurrentUser = prev.currentUser?.id === userId 
         ? { ...prev.currentUser, fcmToken: token } 
         : prev.currentUser;
@@ -858,9 +929,23 @@ export const StoreProvider = ({ children }) => {
       };
     });
 
-    const updatedData = Array(14).fill(null);
-    updatedData[13] = token;
-    postToSheet('updateRow', 'Users', updatedData, 0, userId);
+    const fullRowData = [
+      updatedUser.id,
+      updatedUser.name,
+      updatedUser.phone,
+      updatedUser.pin,
+      updatedUser.wing || '',
+      updatedUser.wingId || '',
+      updatedUser.flat || '',
+      updatedUser.role || 'scot_member',
+      updatedUser.isChampion ? 'TRUE' : 'FALSE',
+      updatedUser.status || 'APPROVED',
+      updatedUser.contributionStatus || 'PAID',
+      updatedUser.registeredAt || '2026-08-15',
+      updatedUser.profilePhoto || '',
+      token || ''
+    ];
+    postToSheet('updateRow', 'Users', fullRowData, 0, userId);
   };
 
   const sendSupportMessage = (message, senderDetail) => {
