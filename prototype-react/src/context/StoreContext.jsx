@@ -412,23 +412,73 @@ export const StoreProvider = ({ children }) => {
             };
           });
 
-          // Map live events from Google Sheets if available
-          let fetchedEvents = prev.events;
+          // Map live events from Google Sheets with robust JSON parsing and sub-event preservation
+          let fetchedEvents = [...prev.events];
           if (data.events && Array.isArray(data.events) && data.events.length > 0) {
-            fetchedEvents = data.events.map(e => {
+            const sheetEventsMap = {};
+            data.events.forEach(e => {
+              if (!e || !e.id) return;
               let parsedSubEvents = [];
               let parsedManagers = [];
               try {
-                if (e.subEvents) parsedSubEvents = typeof e.subEvents === 'string' ? JSON.parse(e.subEvents) : e.subEvents;
-                if (e.assignedManagerIds) parsedManagers = typeof e.assignedManagerIds === 'string' ? JSON.parse(e.assignedManagerIds) : e.assignedManagerIds;
-              } catch (err) {}
-              return {
+                if (e.subEvents) {
+                  if (typeof e.subEvents === 'string') {
+                    const cleanSubStr = e.subEvents.trim().replace(/&quot;/g, '"').replace(/\\"/g, '"');
+                    parsedSubEvents = JSON.parse(cleanSubStr);
+                  } else {
+                    parsedSubEvents = e.subEvents;
+                  }
+                }
+                if (e.assignedManagerIds) {
+                  if (typeof e.assignedManagerIds === 'string') {
+                    const cleanMgrStr = e.assignedManagerIds.trim().replace(/&quot;/g, '"').replace(/\\"/g, '"');
+                    parsedManagers = JSON.parse(cleanMgrStr);
+                  } else {
+                    parsedManagers = e.assignedManagerIds;
+                  }
+                }
+              } catch (err) {
+                console.warn("Failed to parse subEvents/managers for event:", e.id, err);
+              }
+
+              const prevEvt = prev.events.find(pe => pe.id === e.id);
+              const validSubEvents = (Array.isArray(parsedSubEvents) && parsedSubEvents.length > 0)
+                ? parsedSubEvents
+                : (prevEvt?.subEvents || []);
+
+              sheetEventsMap[e.id] = {
                 ...e,
-                subEvents: Array.isArray(parsedSubEvents) ? parsedSubEvents : [],
-                assignedManagerIds: Array.isArray(parsedManagers) ? parsedManagers : [],
+                subEvents: validSubEvents,
+                assignedManagerIds: Array.isArray(parsedManagers) ? parsedManagers : (prevEvt?.assignedManagerIds || []),
                 nominationsRequired: e.nominationsRequired === true || String(e.nominationsRequired).toUpperCase() === 'TRUE'
               };
             });
+
+            // Merge sheet events with prev.events so any locally updated events are preserved
+            const mergedEventsList = [];
+            const processedIds = new Set();
+
+            prev.events.forEach(pe => {
+              if (sheetEventsMap[pe.id]) {
+                const se = sheetEventsMap[pe.id];
+                mergedEventsList.push({
+                  ...se,
+                  subEvents: (se.subEvents && se.subEvents.length > 0) ? se.subEvents : (pe.subEvents || [])
+                });
+                processedIds.add(pe.id);
+              } else {
+                mergedEventsList.push(pe);
+                processedIds.add(pe.id);
+              }
+            });
+
+            Object.values(sheetEventsMap).forEach(se => {
+              if (!processedIds.has(se.id)) {
+                mergedEventsList.push(se);
+              }
+            });
+
+            fetchedEvents = mergedEventsList;
           }
 
           return {
@@ -1202,6 +1252,7 @@ export const StoreProvider = ({ children }) => {
     ];
 
     postToSheet('upsertRow', 'Events', rowData, 0, finalEvent.id);
+    postToSheet('updateRow', 'Events', rowData, 0, finalEvent.id);
   };
 
   const deleteEvent = (eventId) => {
