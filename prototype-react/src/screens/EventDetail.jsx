@@ -12,13 +12,11 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
   );
 
   // Modal registration form states
-  const [confirmModalData, setConfirmModalData] = useState(null); // { subId, subName } or null
-  const [regName, setRegName] = useState('');
-  const [regPhone, setRegPhone] = useState('');
-  const [regFlat, setRegFlat] = useState('');
-  const [regGender, setRegGender] = useState('Male');
-  const [regAgeCategory, setRegAgeCategory] = useState('Above 16');
-  const [selectedGroupMembers, setSelectedGroupMembers] = useState([]);
+  const [confirmModalData, setConfirmModalData] = useState(null); // { subId, subName, isDoubles } or null
+  const [teamName, setTeamName] = useState('');
+  const [participants, setParticipants] = useState([
+    { name: '', flat: '', phone: '', gender: 'Male', ageCategory: 'Above 16' }
+  ]);
 
   if (!event) {
     return (
@@ -60,13 +58,43 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
       onShowToast('You must be registered and verified by admin to sign up for events!', 'error');
       return;
     }
-    setConfirmModalData({ subId, subName });
-    setRegName('');
-    setRegPhone('');
-    setRegFlat('');
-    setRegGender('Male');
-    setRegAgeCategory('Above 16');
-    setSelectedGroupMembers([]);
+    const isDoubles = String(subName || '').toLowerCase().includes('double') || String(subName || '').toLowerCase().includes('pair');
+    setConfirmModalData({ subId, subName, isDoubles });
+    setTeamName('');
+    
+    if (isDoubles) {
+      setParticipants([
+        { name: '', flat: '', phone: '', gender: 'Male', ageCategory: 'Above 16' },
+        { name: '', flat: '', phone: '', gender: 'Male', ageCategory: 'Above 16' }
+      ]);
+    } else {
+      setParticipants([
+        { name: '', flat: '', phone: '', gender: 'Male', ageCategory: 'Above 16' }
+      ]);
+    }
+  };
+
+  const handleAddParticipant = () => {
+    if (participants.length >= 10) {
+      onShowToast('Maximum 10 participants per entry.', 'warning');
+      return;
+    }
+    setParticipants(prev => [
+      ...prev,
+      { name: '', flat: '', phone: '', gender: 'Male', ageCategory: 'Above 16' }
+    ]);
+  };
+
+  const handleRemoveParticipant = (index) => {
+    if (participants.length <= 1) {
+      onShowToast('At least 1 participant is required!', 'warning');
+      return;
+    }
+    setParticipants(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleUpdateParticipant = (index, field, value) => {
+    setParticipants(prev => prev.map((p, idx) => idx === index ? { ...p, [field]: value } : p));
   };
 
   const handleRegisterSubmit = (e) => {
@@ -90,49 +118,58 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
       return;
     }
 
-    const sub = event.subEvents?.find(s => s.id === subId);
-    const targetConfig = sub || event;
-    const isGroup = targetConfig?.regType === 'GROUP_REQUIRED' || targetConfig?.regType === 'GROUP_OPTIONAL' || targetConfig?.regType === 'GROUP';
-
-    if (isGroup && !regName.trim()) {
-      onShowToast('Please enter a Group Name!', 'error');
-      return;
-    }
-
-    if (!isGroup) {
-      if (!regName.trim()) {
-        onShowToast('Participant name is required!', 'error');
+    // Validate all participants in the form
+    for (let i = 0; i < participants.length; i++) {
+      const p = participants[i];
+      const pLabel = participants.length > 1 ? `Participant #${i + 1}` : 'Participant';
+      if (!p.name.trim()) {
+        onShowToast(`${pLabel} name is required!`, 'error');
         return;
       }
-      if (!regFlat || !/^\d{3}$/.test(regFlat)) {
-        onShowToast('Flat number is required and must be 3 digits (e.g. 402)!', 'error');
+      if (!p.flat || !/^\d{3}$/.test(p.flat)) {
+        onShowToast(`${pLabel} Flat number must be exactly 3 digits (e.g. 402)!`, 'error');
         return;
       }
-      if (regPhone && !/^\d{10}$/.test(regPhone)) {
-        onShowToast('Phone number must be exactly 10 digits!', 'error');
+      if (p.phone && !/^\d{10}$/.test(p.phone)) {
+        onShowToast(`${pLabel} mobile phone number must be 10 digits!`, 'error');
         return;
       }
     }
 
-    let finalDisplayName = regName.trim();
-    if (!isGroup) {
-      const wingText = user.wing || 'Wing N';
-      const flatText = `, Flat ${regFlat}`;
-      const phoneText = regPhone ? ` • Ph: ${regPhone}` : '';
-      finalDisplayName = `${regName.trim()} (${wingText}${flatText})${phoneText}`;
+    const wingText = user.wing || 'Wing N';
+    let finalDisplayName = '';
+    let groupMembersList = [];
+
+    if (participants.length === 1) {
+      const p = participants[0];
+      const phoneText = p.phone ? ` • Ph: ${p.phone}` : '';
+      finalDisplayName = `${p.name.trim()} (${wingText}, Flat ${p.flat})${phoneText}`;
+      groupMembersList = [];
+    } else {
+      // Doubles or Multi-Participant
+      const playersText = participants.map(p => `${p.name.trim()} (Flat ${p.flat})`).join(' & ');
+      const prefix = teamName.trim() ? `${teamName.trim()}: ` : '';
+      finalDisplayName = `${prefix}${playersText} [${wingText}]`;
+      groupMembersList = participants.map(p => `${p.name.trim()} (Flat ${p.flat}${p.phone ? ', Ph: ' + p.phone : ''})`);
     }
 
+    const isGroupOrMulti = participants.length > 1;
     const res = registerForEvent(
       event.id,
       confirmModalData.subId,
       finalDisplayName,
-      isGroup ? 'Group' : regGender,
-      isGroup ? 'Group' : regAgeCategory,
-      isGroup ? selectedGroupMembers : []
+      isGroupOrMulti ? 'Doubles' : participants[0].gender,
+      isGroupOrMulti ? 'Doubles' : participants[0].ageCategory,
+      groupMembersList
     );
 
     if (res.success) {
-      onShowToast(isGroup ? `Group "${regName.trim()}" registered successfully! Pending approval.` : `Nomination submitted for ${finalDisplayName}! Pending approval.`, 'success');
+      onShowToast(
+        isGroupOrMulti 
+          ? `Team "${finalDisplayName}" registered successfully! Pending approval.` 
+          : `Nomination submitted for ${finalDisplayName}! Pending approval.`, 
+        'success'
+      );
       setConfirmModalData(null);
     } else {
       onShowToast(res.error, 'error');
@@ -757,166 +794,131 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                 style={{ maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}
               >
                 <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'left' }}>
-                  <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.3rem', fontWeight: 800 }}>
-                    {isGroup ? 'Group / Team Entry Form' : 'Wing Participant Nomination Form'}
-                  </h2>
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginTop: '-8px' }}>
-                    Category: <strong>{confirmModalData.subName}</strong> • Wing: <strong>{user.wing || 'Wing N'}</strong>
-                  </p>
+                  <div>
+                    <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.3rem', fontWeight: 800 }}>
+                      {confirmModalData.isDoubles ? '🏸 Doubles / Pair Nomination Form' : (participants.length > 1 ? '👥 Team / Multi-Participant Entry Form' : '👤 Wing Participant Nomination Form')}
+                    </h2>
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                      Category: <strong>{confirmModalData.subName}</strong> • Wing: <strong>{user.wing || 'Wing N'}</strong>
+                    </p>
+                  </div>
 
-                  {isGroup ? (
-                    /* 👥 GROUP REGISTRATION FORM FIELDS */
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <div className="form-group">
-                        <label className="form-label">Group / Team Name</label>
-                        <input 
-                          type="text" 
-                          className="input" 
-                          placeholder="e.g. Wing N Rockers" 
-                          value={regName}
-                          onChange={(e) => setRegName(e.target.value)}
-                          required 
-                        />
-                      </div>
+                  {/* Optional Team / Pair Label */}
+                  {participants.length > 1 && (
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '2px' }}>Team / Pair Name (Optional)</label>
+                      <input 
+                        type="text" 
+                        className="input" 
+                        placeholder="e.g. Wing U Dynamic Duo" 
+                        value={teamName}
+                        onChange={(e) => setTeamName(e.target.value)}
+                      />
+                    </div>
+                  )}
 
-                      <div className="form-group">
-                        <label className="form-label">Participating Wing</label>
-                        <input 
-                          type="text" 
-                          className="input" 
-                          value={`Wing ${user.wing || 'Main'}`} 
-                          disabled 
-                          style={{ background: '#F1F5F9', border: '1px solid #E2E8F0', cursor: 'not-allowed' }}
-                        />
-                        <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px', display: 'block' }}>
-                          *Locked to your society profile wing. All selected members must belong to this wing.
-                        </span>
-                      </div>
-
-                      {/* 👥 Roster Checklist */}
-                      {requireMembers ? (
-                        <div className="form-group">
-                          <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span>Select Wing Members ({selectedGroupMembers.length} selected)</span>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary-dark)' }}>
-                              Quota: {targetConfig.minGroupSize || 2} - {targetConfig.maxGroupSize || 5} members
-                            </span>
-                          </label>
-                          {wingNeighbors.length > 0 ? (
-                            <div style={{ border: '1px solid var(--color-border)', borderRadius: '6px', padding: '10px', background: '#FFF', maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              {wingNeighbors.map(n => {
-                                const checked = selectedGroupMembers.includes(n.name);
-                                return (
-                                  <label key={n.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
-                                    <input 
-                                      type="checkbox"
-                                      checked={checked}
-                                      onChange={() => {
-                                        if (checked) {
-                                          setSelectedGroupMembers(prev => prev.filter(name => name !== n.name));
-                                        } else {
-                                          if (selectedGroupMembers.length >= (targetConfig.maxGroupSize || 5)) {
-                                            onShowToast(`Cannot select more than ${targetConfig.maxGroupSize || 5} members!`, 'warning');
-                                            return;
-                                          }
-                                          setSelectedGroupMembers(prev => [...prev, n.name]);
-                                        }
-                                      }}
-                                    />
-                                    {n.name} ({n.flat})
-                                  </label>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <p style={{ fontSize: '0.78rem', color: 'var(--color-danger)', fontStyle: 'italic' }}>
-                              No other verified residents found in Wing {user.wing}. Please ask your neighbors to register on the app!
-                            </p>
+                  {/* 👥 Dynamic Participant Cards List */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                    {participants.map((p, idx) => (
+                      <div key={idx} style={{ padding: '0.85rem 1rem', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                        <div className="flex-between">
+                          <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-primary-dark)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            👤 {participants.length === 2 ? (idx === 0 ? 'Player 1 (Primary)' : 'Player 2 (Partner)') : `Participant #${idx + 1}`}
+                          </span>
+                          {participants.length > 1 && (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-xs"
+                              onClick={() => handleRemoveParticipant(idx)}
+                              style={{ color: 'var(--color-danger)', borderColor: '#FECACA', padding: '2px 6px', fontSize: '0.7rem' }}
+                            >
+                              <Trash2 size={12} /> Remove
+                            </button>
                           )}
                         </div>
-                      ) : (
-                        <div style={{ background: '#F8FAFC', padding: '8px 10px', borderRadius: '6px', border: '1px dashed var(--color-border)' }}>
-                          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', display: 'block', fontWeight: 600 }}>
-                            👥 Wing-Wise Group Entry
-                          </span>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px', display: 'block' }}>
-                            Roster listing is optional/not required. Just type your Group Name above and submit!
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    /* 👤 WING PARTICIPANT NOMINATION FORM FIELDS */
-                    <>
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Participant Full Name</label>
-                        <input 
-                          type="text" 
-                          className="input" 
-                          placeholder="e.g. Ramesh Kulkarni" 
-                          value={regName}
-                          onChange={(e) => setRegName(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
-                          required 
-                        />
-                      </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                        <div className="form-group">
-                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Flat No.</label>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, marginBottom: '2px' }}>Full Name</label>
                           <input 
                             type="text" 
-                            inputMode="numeric"
-                            pattern="[0-9]*"
                             className="input" 
-                            placeholder="e.g. 402" 
-                            value={regFlat}
-                            onChange={(e) => setRegFlat(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                            maxLength={3}
-                            required
+                            placeholder="e.g. Ramesh Kulkarni" 
+                            value={p.name}
+                            onChange={(e) => handleUpdateParticipant(idx, 'name', e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
+                            required 
                           />
                         </div>
 
-                        <div className="form-group">
-                          <label className="form-label" style={{ fontSize: '0.8rem' }}>Mobile Phone</label>
-                          <input 
-                            type="tel" 
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            className="input" 
-                            placeholder="e.g. 9876543210" 
-                            value={regPhone}
-                            onChange={(e) => setRegPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                            maxLength={10}
-                          />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, marginBottom: '2px' }}>Flat No.</label>
+                            <input 
+                              type="text" 
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              className="input" 
+                              placeholder="e.g. 402" 
+                              value={p.flat}
+                              onChange={(e) => handleUpdateParticipant(idx, 'flat', e.target.value.replace(/\D/g, '').slice(0, 3))}
+                              maxLength={3}
+                              required
+                            />
+                          </div>
+
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Mobile Phone (Opt)</label>
+                            <input 
+                              type="tel" 
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              className="input" 
+                              placeholder="9876543210" 
+                              value={p.phone}
+                              onChange={(e) => handleUpdateParticipant(idx, 'phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                              maxLength={10}
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Gender</label>
+                            <select className="select" value={p.gender} onChange={(e) => handleUpdateParticipant(idx, 'gender', e.target.value)}>
+                              <option value="Male">Male</option>
+                              <option value="Female">Female</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
+
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Age Group</label>
+                            <select className="select" value={p.ageCategory} onChange={(e) => handleUpdateParticipant(idx, 'ageCategory', e.target.value)}>
+                              <option value="Below 10">Below 10</option>
+                              <option value="Below 16">Below 16</option>
+                              <option value="Above 16">Above 16</option>
+                              <option value="Senior Citizen">Senior Citizen</option>
+                            </select>
+                          </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                        <div className="form-group">
-                          <label className="form-label" style={{ fontSize: '0.8rem' }}>Gender</label>
-                          <select className="select" value={regGender} onChange={(e) => setRegGender(e.target.value)}>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        </div>
-
-                        <div className="form-group">
-                          <label className="form-label" style={{ fontSize: '0.8rem' }}>Age Group</label>
-                          <select className="select" value={regAgeCategory} onChange={(e) => setRegAgeCategory(e.target.value)}>
-                            <option value="Below 10">Below 10</option>
-                            <option value="Below 16">Below 16</option>
-                            <option value="Above 16">Above 16</option>
-                            <option value="Senior Citizen">Senior Citizen</option>
-                          </select>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                  {/* ➕ Add Partner / Participant Button */}
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={handleAddParticipant}
+                    style={{ width: '100%', borderStyle: 'dashed', borderColor: 'var(--color-primary)', fontWeight: 700 }}
+                  >
+                    ➕ Add {participants.length === 1 ? 'Doubles Partner' : 'Another Participant'}
+                  </button>
 
                   <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', justifyContent: 'flex-end' }}>
                     <button type="button" className="btn btn-secondary" onClick={() => setConfirmModalData(null)}>Cancel</button>
-                    <button type="submit" className="btn btn-primary">Submit Registration</button>
+                    <button type="submit" className="btn btn-primary">
+                      {participants.length > 1 ? `Submit Pair (${participants.length} Players)` : 'Submit Nomination'}
+                    </button>
                   </div>
                 </form>
               </motion.div>
