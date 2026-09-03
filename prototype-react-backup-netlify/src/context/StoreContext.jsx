@@ -10,12 +10,7 @@ const StoreContext = createContext();
 //
 // Leave it as an empty string ("") to continue using browser Local Storage.
 const GOOGLE_SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbwSLPw4RriyysFhmShOttUHvfEqSeDVUEo1ORJ0chvqiyhrZisYHyZInoJL_E5MaDk7/exec";
-const STORE_KEY = 'scot_prototype_react_v12';
-
-// =========================================================================
-// 🏠 WING COMMANDER FLAT DUES API (READ-ONLY — No writes allowed)
-// =========================================================================
-const WING_COMMANDER_API_URL = "https://script.google.com/macros/s/AKfycbyn7UVwYLnlV59cFMfdl_aeNb_cpUET1WJYsWsuTJYB8b2VcyUgmJYpVW--Ydjvyyli/exec";
+const STORE_KEY = 'scot_prototype_react_v11';
 
 // Clean up old local storage versions to free up quota
 try {
@@ -32,7 +27,6 @@ try {
 const getInitialState = () => {
   return {
     currentUser: null,
-    paidFlats: [],
     users: [
       { id: 'user-admin', name: 'SCOT Admin', phone: '9876543210', pin: '3690', wing: '', wingId: '', flat: '', role: 'admin', isChampion: true, status: 'APPROVED', contributionStatus: 'PAID', registeredAt: '2026-07-30' }
     ],
@@ -53,42 +47,34 @@ const getInitialState = () => {
         id: 'evt-carrom-2026',
         name: 'Carrom Tournament',
         type: 'TOURNAMENT',
-        startDate: '2026-09-06',
-        endDate: '2026-09-06',
+        startDate: '2026-08-09',
+        endDate: '2026-08-09',
         venue: 'Clubhouse Ground Floor',
         time: '09:00 AM onwards',
         status: 'OPEN',
         category: 'Sports',
         description: 'Annual Inter-Wing Carrom Singles Tournament. Matches will be knockout style, 3 boards per match. Winner gains 100 points for their wing.',
-        registrationDeadline: '2026-09-05',
-        nominationsRequired: true,
-        assignedManagerIds: [],
+        registrationDeadline: '2026-08-07',
         subEvents: [
-          { id: 'sub-c-1', name: 'Carrom Men Singles (Above 16)', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts', winnerPoints: '100', runnerUpPoints: '70', assignedManagerIds: [] },
-          { id: 'sub-c-2', name: 'Carrom Women Singles (Above 16)', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts', winnerPoints: '100', runnerUpPoints: '70', assignedManagerIds: [] },
-          { id: 'sub-c-3', name: 'Carrom Boys Singles (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts', winnerPoints: '60', runnerUpPoints: '40', assignedManagerIds: [] },
-          { id: 'sub-c-4', name: 'Carrom Girls Singles (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts', winnerPoints: '60', runnerUpPoints: '40', assignedManagerIds: [] },
-          { id: 'sub-c-5', name: 'Carrom Open Doubles', category: 'Doubles', points: 'Winner: 100 pts / Runner: 70 pts', winnerPoints: '100', runnerUpPoints: '70', assignedManagerIds: [] },
-          { id: 'sub-c-6', name: 'Carrom Kids (Below 10)', category: 'Below 10', points: 'Winner: 40 pts / Runner: 20 pts', winnerPoints: '40', runnerUpPoints: '20', assignedManagerIds: [] }
+          { id: 'sub-c-1', name: 'Carrom Singles Above 16', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts' },
+          { id: 'sub-c-2', name: 'Carrom Singles Kids (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts' }
         ]
       },
       {
         id: 'evt-tt-2026',
         name: 'Table Tennis Tournament',
         type: 'TOURNAMENT',
-        startDate: '2026-09-25',
-        endDate: '2026-09-28',
+        startDate: '2026-08-23',
+        endDate: '2026-08-23',
         venue: 'Clubhouse 1st Floor',
         time: '10:00 AM onwards',
         status: 'OPEN',
         category: 'Sports',
         description: 'Annual Inter-Wing Table Tennis Singles Tournament. Best of 3 sets, 11 points per set. Winner earns 100 points for their wing.',
-        registrationDeadline: '2026-09-24',
-        nominationsRequired: true,
-        assignedManagerIds: [],
+        registrationDeadline: '2026-08-21',
         subEvents: [
-          { id: 'sub-t-1', name: 'TT Singles Above 16', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts', assignedManagerIds: [] },
-          { id: 'sub-t-2', name: 'TT Singles Kids (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts', assignedManagerIds: [] }
+          { id: 'sub-t-1', name: 'TT Singles Above 16', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts' },
+          { id: 'sub-t-2', name: 'TT Singles Kids (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts' }
         ]
       },
       {
@@ -103,8 +89,6 @@ const getInitialState = () => {
         category: 'Cultural',
         description: 'Grand Dahi Handi breaking competition. Wing-wise pyramid construction speed challenge. Special guest drum beats!',
         registrationDeadline: '2026-09-02',
-        nominationsRequired: true,
-        assignedManagerIds: [],
         subEvents: []
       },
       {
@@ -119,18 +103,16 @@ const getInitialState = () => {
         category: 'Cultural',
         description: '5-Day Grand Ganesh Utsav Celebrations featuring Dhol Tasha, Wing-wise Cultural Performances, Dumbtakshari, Senior & Kids Stage Events, Visarjan Procession & Gala Dinner.',
         registrationDeadline: '2026-09-10',
-        nominationsRequired: true,
-        assignedManagerIds: [],
         subEvents: [
-          { id: 'sub-g-1', name: 'Ganesh Sthapana & Dhol Tasha', startDate: '2026-09-14', time: '01:00 PM', category: 'General', assignedManagerIds: [] },
-          { id: 'sub-g-2', name: 'Wing Wise Performances', startDate: '2026-09-14', time: '07:30 PM', points: 'Winner: 100 pts / Runner: 70 pts / 3rd: 50 pts', assignedManagerIds: [] },
-          { id: 'sub-g-3', name: 'Senior Citizen Event', startDate: '2026-09-15', time: '11:00 AM', category: 'Senior Citizens', points: 'Winner: 30 pts / Runner: 20 pts', assignedManagerIds: [] },
-          { id: 'sub-g-4', name: 'Dumbtakshari', startDate: '2026-09-15', time: '07:30 PM', points: 'Winner: 50 pts / Runner: 30 pts', assignedManagerIds: [] },
-          { id: 'sub-g-5', name: 'Kids Event (Below 10)', startDate: '2026-09-16', time: '05:00 PM', category: 'Below 10', assignedManagerIds: [] },
-          { id: 'sub-g-6', name: 'Kids Stage Performances', startDate: '2026-09-16', time: '07:30 PM', category: 'Below 16', assignedManagerIds: [] },
-          { id: 'sub-g-7', name: 'Adults Stage Performances', startDate: '2026-09-17', time: '07:30 PM', category: 'Above 16', points: 'Winner: 50 pts / Runner: 30 pts', assignedManagerIds: [] },
-          { id: 'sub-g-8', name: 'Ganesh Visarjan & Dhol Tasha', startDate: '2026-09-18', time: '03:00 PM', assignedManagerIds: [] },
-          { id: 'sub-g-9', name: 'Gala Dinner', startDate: '2026-09-18', time: '07:30 PM', assignedManagerIds: [] }
+          { id: 'sub-g-1', name: 'Ganesh Sthapana & Dhol Tasha', startDate: '2026-09-14', time: '01:00 PM', category: 'General' },
+          { id: 'sub-g-2', name: 'Wing Wise Performances', startDate: '2026-09-14', time: '07:30 PM', points: 'Winner: 100 pts / Runner: 70 pts / 3rd: 50 pts' },
+          { id: 'sub-g-3', name: 'Senior Citizen Event', startDate: '2026-09-15', time: '11:00 AM', category: 'Senior Citizens', points: 'Winner: 30 pts / Runner: 20 pts' },
+          { id: 'sub-g-4', name: 'Dumbtakshari', startDate: '2026-09-15', time: '07:30 PM', points: 'Winner: 50 pts / Runner: 30 pts' },
+          { id: 'sub-g-5', name: 'Kids Event (Below 10)', startDate: '2026-09-16', time: '05:00 PM', category: 'Below 10' },
+          { id: 'sub-g-6', name: 'Kids Stage Performances', startDate: '2026-09-16', time: '07:30 PM', category: 'Below 16' },
+          { id: 'sub-g-7', name: 'Adults Stage Performances', startDate: '2026-09-17', time: '07:30 PM', category: 'Above 16', points: 'Winner: 50 pts / Runner: 30 pts' },
+          { id: 'sub-g-8', name: 'Ganesh Visarjan & Dhol Tasha', startDate: '2026-09-18', time: '03:00 PM' },
+          { id: 'sub-g-9', name: 'Gala Dinner', startDate: '2026-09-18', time: '07:30 PM' }
         ]
       },
       {
@@ -145,8 +127,6 @@ const getInitialState = () => {
         category: 'Cultural',
         description: 'Grand Navratri Dandiya Raas Night with DJ music, traditional attire contest, food stalls, and prizes.',
         registrationDeadline: '2026-10-15',
-        nominationsRequired: false,
-        assignedManagerIds: [],
         subEvents: []
       },
       {
@@ -217,7 +197,7 @@ const getInitialState = () => {
       {
         id: 'alb-ganesh-2025',
         title: 'Ganesh Utsav Memories',
-        coverImage: './images/ganesh_cover.jpg',
+        coverImage: '/images/ganesh_cover.jpg',
         photoCount: 5,
         photos: [
           'https://picsum.photos/seed/ganesh1/1024/768',
@@ -230,7 +210,7 @@ const getInitialState = () => {
       {
         id: 'alb-carrom-2025',
         title: 'Carrom Tournament 2025',
-        coverImage: './images/carrom_cover.jpg',
+        coverImage: '/images/carrom_cover.jpg',
         photoCount: 7,
         photos: [
           'https://picsum.photos/seed/carrom1/1024/768',
@@ -250,23 +230,19 @@ const getInitialState = () => {
   };
 };
 
-// Selectively clear local storage on app load, preserving event cache
-try {
-  const cachedEvents = localStorage.getItem('scot_events_cache');
-  localStorage.clear();
-  if (cachedEvents) {
-    localStorage.setItem('scot_events_cache', cachedEvents);
-  }
-} catch (e) {
-  console.warn("Failed to handle local storage:", e);
-}
-
 export const StoreProvider = ({ children }) => {
-  // Always initialize state fresh from getInitialState() — NO LOCAL STORAGE READ
-  const [state, setStoreState] = useState(() => getInitialState());
+  const [state, setStoreState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORE_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {}
+    return getInitialState();
+  });
 
-  // Real-time Fetch & Synchronization from Google Sheets Live Database
-  const fetchLiveData = () => {
+  // Fetch sheet contents dynamically on load (if URL is set)
+  useEffect(() => {
     if (!GOOGLE_SHEETS_API_URL) return;
 
     fetch(`${GOOGLE_SHEETS_API_URL}?action=readAll`)
@@ -274,7 +250,7 @@ export const StoreProvider = ({ children }) => {
       .then(data => {
         setStoreState(prev => {
           const fetchedUsers = (data.users || []).filter(Boolean);
-          const hasAdmin = fetchedUsers.some(u => String(u.phone) === '9876543210' || String(u.role || '').toLowerCase() === 'admin');
+          const hasAdmin = fetchedUsers.some(u => String(u.phone) === '9876543210');
           
           let mergedUsers = [...fetchedUsers];
           if (!hasAdmin) {
@@ -282,36 +258,17 @@ export const StoreProvider = ({ children }) => {
             mergedUsers.unshift(defaultAdmin);
           }
 
-          // Preserve any local pending signup requests in memory so registrations are never lost before Google Sheets syncs
-          const localPendingUsers = (prev.users || []).filter(u => u.status === 'PENDING_APPROVAL');
-          localPendingUsers.forEach(pu => {
-            if (!mergedUsers.some(u => String(u.phone) === String(pu.phone) || String(u.id) === String(pu.id))) {
-              mergedUsers.push(pu);
-            }
-          });
-
-          // Map locally approved users by multiple robust keys so Google Sheets polling lag never reverts an approved user
-          const localApprovedUserMap = {};
-          (prev.users || []).forEach(u => {
-            if (u.status === 'APPROVED') {
-              const kPhone = String(u.phone || '').replace(/\D/g, '');
-              const kId = String(u.id || '').trim();
-              const kName = String(u.name || '').trim().toLowerCase();
-              if (kPhone) localApprovedUserMap[kPhone] = u;
-              if (kId) localApprovedUserMap[kId] = u;
-              if (kName) localApprovedUserMap['name_' + kName] = u;
-            }
-          });
-
-          // Deduplicate users by phone or ID
+          // Deduplicate users by phone or ID to prevent any duplicate entries
           const uniqueUsersMap = {};
           mergedUsers.forEach(u => {
             const key = String(u.phone || u.id);
             if (key) uniqueUsersMap[key] = u;
           });
           const finalUsers = Object.values(uniqueUsersMap).map(u => {
+            // Check if the keys are shifted (i.e. if u.role is a number (flat number), which means the spreadsheet has the old header layout)
             const isShifted = u.role && (typeof u.role === 'number' || !isNaN(u.role)) || (u.flat && String(u.flat).startsWith('wing-'));
             if (isShifted) {
+              // In the shifted sheet, status was written as index 9 (column 10). If the sheet has no header, it is in u[""].
               const rawVal = String(u[""] || '').toUpperCase();
               let parsedStatus = 'PENDING_APPROVAL';
               if (rawVal.includes('APPROVED')) {
@@ -319,19 +276,9 @@ export const StoreProvider = ({ children }) => {
               } else if (rawVal.includes('PENDING_APPROVAL')) {
                 parsedStatus = 'PENDING_APPROVAL';
               } else {
+                // Fallback in case status is stored elsewhere
                 parsedStatus = (u.status === 'APPROVED' || u.contributionStatus === 'APPROVED') ? 'APPROVED' : 'PENDING_APPROVAL';
               }
-
-              const kPhone = String(u.phone || '').replace(/\D/g, '');
-              const kId = String(u.id || '').trim();
-              const kName = String(u.name || '').trim().toLowerCase();
-              const prevUser = (kPhone && localApprovedUserMap[kPhone]) ||
-                               (kId && localApprovedUserMap[kId]) ||
-                               (kName && localApprovedUserMap['name_' + kName]);
-
-              const isChamp = u.profilePhoto === true || String(u.profilePhoto).toUpperCase() === 'TRUE' || (prevUser && prevUser.isChampion);
-              const validRoles = ['admin', 'scot_member', 'champion', 'wing_captain'];
-              let cleanRole = (prevUser && prevUser.role && validRoles.includes(prevUser.role)) ? prevUser.role : (isChamp ? 'wing_captain' : 'scot_member');
 
               const cleanUser = {
                 id: u.id,
@@ -339,10 +286,10 @@ export const StoreProvider = ({ children }) => {
                 phone: u.phone,
                 pin: u.pin,
                 wing: u.wing,
-                wingId: u.flat,
-                flat: String(u.role),
-                role: cleanRole,
-                isChampion: isChamp,
+                wingId: u.flat, // column 6 got wingId
+                flat: String(u.role), // column 7 got flat
+                role: String(u.status || 'resident'), // column 8 got role
+                isChampion: u.profilePhoto === true || String(u.profilePhoto).toUpperCase() === 'TRUE', // column 9 got isChampion
                 status: parsedStatus,
                 contributionStatus: parsedStatus === 'APPROVED' ? 'PAID' : 'UNPAID',
                 registeredAt: '2026-08-15',
@@ -350,6 +297,7 @@ export const StoreProvider = ({ children }) => {
                 fcmToken: ''
               };
 
+              // Self-heal the database row in the background by updating it with the clean 14-column layout array
               postToSheet('updateRow', 'Users', [
                 cleanUser.id,
                 cleanUser.name,
@@ -359,7 +307,7 @@ export const StoreProvider = ({ children }) => {
                 cleanUser.wingId,
                 cleanUser.flat,
                 cleanUser.role,
-                cleanUser.isChampion,
+                cleanUser.isChampion ? 'TRUE' : 'FALSE',
                 cleanUser.status,
                 cleanUser.contributionStatus,
                 cleanUser.registeredAt,
@@ -370,45 +318,22 @@ export const StoreProvider = ({ children }) => {
               return cleanUser;
             }
 
-            const cPhone = String(u.phone || '').replace(/\D/g, '');
-            const cId = String(u.id || '').trim();
-            const cName = String(u.name || '').trim().toLowerCase();
-
-            const prevApproved = (cPhone && localApprovedUserMap[cPhone]) || 
-                               (cId && localApprovedUserMap[cId]) || 
-                               (cName && localApprovedUserMap['name_' + cName]);
-
-            const validRoles = ['admin', 'scot_member', 'champion', 'wing_captain'];
-            let parsedRole = String(u.role || '').toLowerCase();
-            if (!validRoles.includes(parsedRole)) {
-              parsedRole = 'scot_member';
-            }
-
-            if (prevApproved && prevApproved.role) {
-              parsedRole = prevApproved.role;
-            }
-
-            const isAdmin = String(u.phone) === '9876543210' || parsedRole === 'admin';
-            const sheetStatus = String(u.status || '').toUpperCase();
-            const isApprovedInSheet = sheetStatus.includes('APPROVED');
-            const finalStatus = (prevApproved || isApprovedInSheet) ? 'APPROVED' : (u.status || 'PENDING_APPROVAL');
-
+            // For clean/normal 14-column rows, align wingId, isChampion, status and contributionStatus
             return {
               ...u,
-              wing: isAdmin ? '' : (u.wing || ''),
-              wingId: isAdmin ? '' : (u.wingId || (u.wing ? 'wing-' + String(u.wing).split(' ')[1].toLowerCase() : '')),
-              flat: isAdmin ? '' : String(u.flat || ''),
-              role: parsedRole,
-              isChampion: true,
-              status: finalStatus,
-              contributionStatus: finalStatus === 'APPROVED' ? 'PAID' : 'UNPAID',
+              wingId: u.wingId || (u.wing ? 'wing-' + String(u.wing).split(' ')[1].toLowerCase() : 'wing-n'),
+              flat: String(u.flat || ''),
+              role: String(u.role || 'resident'),
+              isChampion: u.isChampion === true || String(u.isChampion).toUpperCase() === 'TRUE' || u.role === 'champion',
+              status: u.status || 'PENDING_APPROVAL',
+              contributionStatus: u.contributionStatus || (u.status === 'APPROVED' ? 'PAID' : 'UNPAID'),
               registeredAt: u.registeredAt || '2026-08-15',
               profilePhoto: typeof u.profilePhoto === 'string' ? u.profilePhoto : '',
               fcmToken: u.fcmToken || ''
             };
           });
 
-          // Map registrations with default values
+          // Map registrations with default values for votingStatus, mediaTrack, and groupMembers
           const rawRegs = (data.registrations || prev.registrations || []).filter(Boolean);
           const finalRegs = rawRegs.map(r => {
             let parsedMembers = [];
@@ -427,78 +352,8 @@ export const StoreProvider = ({ children }) => {
             };
           });
 
-          // Map live events from Google Sheets with robust JSON parsing and sub-event preservation
-          let fetchedEvents = [...prev.events];
-          if (data.events && Array.isArray(data.events) && data.events.length > 0) {
-            const sheetEventsMap = {};
-            data.events.forEach(e => {
-              if (!e || !e.id) return;
-              let parsedSubEvents = [];
-              let parsedManagers = [];
-              try {
-                if (e.subEvents) {
-                  if (typeof e.subEvents === 'string') {
-                    const cleanSubStr = e.subEvents.trim().replace(/&quot;/g, '"').replace(/\\"/g, '"');
-                    parsedSubEvents = JSON.parse(cleanSubStr);
-                  } else {
-                    parsedSubEvents = e.subEvents;
-                  }
-                }
-                if (e.assignedManagerIds) {
-                  if (typeof e.assignedManagerIds === 'string') {
-                    const cleanMgrStr = e.assignedManagerIds.trim().replace(/&quot;/g, '"').replace(/\\"/g, '"');
-                    parsedManagers = JSON.parse(cleanMgrStr);
-                  } else {
-                    parsedManagers = e.assignedManagerIds;
-                  }
-                }
-              } catch (err) {
-                console.warn("Failed to parse subEvents/managers for event:", e.id, err);
-              }
-
-              const prevEvt = prev.events.find(pe => pe.id === e.id);
-              const validSubEvents = (Array.isArray(parsedSubEvents) && parsedSubEvents.length > 0)
-                ? parsedSubEvents
-                : (prevEvt?.subEvents || []);
-
-              sheetEventsMap[e.id] = {
-                ...e,
-                subEvents: validSubEvents,
-                assignedManagerIds: Array.isArray(parsedManagers) ? parsedManagers : (prevEvt?.assignedManagerIds || []),
-                nominationsRequired: e.nominationsRequired === true || String(e.nominationsRequired).toUpperCase() === 'TRUE'
-              };
-            });
-
-            // Merge sheet events with prev.events so any locally updated events are preserved
-            const mergedEventsList = [];
-            const processedIds = new Set();
-
-            prev.events.forEach(pe => {
-              if (sheetEventsMap[pe.id]) {
-                const se = sheetEventsMap[pe.id];
-                mergedEventsList.push({
-                  ...se,
-                  subEvents: (se.subEvents && se.subEvents.length > 0) ? se.subEvents : (pe.subEvents || [])
-                });
-                processedIds.add(pe.id);
-              } else {
-                mergedEventsList.push(pe);
-                processedIds.add(pe.id);
-              }
-            });
-
-            Object.values(sheetEventsMap).forEach(se => {
-              if (!processedIds.has(se.id)) {
-                mergedEventsList.push(se);
-              }
-            });
-
-            fetchedEvents = mergedEventsList;
-          }
-
           return {
             ...prev,
-            events: fetchedEvents,
             users: finalUsers,
             registrations: finalRegs,
             announcements: (data.announcements || prev.announcements || []).filter(Boolean),
@@ -508,13 +363,6 @@ export const StoreProvider = ({ children }) => {
         });
       })
       .catch(err => console.error("Error loading Google Sheet database:", err));
-  };
-
-  // Run live sync immediately on load and every 15 seconds for real-time multi-device sync
-  useEffect(() => {
-    fetchLiveData();
-    const interval = setInterval(fetchLiveData, 15000);
-    return () => clearInterval(interval);
   }, []);
 
   // Write changes to Local Storage
@@ -533,49 +381,12 @@ export const StoreProvider = ({ children }) => {
       await fetch(GOOGLE_SHEETS_API_URL, {
         method: 'POST',
         mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, sheetName, data, keyIndex, keyValue })
       });
     } catch (e) {
       console.error("Failed to sync change to Google Sheet:", e);
     }
-  };
-
-  // =========================================================================
-  // 🏠 WING COMMANDER FLAT DUES — READ-ONLY FETCH (No writes ever)
-  // =========================================================================
-  useEffect(() => {
-    if (!WING_COMMANDER_API_URL) return;
-    fetch(`${WING_COMMANDER_API_URL}?action=getAdminData`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.allFlats) {
-          setStoreState(prev => ({
-            ...prev,
-            paidFlats: data.allFlats.filter(Boolean)
-          }));
-        }
-      })
-      .catch(err => console.warn("Failed to load Wing Commander flat dues data (read-only):", err));
-  }, []);
-
-  // Validate a participant's flat contribution against the Wing Commander database
-  const validateFlatDues = (wingLetter, flatNo) => {
-    const wl = String(wingLetter || '').trim().toUpperCase();
-    const fn = String(flatNo || '').trim().toUpperCase();
-    if (!wl || !fn) return { valid: false, reason: 'Wing letter and flat number are required.' };
-
-    const match = state.paidFlats.find(f => {
-      const fw = String(f.wing || '').trim().toUpperCase();
-      const ff = String(f.flat || '').trim().toUpperCase();
-      return fw === wl && ff === fn;
-    });
-
-    if (!match) return { valid: false, reason: `No record found for Wing ${wl}, Flat ${fn}.` };
-    if (String(match.paid || '').toLowerCase() === 'yes') {
-      return { valid: true, reason: `Flat ${wl}-${fn} dues verified (Paid).`, mode: match.mode || '', amount: match.amount || '' };
-    }
-    return { valid: false, reason: `Flat ${wl}-${fn} dues are UNPAID.` };
   };
 
   const login = (phone, pin) => {
@@ -592,15 +403,8 @@ export const StoreProvider = ({ children }) => {
     setStoreState(prev => ({ ...prev, currentUser: null }));
   };
 
-  const register = (name, wingId, flat, phone, pin, roleInput = 'scot_member', fcmToken = '') => {
+  const register = (name, wingId, flat, phone, pin, isChampion, fcmToken = '') => {
     const wingObj = state.wings.find(w => w.id === wingId);
-    let assignedRole = 'scot_member';
-    if (typeof roleInput === 'string' && (roleInput === 'admin' || roleInput === 'scot_member' || roleInput === 'champion' || roleInput === 'wing_captain')) {
-      assignedRole = roleInput;
-    } else if (typeof roleInput === 'boolean') {
-      assignedRole = roleInput ? 'scot_member' : 'wing_captain';
-    }
-
     const newUser = {
       id: `user-${Date.now()}`,
       name,
@@ -609,8 +413,8 @@ export const StoreProvider = ({ children }) => {
       wing: wingObj ? wingObj.name : 'Wing N',
       wingId,
       flat,
-      role: assignedRole,
-      isChampion: true,
+      role: isChampion ? 'champion' : 'resident',
+      isChampion,
       status: 'PENDING_APPROVAL',
       contributionStatus: 'UNPAID',
       registeredAt: new Date().toISOString().split('T')[0],
@@ -642,33 +446,15 @@ export const StoreProvider = ({ children }) => {
   };
 
   const approveUser = (id) => {
-    let targetUser = state.users.find(u => u.id === id);
-    if (!targetUser) return;
-
-    const approvedUser = { ...targetUser, status: 'APPROVED', contributionStatus: 'PAID' };
-
     setStoreState(prev => ({
       ...prev,
-      users: prev.users.map(u => u.id === id ? approvedUser : u)
+      users: prev.users.map(u => u.id === id ? { ...u, status: 'APPROVED', contributionStatus: 'PAID' } : u)
     }));
 
-    const fullRowData = [
-      approvedUser.id,
-      approvedUser.name,
-      approvedUser.phone,
-      approvedUser.pin,
-      approvedUser.wing || '',
-      approvedUser.wingId || '',
-      approvedUser.flat || '',
-      approvedUser.role || 'scot_member',
-      approvedUser.isChampion ? 'TRUE' : 'FALSE',
-      'APPROVED',
-      'PAID',
-      approvedUser.registeredAt || '2026-08-15',
-      approvedUser.profilePhoto || '',
-      approvedUser.fcmToken || ''
-    ];
-    postToSheet('updateRow', 'Users', fullRowData, 0, id);
+    const updatedData = Array(14).fill(null);
+    updatedData[9] = 'APPROVED';
+    updatedData[10] = 'PAID';
+    postToSheet('updateRow', 'Users', updatedData, 0, id);
   };
 
   const rejectUser = (id) => {
@@ -777,59 +563,25 @@ export const StoreProvider = ({ children }) => {
   };
 
   const approveEventRegistration = (regId) => {
-    let targetReg = state.registrations.find(r => r.id === regId);
-    if (!targetReg) return;
-
-    const approvedReg = { ...targetReg, status: 'APPROVED' };
-
     setStoreState(prev => ({
       ...prev,
-      registrations: prev.registrations.map(r => r.id === regId ? approvedReg : r)
+      registrations: prev.registrations.map(r => r.id === regId ? { ...r, status: 'APPROVED' } : r)
     }));
 
-    const fullRowData = [
-      approvedReg.id,
-      approvedReg.eventId,
-      approvedReg.subEventId || '',
-      approvedReg.registeredByUserId || '',
-      approvedReg.name,
-      approvedReg.gender || 'Male',
-      approvedReg.ageCategory || 'Above 16',
-      'APPROVED',
-      approvedReg.registeredAt || '2026-08-15',
-      approvedReg.votingStatus || 'NOT_STARTED',
-      approvedReg.mediaTrack || '',
-      JSON.stringify(approvedReg.groupMembers || [])
-    ];
-    postToSheet('updateRow', 'Registrations', fullRowData, 0, regId);
+    const updatedData = Array(12).fill(null);
+    updatedData[7] = 'APPROVED';
+    postToSheet('updateRow', 'Registrations', updatedData, 0, regId);
   };
 
   const rejectEventRegistration = (regId) => {
-    let targetReg = state.registrations.find(r => r.id === regId);
-    if (!targetReg) return;
-
-    const rejectedReg = { ...targetReg, status: 'REJECTED' };
-
     setStoreState(prev => ({
       ...prev,
-      registrations: prev.registrations.map(r => r.id === regId ? rejectedReg : r)
+      registrations: prev.registrations.map(r => r.id === regId ? { ...r, status: 'REJECTED' } : r)
     }));
 
-    const fullRowData = [
-      rejectedReg.id,
-      rejectedReg.eventId,
-      rejectedReg.subEventId || '',
-      rejectedReg.registeredByUserId || '',
-      rejectedReg.name,
-      rejectedReg.gender || 'Male',
-      rejectedReg.ageCategory || 'Above 16',
-      'REJECTED',
-      rejectedReg.registeredAt || '2026-08-15',
-      rejectedReg.votingStatus || 'NOT_STARTED',
-      rejectedReg.mediaTrack || '',
-      JSON.stringify(rejectedReg.groupMembers || [])
-    ];
-    postToSheet('updateRow', 'Registrations', fullRowData, 0, regId);
+    const updatedData = Array(12).fill(null);
+    updatedData[7] = 'REJECTED';
+    postToSheet('updateRow', 'Registrations', updatedData, 0, regId);
   };
 
   const postAnnouncement = (title, scope, content, image = '') => {
@@ -952,17 +704,14 @@ export const StoreProvider = ({ children }) => {
   const updateProfile = (name, phone, profilePhoto) => {
     if (!state.currentUser) return;
     const userId = state.currentUser.id;
-    let updatedUserObj = null;
-
     setStoreState(prev => {
       const updatedUsers = prev.users.map(u => {
         if (u.id === userId) {
-          updatedUserObj = { ...u, name, phone, profilePhoto: profilePhoto || u.profilePhoto };
-          return updatedUserObj;
+          return { ...u, name, phone, profilePhoto };
         }
         return u;
       });
-      const updatedCurrentUser = { ...prev.currentUser, name, phone, profilePhoto: profilePhoto || prev.currentUser.profilePhoto };
+      const updatedCurrentUser = { ...prev.currentUser, name, phone, profilePhoto };
       return {
         ...prev,
         users: updatedUsers,
@@ -970,37 +719,21 @@ export const StoreProvider = ({ children }) => {
       };
     });
 
-    if (!updatedUserObj) {
-      updatedUserObj = { ...state.currentUser, name, phone, profilePhoto };
-    }
-
-    const fullRowData = [
-      updatedUserObj.id,
-      updatedUserObj.name,
-      updatedUserObj.phone,
-      updatedUserObj.pin,
-      updatedUserObj.wing || '',
-      updatedUserObj.wingId || '',
-      updatedUserObj.flat || '',
-      updatedUserObj.role || 'scot_member',
-      updatedUserObj.isChampion ? 'TRUE' : 'FALSE',
-      updatedUserObj.status || 'APPROVED',
-      updatedUserObj.contributionStatus || 'PAID',
-      updatedUserObj.registeredAt || '2026-08-15',
-      updatedUserObj.profilePhoto || '',
-      updatedUserObj.fcmToken || ''
-    ];
-    postToSheet('updateRow', 'Users', fullRowData, 0, userId);
+    const updatedData = Array(13).fill(null);
+    updatedData[1] = name;
+    updatedData[2] = phone;
+    if (profilePhoto) updatedData[12] = profilePhoto;
+    postToSheet('updateRow', 'Users', updatedData, 0, userId);
   };
 
   const updateUserFcmToken = (userId, token) => {
-    let targetUser = state.users.find(u => u.id === userId);
-    if (!targetUser) return;
-
-    const updatedUser = { ...targetUser, fcmToken: token };
-
     setStoreState(prev => {
-      const updatedUsers = prev.users.map(u => u.id === userId ? updatedUser : u);
+      const updatedUsers = prev.users.map(u => {
+        if (u.id === userId) {
+          return { ...u, fcmToken: token };
+        }
+        return u;
+      });
       const updatedCurrentUser = prev.currentUser?.id === userId 
         ? { ...prev.currentUser, fcmToken: token } 
         : prev.currentUser;
@@ -1011,23 +744,9 @@ export const StoreProvider = ({ children }) => {
       };
     });
 
-    const fullRowData = [
-      updatedUser.id,
-      updatedUser.name,
-      updatedUser.phone,
-      updatedUser.pin,
-      updatedUser.wing || '',
-      updatedUser.wingId || '',
-      updatedUser.flat || '',
-      updatedUser.role || 'scot_member',
-      updatedUser.isChampion ? 'TRUE' : 'FALSE',
-      updatedUser.status || 'APPROVED',
-      updatedUser.contributionStatus || 'PAID',
-      updatedUser.registeredAt || '2026-08-15',
-      updatedUser.profilePhoto || '',
-      token || ''
-    ];
-    postToSheet('updateRow', 'Users', fullRowData, 0, userId);
+    const updatedData = Array(14).fill(null);
+    updatedData[13] = token;
+    postToSheet('updateRow', 'Users', updatedData, 0, userId);
   };
 
   const sendSupportMessage = (message, senderDetail) => {
@@ -1235,84 +954,6 @@ export const StoreProvider = ({ children }) => {
     return { success: true };
   };
 
-  // Event Management with Real-Time Google Sheets Database Sync
-  const saveEvent = (finalEvent) => {
-    setStoreState(prev => {
-      const exists = prev.events.some(e => e.id === finalEvent.id);
-      const nextEvents = exists 
-        ? prev.events.map(e => e.id === finalEvent.id ? finalEvent : e)
-        : [...prev.events, finalEvent];
-      try {
-        localStorage.setItem('scot_events_cache', JSON.stringify(nextEvents));
-      } catch (e) {
-        console.warn("Failed to cache events:", e);
-      }
-      return { ...prev, events: nextEvents };
-    });
-
-    const rowData = [
-      finalEvent.id,
-      finalEvent.name,
-      finalEvent.type,
-      finalEvent.startDate,
-      finalEvent.endDate || finalEvent.startDate,
-      finalEvent.venue,
-      finalEvent.time,
-      finalEvent.status || 'OPEN',
-      finalEvent.category || 'Sports',
-      finalEvent.description || '',
-      finalEvent.registrationDeadline || finalEvent.startDate,
-      JSON.stringify(finalEvent.subEvents || []),
-      JSON.stringify(finalEvent.assignedManagerIds || []),
-      finalEvent.nominationsRequired ? 'TRUE' : 'FALSE',
-      finalEvent.winnerPoints || '',
-      finalEvent.runnerUpPoints || '',
-      finalEvent.points || '',
-      finalEvent.rules || ''
-    ];
-
-    postToSheet('upsertRow', 'Events', rowData, 0, finalEvent.id);
-    postToSheet('updateRow', 'Events', rowData, 0, finalEvent.id);
-  };
-
-  const deleteEvent = (eventId) => {
-    setStoreState(prev => ({
-      ...prev,
-      events: prev.events.filter(e => e.id !== eventId)
-    }));
-
-    postToSheet('deleteRow', 'Events', null, 0, eventId);
-  };
-
-  // Permission Helper Functions
-  const canEditEvent = (user, event) => {
-    if (!user || !event) return false;
-    if (user.role === 'admin') return true;
-    
-    const mainManagers = event.assignedManagerIds || [];
-    if (mainManagers.includes(user.id)) return true;
-
-    const subEvents = event.subEvents || [];
-    return subEvents.some(sub => (sub.assignedManagerIds || []).includes(user.id));
-  };
-
-  const canEditSubEvent = (user, event, subEvent) => {
-    if (!user || !event) return false;
-    if (user.role === 'admin') return true;
-
-    const mainManagers = event.assignedManagerIds || [];
-    if (mainManagers.includes(user.id)) return true;
-
-    const subManagers = subEvent?.assignedManagerIds || [];
-    return subManagers.includes(user.id);
-  };
-
-  const canSubmitNominations = (user, event) => {
-    if (!user || !event) return false;
-    if (event.nominationsRequired === false) return false;
-    return user.role === 'admin' || user.role === 'champion' || user.role === 'scot_member' || user.role === 'wing_captain';
-  };
-
   return (
     <StoreContext.Provider value={{
       state,
@@ -1341,13 +982,7 @@ export const StoreProvider = ({ children }) => {
       castParticipantVote,
       toggleParticipantVoting,
       uploadRegistrationMedia,
-      publishParticipantResults,
-      validateFlatDues,
-      canEditEvent,
-      canEditSubEvent,
-      canSubmitNominations,
-      saveEvent,
-      deleteEvent
+      publishParticipantResults
     }}>
       {children}
     </StoreContext.Provider>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SCOT — Sports & Cultural Organisers of Topaz | Topaz Park</title>
+  <meta name="description" content="SCOT Community Operations Platform for Topaz Park housing society. Manage events, tournaments, leaderboards, and community engagement." />
+
+  <!-- Google Fonts: Outfit (Headings) + Inter (Body) + Fira Code (Data) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="/css/design-tokens.css" />
+  <link rel="stylesheet" href="/css/layout.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <link rel="stylesheet" href="/css/screens.css" />
+
+  <link rel="icon" type="image/png" href="/images/scot-logo.png" />
+</head>
+<body>
+  <!-- Login screen (shown when not authenticated) -->
+  <div id="login-root" class="login-root"></div>
+
+  <!-- App shell (shown when authenticated) -->
+  <div id="app-shell" class="app-shell hidden">
+    <!-- Mobile Header -->
+    <header class="app-header" id="app-header">
+      <button class="hamburger-btn" id="hamburger-btn" aria-label="Toggle menu">
+        <i data-lucide="menu" class="icon"></i>
+      </button>
+      <div class="header-brand">
+        <img src="/images/scot-logo.png" alt="SCOT Logo" class="header-logo" />
+        <div class="header-titles">
+          <span class="header-society">Topaz Park</span>
+          <span class="header-tagline">Sports & Cultural Organisers of Topaz</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="season-selector" id="season-selector">
+          <i data-lucide="calendar" class="icon-sm"></i>
+          <span>Season 2026-27</span>
+        </div>
+        <div class="header-profile" id="header-profile">
+          <div class="avatar-sm" id="header-avatar"></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="/images/scot-logo.png" alt="SCOT Logo" class="sidebar-logo" />
+        <div class="sidebar-brand">
+          <h1 class="sidebar-title">Topaz Park</h1>
+          <p class="sidebar-subtitle">SCOT</p>
+        </div>
+        <button class="sidebar-close" id="sidebar-close" aria-label="Close sidebar">
+          <i data-lucide="x" class="icon"></i>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <!-- Resident links -->
+        <div class="nav-section">
+          <span class="nav-label">Community</span>
+          <a href="#/dashboard" class="nav-link" data-route="dashboard">
+            <i data-lucide="layout-dashboard" class="icon"></i>
+            <span>Dashboard</span>
+          </a>
+          <a href="#/events" class="nav-link" data-route="events">
+            <i data-lucide="calendar-days" class="icon"></i>
+            <span>Events</span>
+          </a>
+          <a href="#/leaderboard" class="nav-link" data-route="leaderboard">
+            <i data-lucide="trophy" class="icon"></i>
+            <span>Leaderboard</span>
+          </a>
+          <a href="#/announcements" class="nav-link" data-route="announcements">
+            <i data-lucide="megaphone" class="icon"></i>
+            <span>Announcements</span>
+          </a>
+          <a href="#/gallery" class="nav-link" data-route="gallery">
+            <i data-lucide="image" class="icon"></i>
+            <span>Gallery</span>
+          </a>
+        </div>
+
+        <!-- Admin & Champion links (role-gated) -->
+        <div class="nav-section admin-nav" id="admin-nav">
+          <span class="nav-label" id="admin-nav-label">Management Panel</span>
+          <a href="#/admin" class="nav-link admin-only-link" data-route="admin">
+            <i data-lucide="shield" class="icon"></i>
+            <span>Control Panel</span>
+          </a>
+          <a href="#/admin/members" class="nav-link admin-only-link" data-route="admin/members">
+            <i data-lucide="user-check" class="icon"></i>
+            <span>Member Approvals</span>
+          </a>
+          <a href="#/admin/events" class="nav-link champ-link" data-route="admin/events">
+            <i data-lucide="edit-3" class="icon"></i>
+            <span>Event Editor</span>
+          </a>
+          <a href="#/admin/competitions" class="nav-link champ-link" data-route="admin/competitions">
+            <i data-lucide="git-branch" class="icon"></i>
+            <span>Brackets & Scores</span>
+          </a>
+        </div>
+      </nav>
+
+      <!-- Sidebar profile footer -->
+      <div class="sidebar-footer" id="sidebar-footer">
+        <div class="sidebar-profile">
+          <div class="avatar-md" id="sidebar-avatar"></div>
+          <div class="sidebar-profile-info">
+            <span class="profile-name" id="profile-name"></span>
+            <span class="profile-role" id="profile-role"></span>
+          </div>
+        </div>
+        <button class="logout-btn" id="logout-btn" title="Switch Profile">
+          <i data-lucide="log-out" class="icon"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Sidebar overlay for mobile -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Main content -->
+    <main class="main-content" id="main-content">
+      <div class="page-container" id="page-container">
+        <!-- Screen content rendered here by router -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Modal overlay -->
+  <div class="modal-overlay hidden" id="modal-overlay">
+    <div class="modal" id="modal-content"></div>
+  </div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

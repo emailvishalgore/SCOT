@@ -1,0 +1,308 @@
+/* ==========================================================================
+   SCREEN STYLES — LOGIN, DASHBOARD, EVENTS, LEADERBOARD, GALLERY, ADMIN
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. LOGIN / PROFILE SELECTOR SCREEN (SCR-001)
+   -------------------------------------------------------------------------- */
+.login-container {
+  width: 100%;
+  max-width: 480px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl) var(--space-lg);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin: auto;
+  position: relative;
+  z-index: 10;
+}
+
+.login-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+}
+
+.scot-logo {
+  height: 80px;
+  width: auto;
+  max-width: 160px;
+  object-fit: contain;
+  margin-bottom: var(--space-xs);
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+.login-header h1 {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  margin-bottom: 2px;
+}
+
+.login-header .tagline {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.login-instructions {
+  margin-bottom: var(--space-md);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.profile-cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+  margin-bottom: var(--space-lg);
+}
+
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition-fast);
+}
+
+.profile-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary-light);
+}
+
+.profile-card.selected {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-lighter);
+  box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.2);
+}
+
+.profile-card .avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #FFFFFF;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profile-card-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.profile-card-name {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.profile-card-details {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.prototype-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+/* --------------------------------------------------------------------------
+   2. EVENTS HUB & CARDS (SCR-003, SCR-004)
+   -------------------------------------------------------------------------- */
+.event-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.event-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-border-accent);
+}
+
+.event-card-header {
+  padding: var(--space-lg);
+  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
+  color: #FFFFFF;
+}
+
+.event-card-header.sports {
+  background: linear-gradient(135deg, #065F46 0%, #10B981 100%);
+}
+
+.event-card-title {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  margin-bottom: var(--space-2xs);
+}
+
+.event-card-body {
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  flex: 1;
+}
+
+.event-meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+/* --------------------------------------------------------------------------
+   3. LEADERBOARD & WING STANDINGS (SCR-005)
+   -------------------------------------------------------------------------- */
+.rank-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.8125rem;
+}
+
+.rank-1 { background-color: #FEF3C7; color: #D97706; border: 1px solid #F59E0B; }
+.rank-2 { background-color: #E2E8F0; color: #475569; border: 1px solid #94A3B8; }
+.rank-3 { background-color: #FFEDD5; color: #C2410C; border: 1px solid #FB923C; }
+
+.points-display {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: var(--color-primary-dark);
+}
+
+.bar-chart-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.bar-label {
+  width: 70px;
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.bar-track {
+  flex: 1;
+  height: 20px;
+  background-color: #E2E8F0;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-cta) 100%);
+  border-radius: var(--radius-full);
+  transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --------------------------------------------------------------------------
+   4. BRACKETS & SVG GRAPHICS (SCR-012)
+   -------------------------------------------------------------------------- */
+.bracket-container {
+  width: 100%;
+  overflow-x: auto;
+  padding: var(--space-md) 0;
+}
+
+.bracket-match {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-xs) var(--space-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.bracket-match.winner {
+  border-color: var(--color-cta);
+  background-color: var(--color-cta-light);
+}
+
+/* --------------------------------------------------------------------------
+   5. GALLERY LIGHTBOX (SCR-007)
+   -------------------------------------------------------------------------- */
+.album-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  aspect-ratio: 4/3;
+}
+
+.album-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 300ms ease;
+}
+
+.album-card:hover .album-cover {
+  transform: scale(1.05);
+}
+
+.album-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(15, 23, 42, 0.85) 0%, rgba(15, 23, 42, 0) 60%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: var(--space-md);
+  color: #FFFFFF;
+}
+
+.album-title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.125rem;
+}

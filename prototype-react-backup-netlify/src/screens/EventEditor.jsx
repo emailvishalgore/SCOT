@@ -4,10 +4,10 @@ import { Shield, PlusCircle, Edit3, Trash, Plus, Minus, Eye } from 'lucide-react
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function EventEditor({ onShowToast, onViewScreen }) {
-  const { state, setStoreState, canEditEvent, canEditSubEvent, saveEvent, deleteEvent } = useStore();
+  const { state, setStoreState } = useStore();
   const currentUser = state.currentUser;
 
-  const isAdminOrChamp = currentUser?.role === 'admin' || currentUser?.role === 'champion' || currentUser?.role === 'scot_member' || currentUser?.role === 'wing_captain' || currentUser?.isChampion;
+  const isAdminOrChamp = currentUser?.role === 'admin' || currentUser?.role === 'champion' || currentUser?.isChampion;
 
   if (!isAdminOrChamp) {
     return (
@@ -36,42 +36,12 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
   const [subEvents, setSubEvents] = useState([]);
   const [activeTooltipId, setActiveTooltipId] = useState(null);
 
-  // Event Manager Assignment & Nominations Flag states
-  const [nominationsRequired, setNominationsRequired] = useState(true);
-  const [assignedManagerIds, setAssignedManagerIds] = useState([]);
-
-  // Winner & Runner-up Points Allocation states
-  const [winnerPoints, setWinnerPoints] = useState('');
-  const [runnerUpPoints, setRunnerUpPoints] = useState('');
-
   // Standalone event registration type and rules states
   const [eventRegType, setEventRegType] = useState('INDIVIDUAL');
   const [eventMinGroupSize, setEventMinGroupSize] = useState(2);
   const [eventMaxGroupSize, setEventMaxGroupSize] = useState(5);
   const [eventMaxGroupsPerWing, setEventMaxGroupsPerWing] = useState(2);
   const [eventRules, setEventRules] = useState('');
-
-  // Points Formatting Helpers
-  const formatPoints = (winnerPts, runnerPts) => {
-    const w = String(winnerPts || '').trim();
-    const r = String(runnerPts || '').trim();
-    if (w && r) return `Winner: ${w} pts / Runner: ${r} pts`;
-    if (w) return `Winner: ${w} pts`;
-    if (r) return `Runner: ${r} pts`;
-    return '';
-  };
-
-  const parseWinnerPoints = (pointsStr) => {
-    if (!pointsStr) return '';
-    const match = String(pointsStr).match(/Winner:\s*(\d+|\w+|\d+\s*pts?)/i);
-    return match ? match[1].replace(/pts?/i, '').trim() : '';
-  };
-
-  const parseRunnerUpPoints = (pointsStr) => {
-    if (!pointsStr) return '';
-    const match = String(pointsStr).match(/Runner(?:-up)?:\s*(\d+|\w+|\d+\s*pts?)/i);
-    return match ? match[1].replace(/pts?/i, '').trim() : '';
-  };
 
   const generateContextualRules = (name, points = '') => {
     return `📜 OFFICIAL COMPETITION RULES — ${String(name || '').toUpperCase()}
@@ -87,7 +57,8 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
    • Walkovers will be declared if a participant/team fails to arrive within 10 minutes of the slot.
 
 3. Points & Scoring Scale:
-   ${points ? `• ${points}\n   • Points will be tallied and credited to the winning Wing's standings leaderboard.` : '• No leaderboard points for this sub-event (Wing-wise Performance / Showcase Only).'}
+   • ${points || 'Standard tournament points apply.'}
+   • Points will be tallied and credited to the winning Wing's standings leaderboard.
 
 4. Code of Conduct:
    • Fair play, mutual respect, and sportsmanship are strictly mandatory.
@@ -112,10 +83,6 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
     setEventMaxGroupSize(5);
     setEventMaxGroupsPerWing(2);
     setEventRules('');
-    setNominationsRequired(true);
-    setAssignedManagerIds([]);
-    setWinnerPoints('');
-    setRunnerUpPoints('');
     setIsModalOpen(true);
   };
 
@@ -141,10 +108,6 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
     setEventMaxGroupSize(evt.maxGroupSize || 5);
     setEventMaxGroupsPerWing(evt.maxGroupsPerWing || 2);
     setEventRules(evt.rules || '');
-    setNominationsRequired(evt.nominationsRequired !== false);
-    setAssignedManagerIds(evt.assignedManagerIds || []);
-    setWinnerPoints(evt.winnerPoints !== undefined ? evt.winnerPoints : parseWinnerPoints(evt.points));
-    setRunnerUpPoints(evt.runnerUpPoints !== undefined ? evt.runnerUpPoints : parseRunnerUpPoints(evt.points));
     setIsModalOpen(true);
   };
 
@@ -155,9 +118,7 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
         id: `sub-dynamic-${Date.now()}-${prev.length}`, 
         name: '', 
         category: '', 
-        winnerPoints: '',
-        runnerUpPoints: '',
-        points: '',
+        points: 'Winner: 30 pts / Runner: 20 pts',
         startDate: startDate || '',
         time: time || '',
         managerName: '',
@@ -168,8 +129,7 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
         minGroupSize: 2,
         maxGroupSize: 5,
         maxGroupsPerWing: 2,
-        rules: '',
-        assignedManagerIds: []
+        rules: ''
       }
     ]);
   };
@@ -185,23 +145,8 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
     }));
   };
 
-  const handleSubEventPointsChange = (idx, winnerVal, runnerVal) => {
-    const formatted = formatPoints(winnerVal, runnerVal);
-    setSubEvents(prev => prev.map((sub, i) => {
-      if (i !== idx) return sub;
-      return { 
-        ...sub, 
-        winnerPoints: winnerVal, 
-        runnerUpPoints: runnerVal, 
-        points: formatted 
-      };
-    }));
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    const formattedPoints = formatPoints(winnerPoints, runnerUpPoints);
 
     const finalEvent = {
       id: editingEvent ? editingEvent.id : `evt-${Date.now()}`,
@@ -217,28 +162,34 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
       registrationDeadlineTime: regDeadlineTime,
       registrationDeadline: regDeadlineDate, // backup compatibility
       status: editingEvent ? editingEvent.status : 'PLANNED',
-      subEvents: (type === 'UMBRELLA' || type === 'TOURNAMENT' || (subEvents && subEvents.length > 0)) ? subEvents : [],
+      subEvents: type === 'UMBRELLA' ? subEvents : [],
       regType: eventRegType,
       minGroupSize: eventMinGroupSize,
       maxGroupSize: eventMaxGroupSize,
       maxGroupsPerWing: eventMaxGroupsPerWing,
-      rules: eventRules,
-      nominationsRequired,
-      assignedManagerIds,
-      winnerPoints,
-      runnerUpPoints,
-      points: formattedPoints
+      rules: eventRules
     };
 
-    saveEvent(finalEvent);
+    setStoreState(prev => {
+      let nextEvents = [];
+      if (editingEvent) {
+        nextEvents = prev.events.map(e => e.id === editingEvent.id ? finalEvent : e);
+      } else {
+        nextEvents = [...prev.events, finalEvent];
+      }
+      return { ...prev, events: nextEvents };
+    });
 
-    onShowToast(editingEvent ? 'Event updated successfully & synced live to database!' : 'Event scheduled successfully & synced live to database!', 'success');
+    onShowToast(editingEvent ? 'Event updated successfully!' : 'Event scheduled successfully!', 'success');
     setIsModalOpen(false);
   };
 
   const handleDeleteEvent = (eventId) => {
     if (!window.confirm('Are you sure you want to delete this event? This will clear all registrations.')) return;
-    deleteEvent(eventId);
+    setStoreState(prev => ({
+      ...prev,
+      events: prev.events.filter(e => e.id !== eventId)
+    }));
     onShowToast('Event deleted successfully.', 'info');
   };
 
@@ -275,45 +226,29 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
               </tr>
             </thead>
             <tbody>
-              {state.events.map(evt => {
-                const isEditable = canEditEvent(currentUser, evt);
-                return (
-                  <tr key={evt.id}>
-                    <td>
-                      <strong style={{ color: 'var(--color-text)' }}>{evt.name}</strong>
-                      {evt.nominationsRequired && (
-                        <span className="badge badge-amber" style={{ marginLeft: '6px', fontSize: '0.65rem' }}>📋 Nominations</span>
-                      )}
-                    </td>
-                    <td><span className="badge badge-slate">{evt.type}</span></td>
-                    <td><span className={`badge ${evt.category === 'Sports' ? 'badge-green' : 'badge-violet'}`}>{evt.category}</span></td>
-                    <td>{evt.startDate}</td>
-                    <td>{evt.venue}</td>
-                    <td style={{ textAlign: 'center' }}>{evt.subEvents ? evt.subEvents.length : 0}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                        <button className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={() => onViewScreen(`events/${evt.id}`)}>
-                          <Eye size={14} /> View
-                        </button>
-                        {isEditable ? (
-                          <>
-                            <button className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={() => handleOpenEdit(evt)}>
-                              <Edit3 size={14} /> Edit & Manage
-                            </button>
-                            {currentUser?.role === 'admin' && (
-                              <button className="btn btn-danger btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={() => handleDeleteEvent(evt.id)}>
-                                <Trash size={14} /> Delete
-                              </button>
-                            )}
-                          </>
-                        ) : (
-                          <span className="badge badge-slate" style={{ fontSize: '0.75rem', padding: '4px 8px' }}>👁️ Read-Only</span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+              {state.events.map(evt => (
+                <tr key={evt.id}>
+                  <td><strong style={{ color: 'var(--color-text)' }}>{evt.name}</strong></td>
+                  <td><span className="badge badge-slate">{evt.type}</span></td>
+                  <td><span className={`badge ${evt.category === 'Sports' ? 'badge-green' : 'badge-violet'}`}>{evt.category}</span></td>
+                  <td>{evt.startDate}</td>
+                  <td>{evt.venue}</td>
+                  <td style={{ textAlign: 'center' }}>{evt.subEvents ? evt.subEvents.length : 0}</td>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <button className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={() => onViewScreen(`events/${evt.id}`)}>
+                        <Eye size={14} /> View
+                      </button>
+                      <button className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={() => handleOpenEdit(evt)}>
+                        <Edit3 size={14} /> Edit
+                      </button>
+                      <button className="btn btn-danger btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={() => handleDeleteEvent(evt.id)}>
+                        <Trash size={14} /> Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -357,64 +292,17 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
                     <label className="form-label">Structure Type</label>
                     <select className="select" value={type} onChange={(e) => setType(e.target.value)}>
                       <option value="STANDALONE">Standalone Event (Single day/schedule)</option>
-                      <option value="TOURNAMENT">Tournament (Multi-category Knockout/League)</option>
-                      <option value="UMBRELLA">Umbrella Event (Multi-day festival/multi-category)</option>
+                      <option value="UMBRELLA">Umbrella Event (Multi-day or multi-category)</option>
                     </select>
                   </div>
                 </div>
-
-                {/* Nominations Checkbox */}
-                <div className="form-group" style={{ background: '#FFFBEB', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #FCD34D' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, color: '#92400E' }}>
-                    <input 
-                      type="checkbox" 
-                      style={{ width: '18px', height: '18px', accentColor: '#D97706' }}
-                      checked={nominationsRequired} 
-                      onChange={(e) => setNominationsRequired(e.target.checked)} 
-                    />
-                    <span>📋 Requires Wing Nominations (Wing Captains can submit wing entries)</span>
-                  </label>
-                </div>
-
-                {/* Event Manager Assignment Checkboxes (Admin View Only) */}
-                {currentUser?.role === 'admin' && (
-                  <div className="form-group" style={{ background: '#F8FAFC', padding: '1rem', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
-                    <label className="form-label" style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                      🛡️ Assign Event Managers (SCOT Members / Wing Champions)
-                    </label>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>
-                      Selected members gain full management & editing rights for this event (and all sub-events if umbrella).
-                    </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.5rem', maxHeight: '140px', overflowY: 'auto' }}>
-                      {(state.users || []).filter(u => u.role === 'admin' || u.role === 'champion' || u.role === 'scot_member' || u.isChampion).map(m => {
-                        const isChecked = assignedManagerIds.includes(m.id);
-                        return (
-                          <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', background: '#FFFFFF', padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
-                            <input 
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setAssignedManagerIds(prev => [...prev, m.id]);
-                                } else {
-                                  setAssignedManagerIds(prev => prev.filter(id => id !== m.id));
-                                }
-                              }}
-                            />
-                            <span>{m.name} {m.wing ? `(${m.wing})` : ''}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
                     <label className="form-label">Start Date</label>
                     <input type="date" className="input" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
                   </div>
-                  {(type === 'UMBRELLA' || type === 'TOURNAMENT') && (
+                  {type === 'UMBRELLA' && (
                     <div className="form-group">
                       <label className="form-label">End Date</label>
                       <input type="date" className="input" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
@@ -452,30 +340,7 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
                       Advanced Configurations & Rules
                     </h3>
                     
-                    <div style={{ background: '#F1F5F9', padding: '10px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', marginBottom: '0.5rem' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>🥇 Winner Points (pts)</label>
-                          <input 
-                            type="text" 
-                            className="input input-sm" 
-                            placeholder="e.g. 100" 
-                            value={winnerPoints} 
-                            onChange={(e) => setWinnerPoints(e.target.value)} 
-                          />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>🥈 Runner-up Points (pts)</label>
-                          <input 
-                            type="text" 
-                            className="input input-sm" 
-                            placeholder="e.g. 70" 
-                            value={runnerUpPoints} 
-                            onChange={(e) => setRunnerUpPoints(e.target.value)} 
-                          />
-                        </div>
-                      </div>
-
+                    <div style={{ background: '#F1F5F9', padding: '10px 12px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', alignItems: 'center' }}>
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -594,7 +459,7 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
                 )}
 
                 {/* Sub-events configure panel */}
-                {(type === 'UMBRELLA' || type === 'TOURNAMENT' || (subEvents && subEvents.length > 0)) && (
+                {type === 'UMBRELLA' && (
                   <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1rem', marginTop: '0.5rem' }}>
                     <div className="flex-between" style={{ marginBottom: '0.75rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.05rem', fontWeight: 700 }}>
@@ -638,7 +503,7 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
                             <Minus size={14} />
                           </button>
 
-                          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '0.75rem', paddingRight: '28px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', paddingRight: '28px' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Category Name</label>
                               <input 
@@ -651,31 +516,14 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
                               />
                             </div>
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>🥇 Winner Pts</label>
+                              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Points Scale</label>
                               <input 
                                 type="text" 
                                 className="input input-sm" 
-                                placeholder="e.g. 100" 
-                                value={sub.winnerPoints !== undefined ? sub.winnerPoints : parseWinnerPoints(sub.points)} 
-                                onChange={(e) => {
-                                  const winVal = e.target.value;
-                                  const runVal = sub.runnerUpPoints !== undefined ? sub.runnerUpPoints : parseRunnerUpPoints(sub.points);
-                                  handleSubEventPointsChange(idx, winVal, runVal);
-                                }} 
-                              />
-                            </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>🥈 Runner-up Pts</label>
-                              <input 
-                                type="text" 
-                                className="input input-sm" 
-                                placeholder="e.g. 70" 
-                                value={sub.runnerUpPoints !== undefined ? sub.runnerUpPoints : parseRunnerUpPoints(sub.points)} 
-                                onChange={(e) => {
-                                  const winVal = sub.winnerPoints !== undefined ? sub.winnerPoints : parseWinnerPoints(sub.points);
-                                  const runVal = e.target.value;
-                                  handleSubEventPointsChange(idx, winVal, runVal);
-                                }} 
+                                placeholder="Winner: 30 pts" 
+                                value={sub.points || ''} 
+                                onChange={(e) => handleSubEventChange(idx, 'points', e.target.value)} 
+                                required 
                               />
                             </div>
                           </div>
@@ -728,42 +576,29 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
                             </div>
                           </div>
 
-                          {/* Sub-Event Manager Assignment Checkboxes (Admin View Only) */}
-                          {currentUser?.role === 'admin' && (
-                            <div className="form-group" style={{ background: '#FFFFFF', padding: '0.75rem', borderRadius: '6px', border: '1px solid #E2E8F0', marginTop: '0.25rem' }}>
-                              <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
-                                🛡️ Sub-Event Managers (SCOT Members / Wing Champions)
-                              </label>
-                              <p style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginBottom: '0.5rem' }}>
-                                Assign specific managers for this sub-category (overrides or adds to main umbrella event managers).
-                              </p>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.35rem', maxHeight: '100px', overflowY: 'auto' }}>
-                                {(state.users || []).filter(u => u.role === 'admin' || u.role === 'champion' || u.role === 'scot_member' || u.isChampion).map(m => {
-                                  const subManagers = sub.assignedManagerIds || [];
-                                  const isChecked = subManagers.includes(m.id);
-                                  return (
-                                    <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', background: '#F8FAFC', padding: '4px 8px', borderRadius: '4px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
-                                      <input 
-                                        type="checkbox"
-                                        checked={isChecked}
-                                        onChange={(e) => {
-                                          const currentSubManagers = sub.assignedManagerIds || [];
-                                          let nextSubManagers = [];
-                                          if (e.target.checked) {
-                                            nextSubManagers = [...currentSubManagers, m.id];
-                                          } else {
-                                            nextSubManagers = currentSubManagers.filter(id => id !== m.id);
-                                          }
-                                          handleSubEventChange(idx, 'assignedManagerIds', nextSubManagers);
-                                        }}
-                                      />
-                                      <span>{m.name} {m.wing ? `(${m.wing})` : ''}</span>
-                                    </label>
-                                  );
-                                })}
-                              </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Event Manager Name</label>
+                              <input 
+                                type="text" 
+                                className="input input-sm" 
+                                placeholder="e.g. Rajesh Kumar" 
+                                value={sub.managerName || ''} 
+                                onChange={(e) => handleSubEventChange(idx, 'managerName', e.target.value)} 
+                                required 
+                              />
                             </div>
-                          )}
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Manager Phone</label>
+                              <input 
+                                type="tel" 
+                                className="input input-sm" 
+                                placeholder="e.g. 9876543210" 
+                                value={sub.managerPhone || ''} 
+                                onChange={(e) => handleSubEventChange(idx, 'managerPhone', e.target.value)} 
+                                />
+                            </div>
+                          </div>
 
                           {/* ⚙️ ADVANCED CONFIGURATIONS (GROUP PARAMS & TOOLTIPS) */}
                           <div style={{ background: '#F1F5F9', padding: '10px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', marginTop: '4px' }}>
