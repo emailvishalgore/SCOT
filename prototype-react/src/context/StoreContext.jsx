@@ -255,7 +255,36 @@ export const StoreProvider = ({ children }) => {
             const isAdmin = String(u.phone) === '9876543210' || parsedRole === 'admin';
             const sheetStatus = String(u.status || '').toUpperCase();
             const isApprovedInSheet = sheetStatus.includes('APPROVED');
-            const finalStatus = (prevApproved || isApprovedInSheet) ? 'APPROVED' : (u.status || 'PENDING_APPROVAL');
+
+            // Automatic flat dues verification for user profile
+            let isDuesPaid = false;
+            if (u.wing && u.flat && prev.paidFlats && prev.paidFlats.length > 0) {
+              const targetW = String(u.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
+              const targetF = String(u.flat).trim().replace(/\D/g, '');
+              const match = prev.paidFlats.find(f => {
+                const fw = String(f.wing || '').replace(/Wing\s*/i, '').trim().toUpperCase();
+                const ff = String(f.flat || '').trim().replace(/\D/g, '');
+                return fw === targetW && (ff === targetF || parseInt(ff, 10) === parseInt(targetF, 10));
+              });
+              if (match && String(match.paid || '').toLowerCase() === 'yes') {
+                isDuesPaid = true;
+              }
+            }
+
+            const finalStatus = (prevApproved || isApprovedInSheet || isAdmin || isDuesPaid) ? 'APPROVED' : (u.status || 'PENDING_APPROVAL');
+
+            // If approved locally or via dues verification but pending in sheet, auto-sync back to sheet
+            if (finalStatus === 'APPROVED' && !isApprovedInSheet && u.id) {
+              const rowData = [
+                u.id, u.name, u.phone, u.pin, u.wing || '', u.wingId || '', u.flat || '',
+                parsedRole, 'TRUE', 'APPROVED', 'PAID', u.registeredAt || '2026-08-15',
+                u.profilePhoto || '', u.fcmToken || ''
+              ];
+              postToSheet('updateRow', 'Users', rowData, 0, u.id);
+              if (u.phone) {
+                postToSheet('updateRow', 'Users', rowData, 2, u.phone);
+              }
+            }
 
             return {
               ...u,
@@ -530,6 +559,15 @@ export const StoreProvider = ({ children }) => {
       assignedRole = roleInput ? 'scot_member' : 'wing_captain';
     }
 
+    // Check flat dues for instant auto-approval on signup
+    let isDuesPaid = false;
+    if (wingObj && flat && state.paidFlats && state.paidFlats.length > 0) {
+      const duesCheck = validateFlatDues(wingObj.name, flat);
+      if (duesCheck && duesCheck.valid) {
+        isDuesPaid = true;
+      }
+    }
+
     const newUser = {
       id: `user-${Date.now()}`,
       name,
@@ -540,15 +578,16 @@ export const StoreProvider = ({ children }) => {
       flat,
       role: assignedRole,
       isChampion: true,
-      status: 'PENDING_APPROVAL',
-      contributionStatus: 'UNPAID',
+      status: isDuesPaid ? 'APPROVED' : 'PENDING_APPROVAL',
+      contributionStatus: isDuesPaid ? 'PAID' : 'UNPAID',
       registeredAt: new Date().toISOString().split('T')[0],
       fcmToken
     };
-    setStoreState(prev => ({
-      ...prev,
-      users: [...prev.users, newUser]
-    }));
+    setStoreState(prev => {
+      const nextUsers = [...prev.users, newUser];
+      try { localStorage.setItem('scot_users_cache', JSON.stringify(nextUsers)); } catch (e) {}
+      return { ...prev, users: nextUsers };
+    });
 
     postToSheet('writeRow', 'Users', [
       newUser.id,
@@ -571,15 +610,16 @@ export const StoreProvider = ({ children }) => {
   };
 
   const approveUser = (id) => {
-    let targetUser = state.users.find(u => u.id === id);
+    let targetUser = state.users.find(u => u.id === id || String(u.phone) === String(id));
     if (!targetUser) return;
 
     const approvedUser = { ...targetUser, status: 'APPROVED', contributionStatus: 'PAID' };
 
-    setStoreState(prev => ({
-      ...prev,
-      users: prev.users.map(u => u.id === id ? approvedUser : u)
-    }));
+    setStoreState(prev => {
+      const nextUsers = prev.users.map(u => (u.id === targetUser.id || u.phone === targetUser.phone) ? approvedUser : u);
+      try { localStorage.setItem('scot_users_cache', JSON.stringify(nextUsers)); } catch (e) {}
+      return { ...prev, users: nextUsers };
+    });
 
     const fullRowData = [
       approvedUser.id,
@@ -597,7 +637,12 @@ export const StoreProvider = ({ children }) => {
       approvedUser.profilePhoto || '',
       approvedUser.fcmToken || ''
     ];
-    postToSheet('updateRow', 'Users', fullRowData, 0, id);
+
+    // Update by ID and by Phone to guarantee Google Sheets row match
+    postToSheet('updateRow', 'Users', fullRowData, 0, approvedUser.id);
+    if (approvedUser.phone) {
+      postToSheet('updateRow', 'Users', fullRowData, 2, approvedUser.phone);
+    }
   };
 
   const rejectUser = (id) => {
