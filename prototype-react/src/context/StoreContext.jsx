@@ -49,10 +49,7 @@ const getInitialState = () => {
       { id: 'wing-w', name: 'Wing W', letter: 'W', totalFlats: 28, color: '#14B8A6' }
     ],
     events: [],
-    announcements: [
-      { id: 'ann-1', title: 'Topaz Park Season 2026-27 Announced!', date: '2026-07-28', scope: 'Global', scopeType: 'global', content: 'Welcome to Topaz Park SCOT Season 2026-27! Check out the event calendar for Carrom, Table Tennis, and Ganesh Festival.' },
-      { id: 'ann-2', title: 'Carrom Tournament Registrations Open', date: '2026-07-29', scope: 'Event', scopeType: 'event', content: 'Registrations are officially open for the Carrom Tournament taking place on Sunday 9th August at the Clubhouse.' }
-    ],
+    announcements: [],
     leaderboard: [
       { wingId: 'wing-n', name: 'Wing N', letter: 'N', points: 0, wins: 0, events: 0, breakdown: {} },
       { wingId: 'wing-o', name: 'Wing O', letter: 'O', points: 0, wins: 0, events: 0, breakdown: {} },
@@ -69,40 +66,8 @@ const getInitialState = () => {
     supportMessages: [],
     votes: [],
     competitions: [],
-    gallery: [
-      {
-        id: 'alb-ganesh-2025',
-        title: 'Ganesh Utsav Memories',
-        coverImage: './images/ganesh_cover.jpg',
-        photoCount: 5,
-        photos: [
-          'https://picsum.photos/seed/ganesh1/1024/768',
-          'https://picsum.photos/seed/ganesh2/1024/768',
-          'https://picsum.photos/seed/ganesh3/1024/768',
-          'https://picsum.photos/seed/ganesh4/1024/768',
-          'https://picsum.photos/seed/ganesh5/1024/768'
-        ]
-      },
-      {
-        id: 'alb-carrom-2025',
-        title: 'Carrom Tournament 2025',
-        coverImage: './images/carrom_cover.jpg',
-        photoCount: 7,
-        photos: [
-          'https://picsum.photos/seed/carrom1/1024/768',
-          'https://picsum.photos/seed/carrom2/1024/768',
-          'https://picsum.photos/seed/carrom3/1024/768',
-          'https://picsum.photos/seed/carrom4/1024/768',
-          'https://picsum.photos/seed/carrom5/1024/768',
-          'https://picsum.photos/seed/carrom6/1024/768',
-          'https://picsum.photos/seed/carrom7/1024/768'
-        ]
-      }
-    ],
-    tasks: [
-      { id: 'task-1', title: 'Set up Badminton Nets', status: 'DONE', assignee: 'Sports Committee' },
-      { id: 'task-2', title: 'Collect गणेश मूर्ति Deposit', status: 'IN_PROGRESS', assignee: 'Committee' }
-    ]
+    gallery: [],
+    tasks: []
   };
 };
 
