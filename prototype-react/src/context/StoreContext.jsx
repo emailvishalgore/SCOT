@@ -321,7 +321,7 @@ export const StoreProvider = ({ children }) => {
             };
           });
 
-          // Map registrations with default values
+          // Map registrations with dues verification auto-approval
           const rawRegs = (data.registrations || prev.registrations || []).filter(Boolean);
           const finalRegs = rawRegs.map(r => {
             let parsedMembers = [];
@@ -332,8 +332,37 @@ export const StoreProvider = ({ children }) => {
             } catch (e) {
               console.error("Failed to parse group members", e);
             }
+
+            let regStatus = r.status || 'PENDING';
+            // If still pending in sheet, check if flat dues are verified as paid
+            if (regStatus === 'PENDING' && prev.paidFlats && prev.paidFlats.length > 0) {
+              const wingMatch = String(r.name || '').match(/Wing\s*([A-Za-z0-9]+)/i);
+              const flatMatch = String(r.name || '').match(/Flat\s*[:#-]?\s*(\d{3})/i);
+              if (wingMatch && flatMatch) {
+                const targetW = wingMatch[1].toUpperCase();
+                const targetF = flatMatch[1];
+                const match = prev.paidFlats.find(f => {
+                  const fw = String(f.wing || '').replace(/Wing\s*/i, '').trim().toUpperCase();
+                  const ff = String(f.flat || '').trim().replace(/\D/g, '');
+                  return fw === targetW && (ff === targetF || parseInt(ff, 10) === parseInt(targetF, 10));
+                });
+                if (match && String(match.paid || '').toLowerCase() === 'yes') {
+                  regStatus = 'APPROVED';
+                  // Sync approved status back to sheet in background
+                  postToSheet('updateRow', 'Registrations', [
+                    r.id, r.eventId, r.subEventId || '', r.registeredByUserId || '',
+                    r.name, r.gender || 'Male', r.ageCategory || 'Above 16',
+                    'APPROVED', r.registeredAt || '2026-08-15',
+                    r.votingStatus || 'NOT_STARTED', r.mediaTrack || '',
+                    JSON.stringify(Array.isArray(parsedMembers) ? parsedMembers : [])
+                  ], 0, r.id);
+                }
+              }
+            }
+
             return {
               ...r,
+              status: regStatus,
               votingStatus: r.votingStatus || 'NOT_STARTED',
               mediaTrack: r.mediaTrack || '',
               groupMembers: Array.isArray(parsedMembers) ? parsedMembers : []
@@ -500,14 +529,14 @@ export const StoreProvider = ({ children }) => {
 
   // Validate a participant's flat contribution against the Wing Commander database
   const validateFlatDues = (wingLetter, flatNo) => {
-    const wl = String(wingLetter || '').trim().toUpperCase();
-    const fn = String(flatNo || '').trim().toUpperCase();
+    const wl = String(wingLetter || '').replace(/Wing\s*/i, '').trim().toUpperCase();
+    const fn = String(flatNo || '').trim().replace(/\D/g, '');
     if (!wl || !fn) return { valid: false, reason: 'Wing letter and flat number are required.' };
 
     const match = state.paidFlats.find(f => {
-      const fw = String(f.wing || '').trim().toUpperCase();
-      const ff = String(f.flat || '').trim().toUpperCase();
-      return fw === wl && ff === fn;
+      const fw = String(f.wing || '').replace(/Wing\s*/i, '').trim().toUpperCase();
+      const ff = String(f.flat || '').trim().replace(/\D/g, '');
+      return fw === wl && (ff === fn || (parseInt(ff, 10) === parseInt(fn, 10) && !isNaN(parseInt(fn, 10))));
     });
 
     if (!match) return { valid: false, reason: `No record found for Wing ${wl}, Flat ${fn}.` };
@@ -742,16 +771,20 @@ export const StoreProvider = ({ children }) => {
     }
 
     // ⚡ AUTOMATED FLAT DUES VERIFICATION & AUTO-APPROVAL
-    const userWingLetter = state.currentUser.wing ? String(state.currentUser.wing).replace(/Wing\s*/i, '').trim() : 'N';
+    const wingMatch = String(name || '').match(/Wing\s*([A-Za-z0-9]+)/i);
+    const targetWingLetter = wingMatch 
+      ? wingMatch[1].toUpperCase() 
+      : (state.currentUser.wing ? String(state.currentUser.wing).replace(/Wing\s*/i, '').trim().toUpperCase() : 'N');
+
     let isAutoApproved = false;
     let autoApproveReason = '';
 
     if (newFlats.length > 0 && state.paidFlats && state.paidFlats.length > 0) {
-      const results = newFlats.map(fn => validateFlatDues(userWingLetter, fn));
+      const results = newFlats.map(fn => validateFlatDues(targetWingLetter, fn));
       const allPaid = results.every(res => res.valid);
       if (allPaid) {
         isAutoApproved = true;
-        autoApproveReason = `Flat dues verified for Wing ${userWingLetter} (${newFlats.join(', ')})`;
+        autoApproveReason = `Flat dues verified for Wing ${targetWingLetter} (${newFlats.join(', ')})`;
       } else {
         const unpaidReasons = results.filter(r => !r.valid).map(r => r.reason).join('; ');
         autoApproveReason = unpaidReasons;
