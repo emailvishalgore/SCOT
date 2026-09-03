@@ -63,13 +63,7 @@ const getInitialState = () => {
         registrationDeadline: '2026-09-05',
         nominationsRequired: true,
         assignedManagerIds: [],
-        subEvents: [
-          { id: 'sub-c-1', name: 'Carrom Men Singles (Above 16)', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts', winnerPoints: '100', runnerUpPoints: '70', assignedManagerIds: [] },
-          { id: 'sub-c-2', name: 'Carrom Women Singles (Above 16)', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts', winnerPoints: '100', runnerUpPoints: '70', assignedManagerIds: [] },
-          { id: 'sub-c-3', name: 'Carrom Singles (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts', winnerPoints: '60', runnerUpPoints: '40', assignedManagerIds: [] },
-          { id: 'sub-c-4', name: 'Carrom Kids (Below 10)', category: 'Below 10', points: 'Winner: 40 pts / Runner: 20 pts', winnerPoints: '40', runnerUpPoints: '20', assignedManagerIds: [] },
-          { id: 'sub-c-5', name: 'Carrom Open Doubles', category: 'Doubles', points: 'Winner: 100 pts / Runner: 70 pts', winnerPoints: '100', runnerUpPoints: '70', assignedManagerIds: [] }
-        ]
+        subEvents: []
       },
       {
         id: 'evt-tt-2026',
@@ -85,10 +79,7 @@ const getInitialState = () => {
         registrationDeadline: '2026-09-24',
         nominationsRequired: true,
         assignedManagerIds: [],
-        subEvents: [
-          { id: 'sub-t-1', name: 'TT Singles Above 16', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts', assignedManagerIds: [] },
-          { id: 'sub-t-2', name: 'TT Singles Kids (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts', assignedManagerIds: [] }
-        ]
+        subEvents: []
       },
       {
         id: 'evt-dahi-2026',
@@ -120,17 +111,7 @@ const getInitialState = () => {
         registrationDeadline: '2026-09-10',
         nominationsRequired: true,
         assignedManagerIds: [],
-        subEvents: [
-          { id: 'sub-g-1', name: 'Ganesh Sthapana & Dhol Tasha', startDate: '2026-09-14', time: '01:00 PM', category: 'General', assignedManagerIds: [] },
-          { id: 'sub-g-2', name: 'Wing Wise Performances', startDate: '2026-09-14', time: '07:30 PM', points: 'Winner: 100 pts / Runner: 70 pts / 3rd: 50 pts', assignedManagerIds: [] },
-          { id: 'sub-g-3', name: 'Senior Citizen Event', startDate: '2026-09-15', time: '11:00 AM', category: 'Senior Citizens', points: 'Winner: 30 pts / Runner: 20 pts', assignedManagerIds: [] },
-          { id: 'sub-g-4', name: 'Dumbtakshari', startDate: '2026-09-15', time: '07:30 PM', points: 'Winner: 50 pts / Runner: 30 pts', assignedManagerIds: [] },
-          { id: 'sub-g-5', name: 'Kids Event (Below 10)', startDate: '2026-09-16', time: '05:00 PM', category: 'Below 10', assignedManagerIds: [] },
-          { id: 'sub-g-6', name: 'Kids Stage Performances', startDate: '2026-09-16', time: '07:30 PM', category: 'Below 16', assignedManagerIds: [] },
-          { id: 'sub-g-7', name: 'Adults Stage Performances', startDate: '2026-09-17', time: '07:30 PM', category: 'Above 16', points: 'Winner: 50 pts / Runner: 30 pts', assignedManagerIds: [] },
-          { id: 'sub-g-8', name: 'Ganesh Visarjan & Dhol Tasha', startDate: '2026-09-18', time: '03:00 PM', assignedManagerIds: [] },
-          { id: 'sub-g-9', name: 'Gala Dinner', startDate: '2026-09-18', time: '07:30 PM', assignedManagerIds: [] }
-        ]
+        subEvents: []
       },
       {
         id: 'evt-dandiya-2026',
@@ -455,15 +436,12 @@ export const StoreProvider = ({ children }) => {
                 console.warn("Failed to parse subEvents/managers for event:", e.id, err);
               }
 
-              const prevEvt = prev.events.find(pe => pe.id === e.id);
-              const validSubEvents = (Array.isArray(parsedSubEvents) && parsedSubEvents.length > 0)
-                ? parsedSubEvents
-                : (prevEvt?.subEvents || []);
+              const validSubEvents = Array.isArray(parsedSubEvents) ? parsedSubEvents : [];
 
               sheetEventsMap[e.id] = {
                 ...e,
                 subEvents: validSubEvents,
-                assignedManagerIds: Array.isArray(parsedManagers) ? parsedManagers : (prevEvt?.assignedManagerIds || []),
+                assignedManagerIds: Array.isArray(parsedManagers) ? parsedManagers : [],
                 nominationsRequired: e.nominationsRequired === true || String(e.nominationsRequired).toUpperCase() === 'TRUE'
               };
             });
@@ -474,11 +452,7 @@ export const StoreProvider = ({ children }) => {
 
             prev.events.forEach(pe => {
               if (sheetEventsMap[pe.id]) {
-                const se = sheetEventsMap[pe.id];
-                mergedEventsList.push({
-                  ...se,
-                  subEvents: (se.subEvents && se.subEvents.length > 0) ? se.subEvents : (pe.subEvents || [])
-                });
+                mergedEventsList.push(sheetEventsMap[pe.id]);
                 processedIds.add(pe.id);
               } else {
                 mergedEventsList.push(pe);
