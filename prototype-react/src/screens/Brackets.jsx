@@ -384,259 +384,168 @@ export default function Brackets({ onShowToast }) {
         </div>
       </div>
 
+      {/* 🥊 Fixtures & Matches Tab */}
       {activeTab === 'fixtures' && (
-        matchingComp ? (
-          /* Render Tournament brackets for Carrom / TT */
-          matchingComp.type === 'knockout' ? (
-            /* Knockout Bracket View */
-            <div className="card">
-              <div className="flex-between mb-sm" style={{ marginBottom: '1.5rem', flexWrap: 'wrap', gap: '8px' }}>
-                <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: 700 }}>
-                  {matchingComp.name} Tree
-                </h2>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <button 
-                    type="button"
-                    className="btn btn-secondary btn-sm" 
-                    onClick={handlePublishScores}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: 700 }}
-                  >
-                    <Megaphone size={12} /> Broadcast Results
-                  </button>
-                  <span className="badge badge-violet">Single Elimination</span>
-                </div>
-              </div>
-
-              <div className="bracket-svg-container" style={{ overflowX: 'auto' }}>
-                <div style={{ display: 'flex', gap: '2.5rem', alignItems: 'center', justifyContent: 'center', padding: '1rem 0' }}>
-                  {/* Quarterfinals */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', textAlign: 'center', marginBottom: '-1.5rem' }}>Quarter Finals</div>
-                    {matchingComp.fixtures.map(f => (
-                      <div 
-                        key={f.id} 
-                        className="card card-interactive" 
-                        style={{ padding: '0.75rem 1rem', width: '220px', borderLeft: f.winnerId ? '4px solid var(--color-cta)' : '1px solid var(--color-border)' }}
-                        onClick={() => handleOpenScoreModal(f)}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.875rem' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: f.winnerId === f.playerA ? 700 : 500, color: f.winnerId && f.winnerId !== f.playerA ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
-                            <span>{f.playerA}</span>
-                            <span style={{ fontFamily: 'var(--font-mono)' }}>{f.scoreA !== '' ? f.scoreA : '-'}</span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: f.winnerId === f.playerB ? 700 : 500, color: f.winnerId && f.winnerId !== f.playerB ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
-                            <span>{f.playerB}</span>
-                            <span style={{ fontFamily: 'var(--font-mono)' }}>{f.scoreB !== '' ? f.scoreB : '-'}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Semifinals Mock */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6.5rem' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', textAlign: 'center', marginBottom: '-5.5rem' }}>Semi Finals</div>
-                    <div className="card" style={{ padding: '0.75rem 1rem', width: '220px', background: '#F8FAFC', opacity: 0.85 }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                        <div>Winner QF1</div>
-                        <div>Winner QF2</div>
-                      </div>
-                    </div>
-                    <div className="card" style={{ padding: '0.75rem 1rem', width: '220px', background: '#F8FAFC', opacity: 0.85 }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                        <div>Winner QF3</div>
-                        <div>Winner QF4</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Finals Mock */}
-                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', textAlign: 'center', marginBottom: '0.5rem' }}>Finals</div>
-                    <div className="card" style={{ padding: '0.75rem 1rem', width: '220px', background: '#F8FAFC', opacity: 0.7 }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                        <div>Winner SF1</div>
-                        <div>Winner SF2</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+        <div className="card">
+          <div className="flex-between mb-sm" style={{ marginBottom: '1.5rem', flexWrap: 'wrap', gap: '8px' }}>
+            <div>
+              <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: 800 }}>
+                {activeEvent.name} — {selectedSubEventId === 'all' ? 'All Fixtures' : getSubEventName(selectedSubEventId)}
+              </h2>
+              <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                Record match scores, declare winners, and broadcast live outcomes to the society leaderboard.
+              </p>
             </div>
-          ) : (
-            /* Round Robin Table */
-            <div className="card">
-              <div className="flex-between mb-sm" style={{ marginBottom: '1.5rem', flexWrap: 'wrap', gap: '8px' }}>
-                <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: 700 }}>
-                  {matchingComp.name} Standings
-                </h2>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <button 
-                    type="button"
-                    className="btn btn-secondary btn-sm" 
-                    onClick={handlePublishScores}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: 700 }}
-                  >
-                    <Megaphone size={12} /> Broadcast Results
-                  </button>
-                  <span className="badge badge-green">Round Robin</span>
-                </div>
-              </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button 
+                type="button"
+                className="btn btn-secondary btn-sm" 
+                onClick={handlePublishScores}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: 700 }}
+              >
+                <Megaphone size={12} /> Broadcast Results
+              </button>
+              {matchingComp?.fixtures?.length > 0 && (
+                <span className="badge badge-violet">
+                  {matchingComp.fixtures.filter(f => f.winnerId).length} / {matchingComp.fixtures.length} Completed
+                </span>
+              )}
+            </div>
+          </div>
 
-              <div className="table-responsive" style={{ marginBottom: '1.5rem' }}>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Team</th>
-                      <th style={{ textAlign: 'center' }}>Played</th>
-                      <th style={{ textAlign: 'center' }}>Won</th>
-                      <th style={{ textAlign: 'center' }}>Lost</th>
-                      <th style={{ textAlign: 'right' }}>Points</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {matchingComp.teams?.map((t, idx) => (
-                      <tr key={idx}>
-                        <td><strong>{t}</strong></td>
-                        <td style={{ textAlign: 'center' }}>{idx < 2 ? 1 : 0}</td>
-                        <td style={{ textAlign: 'center' }}>{idx === 0 ? 1 : 0}</td>
-                        <td style={{ textAlign: 'center' }}>{idx === 1 ? 1 : 0}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--color-primary)' }}>{idx === 0 ? '30 pts' : '0 pts'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          {matchingComp && matchingComp.fixtures && matchingComp.fixtures.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {matchingComp.fixtures.map((f, idx) => {
+                const isCompleted = !!f.winnerId && f.scoreA !== '' && f.scoreB !== '';
+                const isPlayerAWinner = f.winnerId === f.playerA;
+                const isPlayerBWinner = f.winnerId === f.playerB;
 
-              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.75rem' }}>Match Fixtures</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {matchingComp.fixtures?.map(f => (
+                return (
                   <div 
-                    key={f.id} 
-                    className="card card-interactive flex-between" 
-                    style={{ padding: '0.75rem 1.25rem' }}
+                    key={f.id || idx}
+                    className="card card-interactive"
+                    style={{ 
+                      padding: '1rem 1.25rem', 
+                      background: isCompleted ? '#F8FAFC' : '#FFFFFF',
+                      borderLeft: isCompleted ? '4px solid var(--color-cta, #10B981)' : '4px solid #CBD5E1',
+                      border: '1px solid var(--color-border)',
+                      borderLeftWidth: '4px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem'
+                    }}
                     onClick={() => handleOpenScoreModal(f)}
                   >
-                    <span><strong>{formatPlayerDisplay(f.playerA)}</strong> vs <strong>{formatPlayerDisplay(f.playerB)}</strong></span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-                        {f.scoreA !== '' ? `${f.scoreA} - ${f.scoreB}` : 'Pending score'}
+                    {/* Fixture Header */}
+                    <div className="flex-between">
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Match #{idx + 1} • {f.round || 'Round 1'}
                       </span>
-                      <button className="btn btn-secondary btn-sm" style={{ padding: '4px 8px' }}>
-                        <Edit3 size={12} /> Score
+                      {isCompleted ? (
+                        <span className="badge badge-green" style={{ fontSize: '0.72rem', padding: '2px 8px' }}>
+                          🟢 Final Score
+                        </span>
+                      ) : (
+                        <span className="badge badge-slate" style={{ fontSize: '0.72rem', padding: '2px 8px' }}>
+                          ⏳ Scheduled / Pending Score
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Competitors Scoreboard */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '1rem' }}>
+                      {/* Player A */}
+                      <div style={{ 
+                        padding: '0.65rem 0.85rem', 
+                        borderRadius: '8px', 
+                        background: isPlayerAWinner ? '#ECFDF5' : '#F1F5F9',
+                        border: isPlayerAWinner ? '1.5px solid #10B981' : '1px solid #E2E8F0',
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center' 
+                      }}>
+                        <div>
+                          <strong style={{ fontSize: '0.9rem', color: isPlayerAWinner ? '#065F46' : 'var(--color-text)', display: 'block' }}>
+                            {formatPlayerDisplay(f.playerA)}
+                          </strong>
+                          {isPlayerAWinner && (
+                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#059669', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                              🏆 Winner (+30 pts)
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '1.2rem', fontWeight: 800, color: isPlayerAWinner ? '#059669' : 'var(--color-text-muted)', marginLeft: '8px' }}>
+                          {f.scoreA !== '' ? f.scoreA : '-'}
+                        </span>
+                      </div>
+
+                      <span style={{ fontWeight: 800, color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>VS</span>
+
+                      {/* Player B */}
+                      <div style={{ 
+                        padding: '0.65rem 0.85rem', 
+                        borderRadius: '8px', 
+                        background: isPlayerBWinner ? '#ECFDF5' : '#F1F5F9',
+                        border: isPlayerBWinner ? '1.5px solid #10B981' : '1px solid #E2E8F0',
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center' 
+                      }}>
+                        <div>
+                          <strong style={{ fontSize: '0.9rem', color: isPlayerBWinner ? '#065F46' : 'var(--color-text)', display: 'block' }}>
+                            {formatPlayerDisplay(f.playerB)}
+                          </strong>
+                          {isPlayerBWinner && (
+                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#059669', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                              🏆 Winner (+30 pts)
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '1.2rem', fontWeight: 800, color: isPlayerBWinner ? '#059669' : 'var(--color-text-muted)', marginLeft: '8px' }}>
+                          {f.scoreB !== '' ? f.scoreB : '-'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Footer / Action */}
+                    <div className="flex-between" style={{ borderTop: '1px solid #E2E8F0', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                      <span style={{ fontSize: '0.78rem', color: isCompleted ? '#059669' : 'var(--color-text-muted)', fontWeight: isCompleted ? 700 : 500 }}>
+                        {isCompleted 
+                          ? `🏆 Winner declared: ${formatPlayerDisplay(f.winnerId)}` 
+                          : 'Tap to enter match score and declare winner'}
+                      </span>
+                      <button 
+                        type="button"
+                        className="btn btn-secondary btn-xs"
+                        onClick={(e) => { e.stopPropagation(); handleOpenScoreModal(f); }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', padding: '3px 8px' }}
+                      >
+                        <Edit3 size={11} /> {isCompleted ? 'Edit Score' : 'Record Score'}
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          )
-        ) : (
-          /* Render General Registrations List for Cultural events (Ganesh Utsav, Dandiya, etc.) */
-          <div className="card">
-            <div className="flex-between mb-sm" style={{ marginBottom: '1rem', flexWrap: 'wrap', gap: '8px' }}>
-              <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: 700 }}>
-                Approved Event Participant Directory
-              </h2>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button 
-                  type="button"
-                  className="btn btn-secondary btn-sm" 
-                  onClick={handlePublishParticipants}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: 700 }}
-                >
-                  <Megaphone size={12} /> Broadcast Directory
+          ) : (
+            <div style={{ textAlign: 'center', padding: '3.5rem 1rem', color: 'var(--color-text-secondary)' }}>
+              <GitBranch size={48} style={{ margin: '0 auto 0.75rem', opacity: 0.3 }} />
+              <h3>No fixtures generated yet</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '4px', maxWidth: '440px', margin: '4px auto 1rem' }}>
+                There are {approvedRegistrations.length} approved participant(s) in this category. Generate random match draws to create fixtures.
+              </p>
+              {approvedRegistrations.length >= 2 ? (
+                <button className="btn btn-primary" onClick={handleGenerateRandomDraw}>
+                  🎲 Generate Random Draw ({approvedRegistrations.length} Players)
                 </button>
-                <span className="badge badge-green">Approved Directory ({approvedRegistrations.length})</span>
-              </div>
+              ) : (
+                <button className="btn btn-secondary" onClick={() => setActiveTab('approvals')}>
+                  📋 Go to Approvals & Entries
+                </button>
+              )}
             </div>
-
-            {approvedRegistrations.length > 0 ? (
-              <div className="table-responsive">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Participant Name</th>
-                      <th>Category/Sub-Event</th>
-                      <th>Registered By Resident</th>
-                      <th>Gender</th>
-                      <th>Age Category</th>
-                      <th>Submission Date</th>
-                      <th style={{ textAlign: 'right' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {approvedRegistrations.map(reg => (
-                      <tr key={reg.id}>
-                        <td>
-                          <strong style={{ color: 'var(--color-text)' }}>{reg.name}</strong>
-                          {reg.gender === 'Group' && (
-                            <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-                              {reg.groupMembers && reg.groupMembers.length > 0 
-                                ? `👥 Members: ${reg.groupMembers.join(', ')}` 
-                                : '👥 Wing Group Entry'}
-                            </span>
-                          )}
-                        </td>
-                        <td><span className="badge badge-violet">{getSubEventName(reg.subEventId)}</span></td>
-                        <td>{getRegisteredByUserDetail(reg.registeredByUserId)}</td>
-                        <td>{reg.gender === 'Group' ? 'Group' : reg.gender}</td>
-                        <td>{reg.gender === 'Group' ? 'Group' : reg.ageCategory}</td>
-                        <td>{new Date(reg.registeredAt).toLocaleDateString()}</td>
-                        <td style={{ textAlign: 'right' }}>
-                          <button 
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => handleRejectRegistration(reg.id, reg.name)}
-                            style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)', backgroundColor: 'transparent' }}
-                          >
-                            Reject
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>
-                <CalendarDays size={48} style={{ margin: '0 auto 0.75rem', opacity: 0.3 }} />
-                <h3>No approved participants found</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                  Approved resident registrations for this event category will show up here.
-                </p>
-              </div>
-            )}
-
-            {/* 🎲 Draw Generator (Admins & SCOT Members only) */}
-            {canGenerateDraws && approvedRegistrations.length >= 2 && (
-              <div className="card" style={{ marginTop: '1.5rem' }}>
-                <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem' }}>
-                  🎲 Tournament Draw Generator
-                </h2>
-                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>
-                  Generate match fixtures from {approvedRegistrations.length} approved participants. You can shuffle randomly or assign slots manually in the Fixtures tab.
-                </p>
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <button
-                    className="btn btn-primary"
-                    onClick={handleGenerateRandomDraw}
-                  >
-                    🎲 Generate Random Draw
-                  </button>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      onShowToast('Switch to the Fixtures tab to manually assign slots.', 'info');
-                      setActiveTab('fixtures');
-                    }}
-                  >
-                    ✏️ Manual Slot Assignment
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )
+          )}
+        </div>
       )}
 
       {activeTab === 'approvals' && (

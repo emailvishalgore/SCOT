@@ -6,13 +6,90 @@ import { motion } from 'framer-motion';
 export default function Leaderboard() {
   const { state } = useStore();
   const user = state.currentUser || { wing: 'Wing N', wingId: 'wing-n' };
-  const leaderboard = state.leaderboard || [];
   const topPerformers = state.topPerformers || [];
-
   const [activeTab, setActiveTab] = useState('standings'); // 'standings', 'performers'
 
+  // Helper to extract wing from winner text, registration records, or flat directory
+  const getWingForPlayer = (playerStr) => {
+    if (!playerStr || playerStr === 'BYE') return null;
+    const m1 = playerStr.match(/\[Wing\s*([A-Za-z0-9]+)\]/i);
+    if (m1) return m1[1].toUpperCase();
+    const m2 = playerStr.match(/Wing\s*([A-Za-z0-9]+)/i);
+    if (m2) return m2[1].toUpperCase();
+    const m3 = playerStr.match(/\(\s*([N-W])\s*[\),]/i);
+    if (m3) return m3[1].toUpperCase();
+
+    const matchedReg = (state.registrations || []).find(
+      r => r.name === playerStr || String(r.name).includes(playerStr) || String(playerStr).includes(String(r.name))
+    );
+    if (matchedReg) {
+      if (matchedReg.wing) return String(matchedReg.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
+      const creator = (state.users || []).find(u => u.id === matchedReg.registeredByUserId);
+      if (creator && creator.wing) return String(creator.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
+    }
+
+    const flatMatch = playerStr.match(/Flat\s*[:#-]?\s*(\d{3})/i) || playerStr.match(/\b(\d{3})\b/);
+    if (flatMatch && state.paidFlats && state.paidFlats.length > 0) {
+      const flatNum = flatMatch[1];
+      const match = state.paidFlats.find(f => {
+        const ff = String(f.flat || '').replace(/\D/g, '');
+        return ff === flatNum || parseInt(ff, 10) === parseInt(flatNum, 10);
+      });
+      if (match && match.wing) {
+        return String(match.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
+      }
+    }
+
+    const m4 = playerStr.match(/\b([N-W])\b/i);
+    if (m4) return m4[1].toUpperCase();
+    return null;
+  };
+
+  // Compute standings dynamically from competitions fixtures
+  const wingStats = {};
+  ['N','O','P','Q','R','S','T','U','V','W'].forEach(w => {
+    wingStats[w] = { points: 0, wins: 0, events: new Set() };
+  });
+
+  (state.competitions || []).forEach(c => {
+    (c.fixtures || []).forEach(f => {
+      if (f.winnerId && f.winnerId !== 'BYE') {
+        const wLetter = getWingForPlayer(f.winnerId);
+        if (wLetter && wingStats[wLetter]) {
+          wingStats[wLetter].points += 30;
+          wingStats[wLetter].wins += 1;
+          if (c.eventId) wingStats[wLetter].events.add(c.eventId);
+        }
+      }
+    });
+  });
+
+  const computedStandings = (state.wings || [
+    { id: 'wing-n', name: 'Wing N', letter: 'N' },
+    { id: 'wing-o', name: 'Wing O', letter: 'O' },
+    { id: 'wing-p', name: 'Wing P', letter: 'P' },
+    { id: 'wing-q', name: 'Wing Q', letter: 'Q' },
+    { id: 'wing-r', name: 'Wing R', letter: 'R' },
+    { id: 'wing-s', name: 'Wing S', letter: 'S' },
+    { id: 'wing-t', name: 'Wing T', letter: 'T' },
+    { id: 'wing-u', name: 'Wing U', letter: 'U' },
+    { id: 'wing-v', name: 'Wing V', letter: 'V' },
+    { id: 'wing-w', name: 'Wing W', letter: 'W' }
+  ]).map(w => {
+    const letter = w.letter || w.name.replace('Wing ', '').trim().toUpperCase();
+    const stats = wingStats[letter] || { points: 0, wins: 0, events: new Set() };
+    return {
+      wingId: w.id || `wing-${letter.toLowerCase()}`,
+      name: w.name || `Wing ${letter}`,
+      letter,
+      points: stats.points,
+      wins: stats.wins,
+      events: stats.events.size || (stats.wins > 0 ? 1 : 0)
+    };
+  });
+
   // Sort wings by points descending
-  const sortedStandings = [...leaderboard].sort((a, b) => {
+  const sortedStandings = [...computedStandings].sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points;
     return a.name.localeCompare(b.name);
   });

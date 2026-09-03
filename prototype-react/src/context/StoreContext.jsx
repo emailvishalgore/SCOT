@@ -974,14 +974,36 @@ export const StoreProvider = ({ children }) => {
   };
 
   // Helper to extract wing letter from participant/winner text
-  const extractWingLetter = (str) => {
-    if (!str) return null;
+  const extractWingLetter = (str, registrations = [], users = [], paidFlats = []) => {
+    if (!str || str === 'BYE') return null;
     const m1 = str.match(/\[Wing\s*([A-Za-z0-9]+)\]/i);
     if (m1) return m1[1].toUpperCase();
     const m2 = str.match(/Wing\s*([A-Za-z0-9]+)/i);
     if (m2) return m2[1].toUpperCase();
     const m3 = str.match(/\(\s*([N-W])\s*[\),]/i);
     if (m3) return m3[1].toUpperCase();
+
+    const matchedReg = (registrations || []).find(
+      r => r.name === str || String(r.name).includes(str) || String(str).includes(String(r.name))
+    );
+    if (matchedReg) {
+      if (matchedReg.wing) return String(matchedReg.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
+      const creator = (users || []).find(u => u.id === matchedReg.registeredByUserId);
+      if (creator && creator.wing) return String(creator.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
+    }
+
+    const flatMatch = str.match(/Flat\s*[:#-]?\s*(\d{3})/i) || str.match(/\b(\d{3})\b/);
+    if (flatMatch && paidFlats && paidFlats.length > 0) {
+      const flatNum = flatMatch[1];
+      const match = paidFlats.find(f => {
+        const ff = String(f.flat || '').replace(/\D/g, '');
+        return ff === flatNum || parseInt(ff, 10) === parseInt(flatNum, 10);
+      });
+      if (match && match.wing) {
+        return String(match.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
+      }
+    }
+
     const m4 = str.match(/\b([N-W])\b/i);
     if (m4) return m4[1].toUpperCase();
     return null;
@@ -1009,7 +1031,7 @@ export const StoreProvider = ({ children }) => {
       nextCompetitions.forEach(c => {
         (c.fixtures || []).forEach(f => {
           if (f.winnerId && f.winnerId !== 'BYE') {
-            const wLetter = extractWingLetter(f.winnerId);
+            const wLetter = extractWingLetter(f.winnerId, prev.registrations, prev.users, prev.paidFlats);
             if (wLetter && wingStats[wLetter]) {
               wingStats[wLetter].points += 30;
               wingStats[wLetter].wins += 1;
