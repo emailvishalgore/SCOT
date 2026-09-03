@@ -598,10 +598,73 @@ export const StoreProvider = ({ children }) => {
     if (!state.currentUser) return { success: false, error: 'Auth required' };
     const registeredByUserId = state.currentUser.id;
 
-    const isAlready = state.registrations.some(
-      r => r.eventId === eventId && r.subEventId === subEventId && String(r.name || '').toLowerCase() === String(name || '').toLowerCase()
+    // Helper to extract flat numbers from a text string (e.g. "Flat 402" or "(Wing N, Flat 402)")
+    const extractFlats = (text) => {
+      const matches = String(text || '').match(/Flat\s*[:#-]?\s*(\d{3})/gi) || [];
+      return matches.map(m => m.replace(/\D/g, '')).filter(Boolean);
+    };
+
+    // Helper to extract individual player names from string
+    const extractNames = (text) => {
+      const clean = String(text || '')
+        .replace(/\([^)]*\)/g, '')
+        .replace(/\[[^\]]*\]/g, '')
+        .replace(/•.*$/g, '');
+      return clean.split(/&|,|and/i).map(s => s.trim().toLowerCase()).filter(Boolean);
+    };
+
+    const newFlats = extractFlats(name);
+    (groupMembers || []).forEach(m => {
+      extractFlats(m).forEach(f => {
+        if (!newFlats.includes(f)) newFlats.push(f);
+      });
+    });
+
+    const newNames = extractNames(name);
+    (groupMembers || []).forEach(m => {
+      extractNames(m).forEach(n => {
+        if (!newNames.includes(n)) newNames.push(n);
+      });
+    });
+
+    // 🚫 SMART DUPLICATE PREVENTION
+    const categoryRegs = (state.registrations || []).filter(
+      r => r.eventId === eventId && r.subEventId === subEventId && r.status !== 'REJECTED'
     );
-    if (isAlready) return { success: false, error: `"${name}" is already registered for this event category!` };
+
+    for (const r of categoryRegs) {
+      // 1. Exact string match
+      if (String(r.name || '').trim().toLowerCase() === String(name || '').trim().toLowerCase()) {
+        return { success: false, error: `Duplicate Entry: "${name}" is already registered for this event category!` };
+      }
+
+      // 2. Flat & Name match (cross-partner / duplicate checks)
+      const existingFlats = extractFlats(r.name);
+      (r.groupMembers || []).forEach(m => {
+        extractFlats(m).forEach(f => {
+          if (!existingFlats.includes(f)) existingFlats.push(f);
+        });
+      });
+
+      const existingNames = extractNames(r.name);
+      (r.groupMembers || []).forEach(m => {
+        extractNames(m).forEach(n => {
+          if (!existingNames.includes(n)) existingNames.push(n);
+        });
+      });
+
+      for (const nf of newFlats) {
+        if (existingFlats.includes(nf)) {
+          const sharedName = newNames.some(nn => existingNames.some(en => en.includes(nn) || nn.includes(en)));
+          if (sharedName) {
+            return { 
+              success: false, 
+              error: `Duplicate Entry: Flat ${nf} is already registered in this category (${r.name})!` 
+            };
+          }
+        }
+      }
+    }
 
     // Find the event/sub-event configuration to enforce limits
     const event = state.events.find(e => e.id === eventId);
@@ -620,7 +683,6 @@ export const StoreProvider = ({ children }) => {
       const userWing = state.currentUser.wing || 'Main';
       const existingWingGroupsCount = state.registrations.filter(r => {
         if (r.eventId !== eventId || r.subEventId !== subEventId) return false;
-        // Check if creator is from the same wing
         const creator = state.users.find(u => u.id === r.registeredByUserId);
         return creator && creator.wing === userWing;
       }).length;
@@ -645,6 +707,25 @@ export const StoreProvider = ({ children }) => {
       }
     }
 
+    // ⚡ AUTOMATED FLAT DUES VERIFICATION & AUTO-APPROVAL
+    const userWingLetter = state.currentUser.wing ? String(state.currentUser.wing).replace(/Wing\s*/i, '').trim() : 'N';
+    let isAutoApproved = false;
+    let autoApproveReason = '';
+
+    if (newFlats.length > 0 && state.paidFlats && state.paidFlats.length > 0) {
+      const results = newFlats.map(fn => validateFlatDues(userWingLetter, fn));
+      const allPaid = results.every(res => res.valid);
+      if (allPaid) {
+        isAutoApproved = true;
+        autoApproveReason = `Flat dues verified for Wing ${userWingLetter} (${newFlats.join(', ')})`;
+      } else {
+        const unpaidReasons = results.filter(r => !r.valid).map(r => r.reason).join('; ');
+        autoApproveReason = unpaidReasons;
+      }
+    }
+
+    const initialStatus = isAutoApproved ? 'APPROVED' : 'PENDING';
+
     const newReg = {
       id: `reg-${Date.now()}`,
       eventId,
@@ -653,17 +734,22 @@ export const StoreProvider = ({ children }) => {
       name,
       gender,
       ageCategory,
-      status: 'PENDING',
+      status: initialStatus,
       registeredAt: new Date().toISOString(),
       votingStatus: 'NOT_STARTED',
       mediaTrack: '',
       groupMembers: groupMembers || []
     };
 
-    setStoreState(prev => ({
-      ...prev,
-      registrations: [...prev.registrations, newReg]
-    }));
+    setStoreState(prev => {
+      const nextRegs = [...prev.registrations, newReg];
+      try {
+        localStorage.setItem('scot_regs_cache', JSON.stringify(nextRegs));
+      } catch (e) {
+        console.warn("Failed caching new registration:", e);
+      }
+      return { ...prev, registrations: nextRegs };
+    });
 
     postToSheet('writeRow', 'Registrations', [
       newReg.id, 
@@ -680,7 +766,13 @@ export const StoreProvider = ({ children }) => {
       JSON.stringify(newReg.groupMembers)
     ]);
 
-    return { success: true };
+    return { 
+      success: true, 
+      autoApproved: isAutoApproved, 
+      status: initialStatus,
+      reason: autoApproveReason, 
+      registration: newReg 
+    };
   };
 
   const withdrawRegistration = (regId) => {

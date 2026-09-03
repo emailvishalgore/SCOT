@@ -164,12 +164,19 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
     );
 
     if (res.success) {
-      onShowToast(
-        isGroupOrMulti 
-          ? `Team "${finalDisplayName}" registered successfully! Pending approval.` 
-          : `Nomination submitted for ${finalDisplayName}! Pending approval.`, 
-        'success'
-      );
+      if (res.autoApproved) {
+        onShowToast(
+          isGroupOrMulti 
+            ? `✅ Team "${finalDisplayName}" registered & AUTO-APPROVED (Flat Dues Verified)!` 
+            : `✅ "${finalDisplayName}" registered & AUTO-APPROVED (Flat Dues Verified)!`, 
+          'success'
+        );
+      } else {
+        onShowToast(
+          `ℹ️ Nomination submitted for "${finalDisplayName}" (Pending Review: ${res.reason || 'Dues Unverified'})`, 
+          'info'
+        );
+      }
       setConfirmModalData(null);
     } else {
       onShowToast(res.error, 'error');
