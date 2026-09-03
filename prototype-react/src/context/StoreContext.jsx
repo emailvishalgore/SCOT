@@ -159,6 +159,15 @@ const getInitialCachedState = () => {
         base.users = parsed;
       }
     }
+    const cachedAuthUser = localStorage.getItem('scot_auth_user');
+    if (cachedAuthUser) {
+      const parsed = JSON.parse(cachedAuthUser);
+      if (parsed && parsed.id) {
+        // Match with latest cached users if possible
+        const matched = (base.users || []).find(u => String(u.id) === String(parsed.id) || String(u.phone) === String(parsed.phone));
+        base.currentUser = matched || parsed;
+      }
+    }
   } catch (e) {
     console.warn("Failed reading cached state:", e);
   }
@@ -398,8 +407,23 @@ export const StoreProvider = ({ children }) => {
             console.warn("Failed caching live data:", e);
           }
 
+          // Keep current user session updated with live role/status changes from Google Sheets
+          let updatedCurrentUser = prev.currentUser;
+          if (prev.currentUser) {
+            const matchedLiveUser = finalUsers.find(
+              u => String(u.id) === String(prev.currentUser.id) || String(u.phone) === String(prev.currentUser.phone)
+            );
+            if (matchedLiveUser) {
+              updatedCurrentUser = matchedLiveUser;
+              try {
+                localStorage.setItem('scot_auth_user', JSON.stringify(matchedLiveUser));
+              } catch (e) {}
+            }
+          }
+
           return {
             ...prev,
+            currentUser: updatedCurrentUser,
             events: fetchedEvents,
             users: finalUsers,
             registrations: finalRegs,
@@ -499,11 +523,21 @@ export const StoreProvider = ({ children }) => {
     if (user.status === 'PENDING_APPROVAL') {
       return { success: false, error: 'Sign in blocked: Account is pending Admin approval of flat contribution.' };
     }
+    try {
+      localStorage.setItem('scot_auth_user', JSON.stringify(user));
+    } catch (e) {
+      console.warn("Failed caching auth user:", e);
+    }
     setStoreState(prev => ({ ...prev, currentUser: user }));
     return { success: true, user };
   };
 
   const logout = () => {
+    try {
+      localStorage.removeItem('scot_auth_user');
+    } catch (e) {
+      console.warn("Failed clearing auth user:", e);
+    }
     setStoreState(prev => ({ ...prev, currentUser: null }));
   };
 
