@@ -66,10 +66,9 @@ const getInitialState = () => {
         subEvents: [
           { id: 'sub-c-1', name: 'Carrom Men Singles (Above 16)', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts', winnerPoints: '100', runnerUpPoints: '70', assignedManagerIds: [] },
           { id: 'sub-c-2', name: 'Carrom Women Singles (Above 16)', category: 'Above 16', points: 'Winner: 100 pts / Runner: 70 pts', winnerPoints: '100', runnerUpPoints: '70', assignedManagerIds: [] },
-          { id: 'sub-c-3', name: 'Carrom Boys Singles (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts', winnerPoints: '60', runnerUpPoints: '40', assignedManagerIds: [] },
-          { id: 'sub-c-4', name: 'Carrom Girls Singles (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts', winnerPoints: '60', runnerUpPoints: '40', assignedManagerIds: [] },
-          { id: 'sub-c-5', name: 'Carrom Open Doubles', category: 'Doubles', points: 'Winner: 100 pts / Runner: 70 pts', winnerPoints: '100', runnerUpPoints: '70', assignedManagerIds: [] },
-          { id: 'sub-c-6', name: 'Carrom Kids (Below 10)', category: 'Below 10', points: 'Winner: 40 pts / Runner: 20 pts', winnerPoints: '40', runnerUpPoints: '20', assignedManagerIds: [] }
+          { id: 'sub-c-3', name: 'Carrom Singles (Below 16)', category: 'Below 16', points: 'Winner: 60 pts / Runner: 40 pts', winnerPoints: '60', runnerUpPoints: '40', assignedManagerIds: [] },
+          { id: 'sub-c-4', name: 'Carrom Kids (Below 10)', category: 'Below 10', points: 'Winner: 40 pts / Runner: 20 pts', winnerPoints: '40', runnerUpPoints: '20', assignedManagerIds: [] },
+          { id: 'sub-c-5', name: 'Carrom Open Doubles', category: 'Doubles', points: 'Winner: 100 pts / Runner: 70 pts', winnerPoints: '100', runnerUpPoints: '70', assignedManagerIds: [] }
         ]
       },
       {
