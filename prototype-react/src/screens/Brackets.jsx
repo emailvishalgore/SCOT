@@ -21,8 +21,18 @@ export default function Brackets({ onShowToast }) {
   }
 
   const events = state.events || [];
-  const [selectedEventId, setSelectedEventId] = useState(events[0]?.id || 'evt-carrom-2026');
+  const [selectedEventId, setSelectedEventId] = useState(events[0]?.id || '');
   const [selectedSubEventId, setSelectedSubEventId] = useState('all');
+
+  // Dynamically sync selectedEventId if state.events loads or changes
+  React.useEffect(() => {
+    if (events.length > 0) {
+      const exists = events.some(e => e.id === selectedEventId);
+      if (!selectedEventId || !exists) {
+        setSelectedEventId(events[0].id);
+      }
+    }
+  }, [events, selectedEventId]);
   
   // Tabs: 'fixtures' (or 'participants') and 'approvals'
   const [activeTab, setActiveTab] = useState('fixtures');

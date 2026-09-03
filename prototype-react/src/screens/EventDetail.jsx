@@ -4,7 +4,7 @@ import { ArrowLeft, Calendar, MapPin, Clock, CheckCircle2, UserPlus, AlertTriang
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
-  const { state, registerForEvent, withdrawRegistration, uploadRegistrationMedia, castParticipantVote } = useStore();
+  const { state, registerForEvent, withdrawRegistration, uploadRegistrationMedia, castParticipantVote, approveEventRegistration, rejectEventRegistration } = useStore();
   const user = state.currentUser || { id: 'anon', name: 'Guest Resident', status: 'PENDING_APPROVAL' };
   const event = state.events.find(e => e.id === eventId) || state.events[0];
   const allApprovedEventRegs = (state.registrations || []).filter(
@@ -23,8 +23,10 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
   if (!event) {
     return (
       <div style={{ padding: '2rem' }}>
-        <h2>Event Not Found</h2>
-        <button className="btn btn-secondary" onClick={() => onViewScreen('events')}>Back to Events</button>
+        <button className="btn btn-secondary btn-sm" onClick={() => onViewScreen('events')}>
+          <ArrowLeft size={16} /> Back to Events
+        </button>
+        <p style={{ marginTop: '1rem' }}>Event details not found.</p>
       </div>
     );
   }
@@ -37,11 +39,20 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
     return new Date() > new Date(deadlineStr);
   };
 
+  const isWingLeader = user.role === 'admin' || user.role === 'champion' || user.role === 'wing_captain';
+
   const getSubRegistrations = (subId) => {
-    const flatRegistrations = (state.registrations || []).filter(
-      r => r.eventId === eventId && r.registeredByUserId === user.id
-    );
-    return flatRegistrations.filter(r => r.subEventId === subId);
+    return (state.registrations || []).filter(r => {
+      if (r.eventId !== eventId || r.subEventId !== subId) return false;
+      if (r.registeredByUserId === user.id) return true;
+      if (isWingLeader) {
+        if (user.role === 'admin') return true;
+        const regCreator = state.users.find(u => u.id === r.registeredByUserId);
+        if (regCreator && user.wing && regCreator.wing === user.wing) return true;
+        if (user.wing && String(r.name || '').includes(user.wing)) return true;
+      }
+      return false;
+    });
   };
 
   const handleOpenRegister = (subId, subName) => {
@@ -572,32 +583,60 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                     </div>
                   )}
 
-                  {/* Collapsible Competitors List */}
-                  <div style={{ marginTop: '0.25rem', borderTop: '1px dashed var(--color-border)', paddingTop: '0.75rem' }}>
-                    <details style={{ fontSize: '0.825rem', cursor: 'pointer' }}>
-                      <summary style={{ color: 'var(--color-primary-dark)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', outline: 'none' }}>
-                        <Eye size={12} /> View Registered Competitors ({allApprovedSubRegs.length})
-                      </summary>
-                      <div style={{ marginTop: '0.5rem', background: '#FFFFFF', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px dashed #CBD5E1', maxHeight: '180px', overflowY: 'auto' }}>
-                        {allApprovedSubRegs.length > 0 ? (
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '6px' }}>
-                            {allApprovedSubRegs.map(r => {
-                              const u = (state.users || []).find(user => user.id === r.registeredByUserId);
-                              const flatInfo = u ? `(${u.wing}, ${u.flat})` : '';
-                              return (
-                                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 4px', borderBottom: '1px solid #F1F5F9' }}>
-                                  <span style={{ fontWeight: 600 }}>{r.name}</span>
-                                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem' }}>{flatInfo}</span>
-                                </div>
-                              );
-                            })}
+                  {/* Collapsible Competitors / Registered Nominations List */}
+                  {(() => {
+                    const allSubRegs = (state.registrations || []).filter(
+                      r => r.eventId === event.id && r.subEventId === sub.id
+                    );
+                    return (
+                      <div style={{ marginTop: '0.25rem', borderTop: '1px dashed var(--color-border)', paddingTop: '0.75rem' }}>
+                        <details style={{ fontSize: '0.825rem', cursor: 'pointer' }}>
+                          <summary style={{ color: 'var(--color-primary-dark)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', outline: 'none' }}>
+                            <Eye size={12} /> View Registered Participants ({allSubRegs.length})
+                          </summary>
+                          <div style={{ marginTop: '0.5rem', background: '#FFFFFF', padding: '0.75rem', borderRadius: '6px', border: '1px dashed #CBD5E1', maxHeight: '220px', overflowY: 'auto' }}>
+                            {allSubRegs.length > 0 ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {allSubRegs.map(r => {
+                                  const u = (state.users || []).find(user => user.id === r.registeredByUserId);
+                                  const creatorInfo = u ? `Reg by: ${u.name} (${u.wing})` : '';
+                                  return (
+                                    <div key={r.id} className="flex-between" style={{ padding: '6px 8px', background: '#F8FAFC', borderRadius: '6px', border: '1px solid #E2E8F0', flexWrap: 'wrap', gap: '6px' }}>
+                                      <div>
+                                        <strong style={{ fontSize: '0.85rem' }}>{r.name}</strong>
+                                        <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.72rem', display: 'block' }}>
+                                          {r.gender !== 'Group' ? `${r.gender} • ${r.ageCategory}` : 'Group Entry'} {creatorInfo ? `• ${creatorInfo}` : ''}
+                                        </span>
+                                      </div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span className={`badge ${r.status === 'APPROVED' ? 'badge-green' : 'badge-amber'}`} style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
+                                          {r.status === 'APPROVED' ? 'Approved' : 'Pending Approval'}
+                                        </span>
+                                        {isWingLeader && r.status === 'PENDING' && (
+                                          <button
+                                            className="btn btn-primary btn-xs"
+                                            style={{ padding: '2px 8px', fontSize: '0.7rem' }}
+                                            onClick={() => {
+                                              approveEventRegistration(r.id);
+                                              onShowToast(`Approved ${r.name}!`, 'success');
+                                            }}
+                                          >
+                                            Approve
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>No registrations yet. Be the first to register!</span>
+                            )}
                           </div>
-                        ) : (
-                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>No approved competitors yet. Be the first to register!</span>
-                        )}
+                        </details>
                       </div>
-                    </details>
-                  </div>
+                    );
+                  })()}
                 </div>
               );
             })}

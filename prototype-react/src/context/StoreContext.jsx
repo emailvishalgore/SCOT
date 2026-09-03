@@ -135,20 +135,39 @@ const getInitialState = () => {
   };
 };
 
-// Selectively clear local storage on app load, preserving event cache
-try {
-  const cachedEvents = localStorage.getItem('scot_events_cache');
-  localStorage.clear();
-  if (cachedEvents) {
-    localStorage.setItem('scot_events_cache', cachedEvents);
+const getInitialCachedState = () => {
+  const base = getInitialState();
+  try {
+    const cachedEvents = localStorage.getItem('scot_events_cache');
+    if (cachedEvents) {
+      const parsed = JSON.parse(cachedEvents);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        base.events = parsed;
+      }
+    }
+    const cachedRegs = localStorage.getItem('scot_regs_cache');
+    if (cachedRegs) {
+      const parsed = JSON.parse(cachedRegs);
+      if (Array.isArray(parsed)) {
+        base.registrations = parsed;
+      }
+    }
+    const cachedUsers = localStorage.getItem('scot_users_cache');
+    if (cachedUsers) {
+      const parsed = JSON.parse(cachedUsers);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        base.users = parsed;
+      }
+    }
+  } catch (e) {
+    console.warn("Failed reading cached state:", e);
   }
-} catch (e) {
-  console.warn("Failed to handle local storage:", e);
-}
+  return base;
+};
 
 export const StoreProvider = ({ children }) => {
-  // Always initialize state fresh from getInitialState() — NO LOCAL STORAGE READ
-  const [state, setStoreState] = useState(() => getInitialState());
+  // Initialize state with cache for instant 0ms load
+  const [state, setStoreState] = useState(() => getInitialCachedState());
 
   // Real-time Fetch & Synchronization from Google Sheets Live Database
   const fetchLiveData = () => {
@@ -365,6 +384,20 @@ export const StoreProvider = ({ children }) => {
             fetchedEvents = mergedEventsList;
           }
 
+          try {
+            if (fetchedEvents && fetchedEvents.length > 0) {
+              localStorage.setItem('scot_events_cache', JSON.stringify(fetchedEvents));
+            }
+            if (finalRegs && finalRegs.length > 0) {
+              localStorage.setItem('scot_regs_cache', JSON.stringify(finalRegs));
+            }
+            if (finalUsers && finalUsers.length > 0) {
+              localStorage.setItem('scot_users_cache', JSON.stringify(finalUsers));
+            }
+          } catch (e) {
+            console.warn("Failed caching live data:", e);
+          }
+
           return {
             ...prev,
             events: fetchedEvents,
@@ -379,10 +412,10 @@ export const StoreProvider = ({ children }) => {
       .catch(err => console.error("Error loading Google Sheet database:", err));
   };
 
-  // Run live sync immediately on load and every 15 seconds for real-time multi-device sync
+  // Run live sync immediately on load and every 5 seconds for fast real-time multi-device sync
   useEffect(() => {
     fetchLiveData();
-    const interval = setInterval(fetchLiveData, 15000);
+    const interval = setInterval(fetchLiveData, 5000);
     return () => clearInterval(interval);
   }, []);
 
