@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Shield, Trophy, Award, GitBranch, Edit3, CheckCheck, Clock, UserCheck, CalendarDays, Eye, Megaphone, Play, Pause, Download, Music } from 'lucide-react';
+import { Shield, Trophy, Award, GitBranch, Edit3, CheckCheck, Clock, UserCheck, CalendarDays, Eye, Megaphone, Play, Pause, Download, Music, Shuffle, Trash2, Plus, ArrowLeftRight, X, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const formatPlayerDisplay = (str) => {
@@ -86,6 +86,17 @@ export default function Brackets({ onShowToast }) {
   const [scoreA, setScoreA] = useState('');
   const [scoreB, setScoreB] = useState('');
 
+  // ✏️ Match Fixture Editing & Custom Pairing States (Admin & Wing Champion only)
+  const [editMatchModal, setEditMatchModal] = useState(null); // { fixture, compId }
+  const [editPlayerA, setEditPlayerA] = useState('');
+  const [editPlayerB, setEditPlayerB] = useState('');
+  const [editRound, setEditRound] = useState('Round 1');
+
+  const [isAddMatchModalOpen, setIsAddMatchModalOpen] = useState(false);
+  const [newMatchPlayerA, setNewMatchPlayerA] = useState('');
+  const [newMatchPlayerB, setNewMatchPlayerB] = useState('');
+  const [newMatchRound, setNewMatchRound] = useState('Round 1');
+
   const activeEvent = events.find(e => e.id === selectedEventId) || events[0];
 
   // Reset selectedSubEventId when selectedEventId changes
@@ -126,6 +137,111 @@ export default function Brackets({ onShowToast }) {
     setScoringModal({ compId: matchingComp.id, fixture });
     setScoreA(fixture.scoreA || '');
     setScoreB(fixture.scoreB || '');
+  };
+
+  // --- ✏️ Open / Save Match Pairing Edit ---
+  const handleOpenEditMatch = (fixture) => {
+    if (!matchingComp) return;
+    setEditMatchModal({ fixture, compId: matchingComp.id });
+    setEditPlayerA(fixture.playerA);
+    setEditPlayerB(fixture.playerB);
+    setEditRound(fixture.round || 'Round 1');
+  };
+
+  const handleSaveEditMatch = (e) => {
+    e.preventDefault();
+    if (!matchingComp || !editMatchModal) return;
+    if (!editPlayerA || !editPlayerB) {
+      onShowToast('Please select both Player/Team A and Player/Team B', 'error');
+      return;
+    }
+    if (editPlayerA === editPlayerB && editPlayerA !== 'BYE') {
+      onShowToast('Player A and Player B cannot be the same participant!', 'error');
+      return;
+    }
+
+    setStoreState(prev => {
+      const nextComps = (prev.competitions || []).map(c => {
+        if (c.id !== matchingComp.id) return c;
+        return {
+          ...c,
+          fixtures: (c.fixtures || []).map(f => {
+            if (f.id !== editMatchModal.fixture.id) return f;
+            return {
+              ...f,
+              playerA: editPlayerA,
+              playerB: editPlayerB,
+              round: editRound,
+              scoreA: '',
+              scoreB: '',
+              winnerId: null
+            };
+          })
+        };
+      });
+      return { ...prev, competitions: nextComps };
+    });
+
+    onShowToast('Match pairing updated successfully!', 'success');
+    setEditMatchModal(null);
+  };
+
+  const handleDeleteMatch = (fixtureId, e) => {
+    if (e) e.stopPropagation();
+    if (!matchingComp) return;
+    if (!window.confirm('Are you sure you want to remove this match fixture?')) return;
+
+    setStoreState(prev => {
+      const nextComps = (prev.competitions || []).map(c => {
+        if (c.id !== matchingComp.id) return c;
+        return {
+          ...c,
+          fixtures: (c.fixtures || []).filter(f => f.id !== fixtureId)
+        };
+      });
+      return { ...prev, competitions: nextComps };
+    });
+
+    onShowToast('Match fixture removed.', 'info');
+  };
+
+  const handleSaveNewMatch = (e) => {
+    e.preventDefault();
+    if (!matchingComp) return;
+    if (!newMatchPlayerA || !newMatchPlayerB) {
+      onShowToast('Please select both Player A and Player B', 'error');
+      return;
+    }
+    if (newMatchPlayerA === newMatchPlayerB && newMatchPlayerA !== 'BYE') {
+      onShowToast('Player A and Player B cannot be the same participant!', 'error');
+      return;
+    }
+
+    const newFix = {
+      id: `fix-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      round: newMatchRound || 'Round 1',
+      playerA: newMatchPlayerA,
+      playerB: newMatchPlayerB,
+      scoreA: '',
+      scoreB: '',
+      winnerId: null
+    };
+
+    setStoreState(prev => {
+      const nextComps = (prev.competitions || []).map(c => {
+        if (c.id !== matchingComp.id) return c;
+        return {
+          ...c,
+          fixtures: [...(c.fixtures || []), newFix]
+        };
+      });
+      return { ...prev, competitions: nextComps };
+    });
+
+    onShowToast('New custom match fixture added!', 'success');
+    setIsAddMatchModalOpen(false);
+    setNewMatchPlayerA('');
+    setNewMatchPlayerB('');
   };
 
   const handleSaveScore = (e) => {
@@ -410,7 +526,31 @@ export default function Brackets({ onShowToast }) {
                 Record match scores, declare winners, and broadcast live outcomes to the society leaderboard.
               </p>
             </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {canGenerateDraws && (
+                <button 
+                  type="button"
+                  className="btn btn-secondary btn-sm" 
+                  onClick={() => setIsAddMatchModalOpen(true)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: 700 }}
+                >
+                  <Plus size={13} /> Add Match Pair
+                </button>
+              )}
+              {canGenerateDraws && approvedRegistrations.length >= 2 && (
+                <button 
+                  type="button"
+                  className="btn btn-secondary btn-sm" 
+                  onClick={() => {
+                    if (window.confirm('Re-shuffle will generate new random fixture pairings. Any recorded scores for current matches will be reset. Proceed?')) {
+                      handleGenerateRandomDraw();
+                    }
+                  }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: 700 }}
+                >
+                  <Shuffle size={13} /> Re-Shuffle
+                </button>
+              )}
               <button 
                 type="button"
                 className="btn btn-secondary btn-sm" 
@@ -522,20 +662,44 @@ export default function Brackets({ onShowToast }) {
                     </div>
 
                     {/* Footer / Action */}
-                    <div className="flex-between" style={{ borderTop: '1px solid #E2E8F0', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                    <div className="flex-between" style={{ borderTop: '1px solid #E2E8F0', paddingTop: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap', gap: '6px' }}>
                       <span style={{ fontSize: '0.78rem', color: isCompleted ? '#059669' : 'var(--color-text-muted)', fontWeight: isCompleted ? 700 : 500 }}>
                         {isCompleted 
                           ? `🏆 Winner declared: ${formatPlayerDisplay(f.winnerId)}` 
                           : 'Tap to enter match score and declare winner'}
                       </span>
-                      <button 
-                        type="button"
-                        className="btn btn-secondary btn-xs"
-                        onClick={(e) => { e.stopPropagation(); handleOpenScoreModal(f); }}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', padding: '3px 8px' }}
-                      >
-                        <Edit3 size={11} /> {isCompleted ? 'Edit Score' : 'Record Score'}
-                      </button>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        {canGenerateDraws && (
+                          <>
+                            <button 
+                              type="button"
+                              className="btn btn-secondary btn-xs"
+                              onClick={(e) => { e.stopPropagation(); handleOpenEditMatch(f); }}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', padding: '3px 8px' }}
+                              title="Edit / Swap Match Participants"
+                            >
+                              <ArrowLeftRight size={11} /> Edit Pairing
+                            </button>
+                            <button 
+                              type="button"
+                              className="btn btn-secondary btn-xs"
+                              onClick={(e) => handleDeleteMatch(f.id, e)}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', padding: '3px 6px', color: 'var(--color-danger)', borderColor: '#FECACA' }}
+                              title="Delete Match Fixture"
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </>
+                        )}
+                        <button 
+                          type="button"
+                          className="btn btn-secondary btn-xs"
+                          onClick={(e) => { e.stopPropagation(); handleOpenScoreModal(f); }}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', padding: '3px 8px', fontWeight: 700 }}
+                        >
+                          <Edit3 size={11} /> {isCompleted ? 'Edit Score' : 'Record Score'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -1003,6 +1167,188 @@ export default function Brackets({ onShowToast }) {
                 <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                   <button type="button" className="btn btn-secondary" onClick={() => setScoringModal(null)}>Cancel</button>
                   <button type="submit" className="btn btn-primary">Save Score &rarr;</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ✏️ Edit Match Pairing Modal (Admin & Wing Champion only) */}
+      <AnimatePresence>
+        {editMatchModal && (
+          <div className="modal-overlay">
+            <motion.div 
+              className="modal"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              style={{ maxWidth: '520px' }}
+            >
+              <form onSubmit={handleSaveEditMatch} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'left' }}>
+                <div className="flex-between">
+                  <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.35rem', fontWeight: 800 }}>
+                    ✏️ Edit Match Pairing
+                  </h2>
+                  <button type="button" className="btn-icon" onClick={() => setEditMatchModal(null)}>
+                    <X size={18} />
+                  </button>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '-8px' }}>
+                  Modify the competitors or swap opponents for this scheduled fixture.
+                </p>
+
+                <div className="form-group">
+                  <label className="form-label">Round / Stage</label>
+                  <select className="select" value={editRound} onChange={(e) => setEditRound(e.target.value)}>
+                    <option value="Round 1">Round 1</option>
+                    <option value="Round 2">Round 2</option>
+                    <option value="Quarter Finals">Quarter Finals</option>
+                    <option value="Semi Finals">Semi Finals</option>
+                    <option value="Bronze Match (3rd Place)">Bronze Match (3rd Place)</option>
+                    <option value="Finals (Championship)">Finals (Championship)</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'flex-end', gap: '0.75rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-primary-dark)' }}>
+                      Player / Team A
+                    </label>
+                    <select 
+                      className="select" 
+                      value={editPlayerA} 
+                      onChange={(e) => setEditPlayerA(e.target.value)}
+                      required
+                    >
+                      <option value="">-- Select Player A --</option>
+                      {approvedRegistrations.map(r => (
+                        <option key={r.id} value={r.name}>{formatPlayerDisplay(r.name)}</option>
+                      ))}
+                      <option value="BYE">BYE (Walkover)</option>
+                    </select>
+                  </div>
+
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      const temp = editPlayerA;
+                      setEditPlayerA(editPlayerB);
+                      setEditPlayerB(temp);
+                    }}
+                    style={{ marginBottom: '4px', padding: '6px 8px' }}
+                    title="Swap Player A and B"
+                  >
+                    <ArrowLeftRight size={14} />
+                  </button>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-primary-dark)' }}>
+                      Player / Team B
+                    </label>
+                    <select 
+                      className="select" 
+                      value={editPlayerB} 
+                      onChange={(e) => setEditPlayerB(e.target.value)}
+                      required
+                    >
+                      <option value="">-- Select Player B --</option>
+                      {approvedRegistrations.map(r => (
+                        <option key={r.id} value={r.name}>{formatPlayerDisplay(r.name)}</option>
+                      ))}
+                      <option value="BYE">BYE (Walkover)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setEditMatchModal(null)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">Save Pairing &rarr;</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ➕ Add Custom Match Fixture Modal */}
+      <AnimatePresence>
+        {isAddMatchModalOpen && (
+          <div className="modal-overlay">
+            <motion.div 
+              className="modal"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              style={{ maxWidth: '520px' }}
+            >
+              <form onSubmit={handleSaveNewMatch} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'left' }}>
+                <div className="flex-between">
+                  <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.35rem', fontWeight: 800 }}>
+                    ➕ Add Match Fixture
+                  </h2>
+                  <button type="button" className="btn-icon" onClick={() => setIsAddMatchModalOpen(false)}>
+                    <X size={18} />
+                  </button>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '-8px' }}>
+                  Create an additional custom fixture pairing for {activeEvent?.name}.
+                </p>
+
+                <div className="form-group">
+                  <label className="form-label">Round / Stage</label>
+                  <select className="select" value={newMatchRound} onChange={(e) => setNewMatchRound(e.target.value)}>
+                    <option value="Round 1">Round 1</option>
+                    <option value="Round 2">Round 2</option>
+                    <option value="Quarter Finals">Quarter Finals</option>
+                    <option value="Semi Finals">Semi Finals</option>
+                    <option value="Bronze Match (3rd Place)">Bronze Match (3rd Place)</option>
+                    <option value="Finals (Championship)">Finals (Championship)</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-primary-dark)' }}>
+                      Player / Team A
+                    </label>
+                    <select 
+                      className="select" 
+                      value={newMatchPlayerA} 
+                      onChange={(e) => setNewMatchPlayerA(e.target.value)}
+                      required
+                    >
+                      <option value="">-- Select Player A --</option>
+                      {approvedRegistrations.map(r => (
+                        <option key={r.id} value={r.name}>{formatPlayerDisplay(r.name)}</option>
+                      ))}
+                      <option value="BYE">BYE (Walkover)</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-primary-dark)' }}>
+                      Player / Team B
+                    </label>
+                    <select 
+                      className="select" 
+                      value={newMatchPlayerB} 
+                      onChange={(e) => setNewMatchPlayerB(e.target.value)}
+                      required
+                    >
+                      <option value="">-- Select Player B --</option>
+                      {approvedRegistrations.map(r => (
+                        <option key={r.id} value={r.name}>{formatPlayerDisplay(r.name)}</option>
+                      ))}
+                      <option value="BYE">BYE (Walkover)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setIsAddMatchModalOpen(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">Add Fixture &rarr;</button>
                 </div>
               </form>
             </motion.div>
