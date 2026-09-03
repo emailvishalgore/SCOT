@@ -52,8 +52,12 @@ export default function Leaderboard() {
   });
 
   (state.competitions || []).forEach(c => {
+    // Only count active competitions for real events created in Google Sheets
+    if (c.id === 'comp-carrom-singles' || c.id === 'comp-tt-singles' || c.eventId === 'evt-carrom-2026' || c.eventId === 'evt-tt-2026') return;
+    if (state.events && state.events.length > 0 && !state.events.some(e => e.id === c.eventId)) return;
+
     (c.fixtures || []).forEach(f => {
-      if (f.winnerId && f.winnerId !== 'BYE') {
+      if (f.winnerId && f.winnerId !== 'BYE' && f.scoreA !== '' && f.scoreB !== '') {
         const wLetter = getWingForPlayer(f.winnerId);
         if (wLetter && wingStats[wLetter]) {
           wingStats[wLetter].points += 30;

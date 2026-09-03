@@ -68,36 +68,7 @@ const getInitialState = () => {
     registrations: [],
     supportMessages: [],
     votes: [],
-    competitions: [
-      {
-        id: 'comp-carrom-singles',
-        eventId: 'evt-carrom-2026',
-        name: 'Carrom Singles Above 16',
-        type: 'knockout',
-        fixtures: [
-          { id: 'fix-1', round: 'Quarter Finals', playerA: 'Player Wing N', playerB: 'Player Wing P', scoreA: '', scoreB: '', winnerId: null },
-          { id: 'fix-2', round: 'Quarter Finals', playerA: 'Player Wing O', playerB: 'Player Wing Q', scoreA: '3', scoreB: '1', winnerId: 'Player Wing O' },
-          { id: 'fix-3', round: 'Quarter Finals', playerA: 'Player Wing R', playerB: 'Player Wing S', scoreA: '0', scoreB: '3', winnerId: 'Player Wing S' },
-          { id: 'fix-4', round: 'Quarter Finals', playerA: 'Player Wing T', playerB: 'Player Wing V', scoreA: '3', scoreB: '2', winnerId: 'Player Wing T' }
-        ]
-      },
-      {
-        id: 'comp-tt-singles',
-        eventId: 'evt-tt-2026',
-        name: 'Table Tennis Above 16 Singles',
-        type: 'league',
-        teams: [
-          { id: 'team-n', name: 'Wing N Player', wins: 0, points: 0 },
-          { id: 'team-p', name: 'Wing P Player', wins: 0, points: 0 },
-          { id: 'team-o', name: 'Wing O Player', wins: 0, points: 0 }
-        ],
-        fixtures: [
-          { id: 'fix-tt-1', playerA: 'Wing N Player', playerB: 'Wing P Player', scoreA: '', scoreB: '', winnerId: null },
-          { id: 'fix-tt-2', playerA: 'Wing P Player', playerB: 'Wing O Player', scoreA: '', scoreB: '', winnerId: null },
-          { id: 'fix-tt-3', playerA: 'Wing N Player', playerB: 'Wing O Player', scoreA: '', scoreB: '', winnerId: null }
-        ]
-      }
-    ],
+    competitions: [],
     gallery: [
       {
         id: 'alb-ganesh-2025',
@@ -172,7 +143,8 @@ const getInitialCachedState = () => {
     if (cachedComps) {
       const parsed = JSON.parse(cachedComps);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        base.competitions = parsed;
+        // Filter out any legacy prototype mock competitions
+        base.competitions = parsed.filter(c => c && c.id !== 'comp-carrom-singles' && c.id !== 'comp-tt-singles' && c.eventId !== 'evt-carrom-2026' && c.eventId !== 'evt-tt-2026');
       }
     }
     const cachedLb = localStorage.getItem('scot_leaderboard_cache');
