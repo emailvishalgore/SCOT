@@ -148,8 +148,11 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
     } else {
       // Doubles or Multi-Participant
       const playersText = participants.map(p => `${p.name.trim()} (Flat ${p.flat})`).join(' & ');
-      const prefix = teamName.trim() ? `${teamName.trim()}: ` : '';
-      finalDisplayName = `${prefix}${playersText} [${wingText}]`;
+      if (teamName.trim()) {
+        finalDisplayName = `${teamName.trim()} [${wingText}] (${playersText})`;
+      } else {
+        finalDisplayName = `${playersText} [${wingText}]`;
+      }
       groupMembersList = participants.map(p => `${p.name.trim()} (Flat ${p.flat}${p.phone ? ', Ph: ' + p.phone : ''})`);
     }
 
@@ -813,11 +816,13 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                   {/* Optional Team / Pair Label */}
                   {participants.length > 1 && (
                     <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label" style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '2px' }}>Team / Pair Name (Optional)</label>
+                      <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-primary-dark)', marginBottom: '3px' }}>
+                        🏆 Team / Pair Name (e.g. Topaz Smashers)
+                      </label>
                       <input 
                         type="text" 
                         className="input" 
-                        placeholder="e.g. Wing U Dynamic Duo" 
+                        placeholder="e.g. Topaz Smashers" 
                         value={teamName}
                         onChange={(e) => setTeamName(e.target.value)}
                       />

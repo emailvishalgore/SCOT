@@ -168,6 +168,20 @@ const getInitialCachedState = () => {
         base.currentUser = matched || parsed;
       }
     }
+    const cachedComps = localStorage.getItem('scot_comps_cache');
+    if (cachedComps) {
+      const parsed = JSON.parse(cachedComps);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        base.competitions = parsed;
+      }
+    }
+    const cachedLb = localStorage.getItem('scot_leaderboard_cache');
+    if (cachedLb) {
+      const parsed = JSON.parse(cachedLb);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        base.leaderboard = parsed;
+      }
+    }
   } catch (e) {
     console.warn("Failed reading cached state:", e);
   }
@@ -959,20 +973,78 @@ export const StoreProvider = ({ children }) => {
     postToSheet('deleteRow', 'Announcements', null, 0, id);
   };
 
+  // Helper to extract wing letter from participant/winner text
+  const extractWingLetter = (str) => {
+    if (!str) return null;
+    const m1 = str.match(/\[Wing\s*([A-Za-z0-9]+)\]/i);
+    if (m1) return m1[1].toUpperCase();
+    const m2 = str.match(/Wing\s*([A-Za-z0-9]+)/i);
+    if (m2) return m2[1].toUpperCase();
+    const m3 = str.match(/\(\s*([N-W])\s*[\),]/i);
+    if (m3) return m3[1].toUpperCase();
+    const m4 = str.match(/\b([N-W])\b/i);
+    if (m4) return m4[1].toUpperCase();
+    return null;
+  };
+
   const recordFixtureScore = (compId, fixtureId, scoreA, scoreB, winnerId) => {
-    setStoreState(prev => ({
-      ...prev,
-      competitions: prev.competitions.map(c => {
+    setStoreState(prev => {
+      const nextCompetitions = (prev.competitions || []).map(c => {
         if (c.id !== compId) return c;
         return {
           ...c,
-          fixtures: c.fixtures.map(f => {
+          fixtures: (c.fixtures || []).map(f => {
             if (f.id !== fixtureId) return f;
             return { ...f, scoreA, scoreB, winnerId };
           })
         };
-      })
-    }));
+      });
+
+      // Recalculate leaderboard dynamically across all competition fixtures
+      const wingStats = {};
+      ['N','O','P','Q','R','S','T','U','V','W'].forEach(w => {
+        wingStats[w] = { points: 0, wins: 0, events: new Set() };
+      });
+
+      nextCompetitions.forEach(c => {
+        (c.fixtures || []).forEach(f => {
+          if (f.winnerId && f.winnerId !== 'BYE') {
+            const wLetter = extractWingLetter(f.winnerId);
+            if (wLetter && wingStats[wLetter]) {
+              wingStats[wLetter].points += 30;
+              wingStats[wLetter].wins += 1;
+              if (c.eventId) wingStats[wLetter].events.add(c.eventId);
+            }
+          }
+        });
+      });
+
+      const nextLeaderboard = (prev.leaderboard || []).map(item => {
+        const stats = wingStats[item.letter];
+        if (stats) {
+          return {
+            ...item,
+            points: stats.points,
+            wins: stats.wins,
+            events: stats.events.size
+          };
+        }
+        return item;
+      });
+
+      try {
+        localStorage.setItem('scot_comps_cache', JSON.stringify(nextCompetitions));
+        localStorage.setItem('scot_leaderboard_cache', JSON.stringify(nextLeaderboard));
+      } catch (e) {
+        console.warn("Failed caching competitions and leaderboard:", e);
+      }
+
+      return {
+        ...prev,
+        competitions: nextCompetitions,
+        leaderboard: nextLeaderboard
+      };
+    });
 
     postToSheet('upsertRow', 'Scores', [fixtureId, compId, scoreA, scoreB, winnerId || ''], 0, fixtureId);
   };

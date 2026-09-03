@@ -139,51 +139,9 @@ export default function Brackets({ onShowToast }) {
     if (parseInt(scoreA) > parseInt(scoreB)) winnerId = playerA;
     if (parseInt(scoreB) > parseInt(scoreA)) winnerId = playerB;
 
-    // Retrieve previous winner to adjust points if score is being edited
-    const originalFixture = matchingComp.fixtures?.find(f => f.id === fixture.id);
-    const prevWinner = originalFixture ? originalFixture.winnerId : null;
-
-    let prevWingLetter = null;
-    if (prevWinner) {
-      const match = prevWinner.match(/\(([^)]+)\)/);
-      if (match) prevWingLetter = match[1];
-    }
-
-    let newWingLetter = null;
-    if (winnerId) {
-      const match = winnerId.match(/\(([^)]+)\)/);
-      if (match) newWingLetter = match[1];
-    }
-
     recordFixtureScore(matchingComp.id, fixture.id, scoreA, scoreB, winnerId);
 
-    // Leaderboard score correction logic
-    setStoreState(prev => ({
-      ...prev,
-      leaderboard: prev.leaderboard.map(item => {
-        let updatedPoints = item.points || 0;
-        let updatedWins = item.wins || 0;
-        let changed = false;
-
-        // Deduct points/wins from previous winner
-        if (prevWingLetter && item.letter === prevWingLetter) {
-          updatedPoints = Math.max(0, updatedPoints - 30);
-          updatedWins = Math.max(0, updatedWins - 1);
-          changed = true;
-        }
-
-        // Add points/wins to new winner
-        if (newWingLetter && item.letter === newWingLetter) {
-          updatedPoints = updatedPoints + 30;
-          updatedWins = updatedWins + 1;
-          changed = true;
-        }
-
-        return changed ? { ...item, points: updatedPoints, wins: updatedWins } : item;
-      })
-    }));
-
-    onShowToast(`Score recorded: ${playerA} vs ${playerB} (${scoreA}-${scoreB})`, 'success');
+    onShowToast(`Score recorded: ${formatPlayerDisplay(playerA)} vs ${formatPlayerDisplay(playerB)} (${scoreA}-${scoreB})`, 'success');
     setScoringModal(null);
   };
 
@@ -327,10 +285,11 @@ export default function Brackets({ onShowToast }) {
 
     if (existingComp) {
       // Update existing competition's fixtures
-      setStoreState(prev => ({
-        ...prev,
-        competitions: prev.competitions.map(c => c.id === existingComp.id ? { ...c, fixtures: newFixtures } : c)
-      }));
+      setStoreState(prev => {
+        const nextComps = prev.competitions.map(c => c.id === existingComp.id ? { ...c, fixtures: newFixtures } : c);
+        try { localStorage.setItem('scot_comps_cache', JSON.stringify(nextComps)); } catch (e) {}
+        return { ...prev, competitions: nextComps };
+      });
     } else {
       // Create a new competition bracket
       const newComp = {
@@ -341,10 +300,11 @@ export default function Brackets({ onShowToast }) {
         type: 'SINGLE_ELIMINATION',
         fixtures: newFixtures
       };
-      setStoreState(prev => ({
-        ...prev,
-        competitions: [...(prev.competitions || []), newComp]
-      }));
+      setStoreState(prev => {
+        const nextComps = [...(prev.competitions || []), newComp];
+        try { localStorage.setItem('scot_comps_cache', JSON.stringify(nextComps)); } catch (e) {}
+        return { ...prev, competitions: nextComps };
+      });
     }
 
     onShowToast(`🎲 Random draw generated! ${newFixtures.length} matches created.`, 'success');
