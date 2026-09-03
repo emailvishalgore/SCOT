@@ -3,6 +3,22 @@ import { useStore } from '../context/StoreContext';
 import { Shield, Trophy, Award, GitBranch, Edit3, CheckCheck, Clock, UserCheck, CalendarDays, Eye, Megaphone, Play, Pause, Download, Music } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const formatPlayerDisplay = (str) => {
+  if (!str) return '';
+  if (str === 'BYE') return 'BYE';
+  
+  // Strip out phone number (e.g. • Ph: 1122334455, Ph: ..., etc.)
+  let clean = String(str)
+    .replace(/•\s*Ph:?\s*\d+/gi, '')
+    .replace(/,\s*Ph:?\s*\d+/gi, '')
+    .replace(/Ph:?\s*\d+/gi, '')
+    .trim();
+
+  // Clean trailing punctuation or extra commas
+  clean = clean.replace(/,\s*\)/g, ')').replace(/\s{2,}/g, ' ').trim();
+  return clean;
+};
+
 export default function Brackets({ onShowToast }) {
   const { state, setStoreState, recordFixtureScore, approveEventRegistration, rejectEventRegistration, postAnnouncement, toggleParticipantVoting, publishParticipantResults, validateFlatDues, registerForEvent, canEditEvent, canEditSubEvent, canSubmitNominations } = useStore();
   const currentUser = state.currentUser;
@@ -541,7 +557,7 @@ export default function Brackets({ onShowToast }) {
                     style={{ padding: '0.75rem 1.25rem' }}
                     onClick={() => handleOpenScoreModal(f)}
                   >
-                    <span><strong>{f.playerA}</strong> vs <strong>{f.playerB}</strong></span>
+                    <span><strong>{formatPlayerDisplay(f.playerA)}</strong> vs <strong>{formatPlayerDisplay(f.playerB)}</strong></span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                       <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
                         {f.scoreA !== '' ? `${f.scoreA} - ${f.scoreB}` : 'Pending score'}
@@ -1071,8 +1087,8 @@ export default function Brackets({ onShowToast }) {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 12px 1fr', alignItems: 'center', gap: '1rem' }}>
                   <div className="form-group">
-                    <label className="form-label" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {scoringModal.fixture.playerA}
+                    <label className="form-label" style={{ display: 'block', fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-primary-dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {formatPlayerDisplay(scoringModal.fixture.playerA)}
                     </label>
                     <input 
                       type="number" 
@@ -1087,8 +1103,8 @@ export default function Brackets({ onShowToast }) {
                   <span style={{ alignSelf: 'flex-end', paddingBottom: '12px', fontWeight: 700, color: 'var(--color-text-muted)' }}>vs</span>
 
                   <div className="form-group">
-                    <label className="form-label" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {scoringModal.fixture.playerB}
+                    <label className="form-label" style={{ display: 'block', fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-primary-dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {formatPlayerDisplay(scoringModal.fixture.playerB)}
                     </label>
                     <input 
                       type="number" 
