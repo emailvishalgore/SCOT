@@ -48,102 +48,7 @@ const getInitialState = () => {
       { id: 'wing-v', name: 'Wing V', letter: 'V', totalFlats: 28, color: '#8B5CF6' },
       { id: 'wing-w', name: 'Wing W', letter: 'W', totalFlats: 28, color: '#14B8A6' }
     ],
-    events: [
-      {
-        id: 'evt-carrom-2026',
-        name: 'Carrom Tournament',
-        type: 'TOURNAMENT',
-        startDate: '2026-09-06',
-        endDate: '2026-09-06',
-        venue: 'Clubhouse Ground Floor',
-        time: '09:00 AM onwards',
-        status: 'OPEN',
-        category: 'Sports',
-        description: 'Annual Inter-Wing Carrom Singles Tournament. Matches will be knockout style, 3 boards per match. Winner gains 100 points for their wing.',
-        registrationDeadline: '2026-09-05',
-        nominationsRequired: true,
-        assignedManagerIds: [],
-        subEvents: []
-      },
-      {
-        id: 'evt-tt-2026',
-        name: 'Table Tennis Tournament',
-        type: 'TOURNAMENT',
-        startDate: '2026-09-25',
-        endDate: '2026-09-28',
-        venue: 'Clubhouse 1st Floor',
-        time: '10:00 AM onwards',
-        status: 'OPEN',
-        category: 'Sports',
-        description: 'Annual Inter-Wing Table Tennis Singles Tournament. Best of 3 sets, 11 points per set. Winner earns 100 points for their wing.',
-        registrationDeadline: '2026-09-24',
-        nominationsRequired: true,
-        assignedManagerIds: [],
-        subEvents: []
-      },
-      {
-        id: 'evt-dahi-2026',
-        name: 'Dahi Handi Celebration',
-        type: 'STANDALONE',
-        startDate: '2026-09-05',
-        endDate: '2026-09-05',
-        venue: 'Main Gate Circle',
-        time: '04:00 PM onwards',
-        status: 'PLANNED',
-        category: 'Cultural',
-        description: 'Grand Dahi Handi breaking competition. Wing-wise pyramid construction speed challenge. Special guest drum beats!',
-        registrationDeadline: '2026-09-02',
-        nominationsRequired: true,
-        assignedManagerIds: [],
-        subEvents: []
-      },
-      {
-        id: 'evt-ganesh-2026',
-        name: 'Ganesh Utsav 2026',
-        type: 'UMBRELLA',
-        startDate: '2026-09-14',
-        endDate: '2026-09-18',
-        venue: 'Main Society Mandap',
-        time: 'Various Schedules',
-        status: 'PLANNED',
-        category: 'Cultural',
-        description: '5-Day Grand Ganesh Utsav Celebrations featuring Dhol Tasha, Wing-wise Cultural Performances, Dumbtakshari, Senior & Kids Stage Events, Visarjan Procession & Gala Dinner.',
-        registrationDeadline: '2026-09-10',
-        nominationsRequired: true,
-        assignedManagerIds: [],
-        subEvents: []
-      },
-      {
-        id: 'evt-dandiya-2026',
-        name: 'Dandiya Night',
-        type: 'STANDALONE',
-        startDate: '2026-10-17',
-        endDate: '2026-10-17',
-        venue: 'Main Ground',
-        time: '07:00 PM onwards',
-        status: 'PLANNED',
-        category: 'Cultural',
-        description: 'Grand Navratri Dandiya Raas Night with DJ music, traditional attire contest, food stalls, and prizes.',
-        registrationDeadline: '2026-10-15',
-        nominationsRequired: false,
-        assignedManagerIds: [],
-        subEvents: []
-      },
-      {
-        id: 'evt-chess-2026',
-        name: 'Chess Championship',
-        type: 'STANDALONE',
-        startDate: '2026-07-15',
-        endDate: '2026-07-15',
-        venue: 'Clubhouse Lobby',
-        time: '10:00 AM onwards',
-        status: 'COMPLETED',
-        category: 'Sports',
-        description: 'Annual Inter-Wing Chess Championship. Fast-paced mind sport battles to crown the Topaz Park Chess Master.',
-        registrationDeadline: '2026-07-12',
-        subEvents: []
-      }
-    ],
+    events: [],
     announcements: [
       { id: 'ann-1', title: 'Topaz Park Season 2026-27 Announced!', date: '2026-07-28', scope: 'Global', scopeType: 'global', content: 'Welcome to Topaz Park SCOT Season 2026-27! Check out the event calendar for Carrom, Table Tennis, and Ganesh Festival.' },
       { id: 'ann-2', title: 'Carrom Tournament Registrations Open', date: '2026-07-29', scope: 'Event', scopeType: 'event', content: 'Registrations are officially open for the Carrom Tournament taking place on Sunday 9th August at the Clubhouse.' }
@@ -407,9 +312,10 @@ export const StoreProvider = ({ children }) => {
             };
           });
 
-          // Map live events from Google Sheets with robust JSON parsing and sub-event preservation
-          let fetchedEvents = [...prev.events];
-          if (data.events && Array.isArray(data.events) && data.events.length > 0) {
+          // Map live events from Google Sheets — Sheet is the AUTHORITATIVE source
+          let fetchedEvents = prev.events; // fallback only if data.events is undefined/null (API not updated)
+          if (data.events && Array.isArray(data.events)) {
+            // Google Sheets returned events data — this is the single source of truth
             const sheetEventsMap = {};
             data.events.forEach(e => {
               if (!e || !e.id) return;
@@ -436,33 +342,23 @@ export const StoreProvider = ({ children }) => {
                 console.warn("Failed to parse subEvents/managers for event:", e.id, err);
               }
 
-              const validSubEvents = Array.isArray(parsedSubEvents) ? parsedSubEvents : [];
-
               sheetEventsMap[e.id] = {
                 ...e,
-                subEvents: validSubEvents,
+                subEvents: Array.isArray(parsedSubEvents) ? parsedSubEvents : [],
                 assignedManagerIds: Array.isArray(parsedManagers) ? parsedManagers : [],
                 nominationsRequired: e.nominationsRequired === true || String(e.nominationsRequired).toUpperCase() === 'TRUE'
               };
             });
 
-            // Merge sheet events with prev.events so any locally updated events are preserved
-            const mergedEventsList = [];
-            const processedIds = new Set();
+            // Start with all sheet events as the base (authoritative)
+            const mergedEventsList = Object.values(sheetEventsMap);
+            const sheetIds = new Set(Object.keys(sheetEventsMap));
 
+            // Add any locally-created events that haven't synced to the sheet yet
+            // (events created in this session that may not have reached Google Sheets)
             prev.events.forEach(pe => {
-              if (sheetEventsMap[pe.id]) {
-                mergedEventsList.push(sheetEventsMap[pe.id]);
-                processedIds.add(pe.id);
-              } else {
+              if (!sheetIds.has(pe.id) && pe.id.startsWith('evt-') && pe._localOnly) {
                 mergedEventsList.push(pe);
-                processedIds.add(pe.id);
-              }
-            });
-
-            Object.values(sheetEventsMap).forEach(se => {
-              if (!processedIds.has(se.id)) {
-                mergedEventsList.push(se);
               }
             });
 
@@ -503,14 +399,27 @@ export const StoreProvider = ({ children }) => {
   const postToSheet = async (action, sheetName, data, keyIndex = 0, keyValue = '') => {
     if (!GOOGLE_SHEETS_API_URL) return;
     try {
-      await fetch(GOOGLE_SHEETS_API_URL, {
+      const response = await fetch(GOOGLE_SHEETS_API_URL, {
         method: 'POST',
-        mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action, sheetName, data, keyIndex, keyValue })
+        body: JSON.stringify({ action, sheetName, data, keyIndex, keyValue }),
+        redirect: 'follow'
       });
+      if (!response.ok) {
+        console.error(`Google Sheet sync failed [${action}/${sheetName}]: HTTP ${response.status}`);
+      }
     } catch (e) {
-      console.error("Failed to sync change to Google Sheet:", e);
+      // If CORS blocks the response, fall back to no-cors mode (fire-and-forget)
+      try {
+        await fetch(GOOGLE_SHEETS_API_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action, sheetName, data, keyIndex, keyValue })
+        });
+      } catch (e2) {
+        console.error("Failed to sync change to Google Sheet:", e2);
+      }
     }
   };
 
@@ -1212,9 +1121,11 @@ export const StoreProvider = ({ children }) => {
   const saveEvent = (finalEvent) => {
     setStoreState(prev => {
       const exists = prev.events.some(e => e.id === finalEvent.id);
+      // Mark as _localOnly if it's a brand new event (not yet in sheet)
+      const eventToSave = exists ? finalEvent : { ...finalEvent, _localOnly: true };
       const nextEvents = exists 
         ? prev.events.map(e => e.id === finalEvent.id ? finalEvent : e)
-        : [...prev.events, finalEvent];
+        : [...prev.events, eventToSave];
       try {
         localStorage.setItem('scot_events_cache', JSON.stringify(nextEvents));
       } catch (e) {
@@ -1245,14 +1156,18 @@ export const StoreProvider = ({ children }) => {
     ];
 
     postToSheet('upsertRow', 'Events', rowData, 0, finalEvent.id);
-    postToSheet('updateRow', 'Events', rowData, 0, finalEvent.id);
   };
 
   const deleteEvent = (eventId) => {
-    setStoreState(prev => ({
-      ...prev,
-      events: prev.events.filter(e => e.id !== eventId)
-    }));
+    setStoreState(prev => {
+      const nextEvents = prev.events.filter(e => e.id !== eventId);
+      try {
+        localStorage.setItem('scot_events_cache', JSON.stringify(nextEvents));
+      } catch (e) {
+        console.warn("Failed to cache events:", e);
+      }
+      return { ...prev, events: nextEvents };
+    });
 
     postToSheet('deleteRow', 'Events', null, 0, eventId);
   };
