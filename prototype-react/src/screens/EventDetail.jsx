@@ -13,8 +13,7 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
 
   // Modal registration form states
   const [confirmModalData, setConfirmModalData] = useState(null); // { subId, subName } or null
-  const [regType, setRegType] = useState('self'); // 'self', 'family', 'wing_resident'
-  const [regName, setRegName] = useState(user.name || '');
+  const [regName, setRegName] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regFlat, setRegFlat] = useState('');
   const [regGender, setRegGender] = useState('Male');
@@ -50,16 +49,10 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
       onShowToast('You must be registered and verified by admin to sign up for events!', 'error');
       return;
     }
-    const sub = event.subEvents?.find(s => s.id === subId);
-    const targetConfig = sub || event;
-    const isGroup = targetConfig?.regType === 'GROUP_REQUIRED' || targetConfig?.regType === 'GROUP_OPTIONAL' || targetConfig?.regType === 'GROUP';
-
-    const defaultType = user.role === 'wing_captain' ? 'wing_resident' : 'self';
     setConfirmModalData({ subId, subName });
-    setRegType(defaultType);
-    setRegName(isGroup ? '' : (defaultType === 'self' ? (user.name || '') : ''));
-    setRegPhone(defaultType === 'self' ? (user.phone || '') : '');
-    setRegFlat(defaultType === 'self' ? (user.flat || '') : '');
+    setRegName('');
+    setRegPhone('');
+    setRegFlat('');
     setRegGender('Male');
     setRegAgeCategory('Above 16');
     setSelectedGroupMembers([]);
@@ -100,22 +93,20 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
         onShowToast('Participant name is required!', 'error');
         return;
       }
-      if (regType === 'wing_resident' || regType === 'family' || user.role === 'wing_captain') {
-        if (regFlat && !/^\d{3}$/.test(regFlat)) {
-          onShowToast('Flat number must be exactly 3 digits (e.g. 402)!', 'error');
-          return;
-        }
-        if (regPhone && !/^\d{10}$/.test(regPhone)) {
-          onShowToast('Phone number must be exactly 10 digits!', 'error');
-          return;
-        }
+      if (!regFlat || !/^\d{3}$/.test(regFlat)) {
+        onShowToast('Flat number is required and must be 3 digits (e.g. 402)!', 'error');
+        return;
+      }
+      if (regPhone && !/^\d{10}$/.test(regPhone)) {
+        onShowToast('Phone number must be exactly 10 digits!', 'error');
+        return;
       }
     }
 
     let finalDisplayName = regName.trim();
-    if (!isGroup && (regFlat || regPhone)) {
+    if (!isGroup) {
       const wingText = user.wing || 'Wing N';
-      const flatText = regFlat ? `, Flat ${regFlat}` : '';
+      const flatText = `, Flat ${regFlat}`;
       const phoneText = regPhone ? ` • Ph: ${regPhone}` : '';
       finalDisplayName = `${regName.trim()} (${wingText}${flatText})${phoneText}`;
     }
@@ -130,7 +121,7 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
     );
 
     if (res.success) {
-      onShowToast(isGroup ? `Group "${regName.trim()}" registered successfully! Pending approval.` : `Registration submitted for ${finalDisplayName}! Pending approval.`, 'success');
+      onShowToast(isGroup ? `Group "${regName.trim()}" registered successfully! Pending approval.` : `Nomination submitted for ${finalDisplayName}! Pending approval.`, 'success');
       setConfirmModalData(null);
     } else {
       onShowToast(res.error, 'error');
@@ -728,10 +719,10 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
               >
                 <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'left' }}>
                   <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.3rem', fontWeight: 800 }}>
-                    {isGroup ? 'Group / Team Entry Form' : 'Event Registration Form'}
+                    {isGroup ? 'Group / Team Entry Form' : 'Wing Participant Nomination Form'}
                   </h2>
                   <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginTop: '-8px' }}>
-                    Category: <strong>{confirmModalData.subName}</strong>
+                    Category: <strong>{confirmModalData.subName}</strong> • Wing: <strong>{user.wing || 'Wing N'}</strong>
                   </p>
 
                   {isGroup ? (
@@ -816,36 +807,8 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                       )}
                     </div>
                   ) : (
-                    /* 👤 INDIVIDUAL REGISTRATION FORM FIELDS */
+                    /* 👤 WING PARTICIPANT NOMINATION FORM FIELDS */
                     <>
-                      {/* Sliding indicator tabs: Self, Family, Wing Resident Nomination */}
-                      <div style={{ display: 'flex', background: '#F1F5F9', padding: '3px', borderRadius: '8px', border: 'none', gap: '4px' }}>
-                        <button 
-                          type="button" 
-                          className="tab" 
-                          onClick={() => handleRegTypeChange('self')}
-                          style={{ flex: 1, fontSize: '0.78rem', padding: '6px 2px', border: 'none', background: regType === 'self' ? '#FFFFFF' : 'transparent', borderRadius: '6px', fontWeight: 700, color: regType === 'self' ? 'var(--color-primary-dark)' : 'var(--color-text-secondary)', boxShadow: regType === 'self' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none' }}
-                        >
-                          👤 Self
-                        </button>
-                        <button 
-                          type="button" 
-                          className="tab" 
-                          onClick={() => handleRegTypeChange('family')}
-                          style={{ flex: 1, fontSize: '0.78rem', padding: '6px 2px', border: 'none', background: regType === 'family' ? '#FFFFFF' : 'transparent', borderRadius: '6px', fontWeight: 700, color: regType === 'family' ? 'var(--color-primary-dark)' : 'var(--color-text-secondary)', boxShadow: regType === 'family' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none' }}
-                        >
-                          👨‍👩‍👧 Family
-                        </button>
-                        <button 
-                          type="button" 
-                          className="tab" 
-                          onClick={() => handleRegTypeChange('wing_resident')}
-                          style={{ flex: 1, fontSize: '0.78rem', padding: '6px 2px', border: 'none', background: regType === 'wing_resident' ? '#FFFFFF' : 'transparent', borderRadius: '6px', fontWeight: 700, color: regType === 'wing_resident' ? 'var(--color-primary-dark)' : 'var(--color-text-secondary)', boxShadow: regType === 'wing_resident' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none' }}
-                        >
-                          🏠 Wing Resident
-                        </button>
-                      </div>
-
                       <div className="form-group">
                         <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Participant Full Name</label>
                         <input 
@@ -854,14 +817,13 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                           placeholder="e.g. Ramesh Kulkarni" 
                           value={regName}
                           onChange={(e) => setRegName(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
-                          disabled={regType === 'self'}
                           required 
                         />
                       </div>
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                         <div className="form-group">
-                          <label className="form-label" style={{ fontSize: '0.8rem' }}>Flat No.</label>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Flat No.</label>
                           <input 
                             type="text" 
                             inputMode="numeric"
@@ -871,8 +833,7 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                             value={regFlat}
                             onChange={(e) => setRegFlat(e.target.value.replace(/\D/g, '').slice(0, 3))}
                             maxLength={3}
-                            disabled={regType === 'self'}
-                            required={regType === 'wing_resident'}
+                            required
                           />
                         </div>
 
@@ -887,7 +848,6 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                             value={regPhone}
                             onChange={(e) => setRegPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                             maxLength={10}
-                            disabled={regType === 'self'}
                           />
                         </div>
                       </div>
