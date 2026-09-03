@@ -311,6 +311,20 @@ export default function Brackets({ onShowToast }) {
     setActiveTab('fixtures');
   };
 
+  if (!events || events.length === 0 || !activeEvent) {
+    return (
+      <div className="page-container">
+        <div className="card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--color-text-secondary)' }}>
+          <Trophy size={48} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+          <h2>No Events Available Yet</h2>
+          <p style={{ color: 'var(--color-text-muted)', maxWidth: '440px', margin: '0.5rem auto 1.5rem' }}>
+            There are currently no events created in the tournament schedule. Create or sync events to begin managing fixtures and participant approvals.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -373,7 +387,7 @@ export default function Brackets({ onShowToast }) {
           >
             Pending Approvals ({pendingRegistrations.length})
           </button>
-          {activeEvent.category === 'Cultural' && (
+          {activeEvent?.category === 'Cultural' && (
             <button 
               className={`tab ${activeTab === 'voting' ? 'active' : ''}`}
               onClick={() => setActiveTab('voting')}
