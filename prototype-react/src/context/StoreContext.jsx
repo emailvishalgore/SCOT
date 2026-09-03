@@ -286,14 +286,16 @@ export const StoreProvider = ({ children }) => {
             }
           });
 
-          // Map locally approved users to ensure Google Sheets polling lag never reverts an approved user back to pending
+          // Map locally approved users by multiple robust keys so Google Sheets polling lag never reverts an approved user
           const localApprovedUserMap = {};
           (prev.users || []).forEach(u => {
             if (u.status === 'APPROVED') {
-              const kPhone = String(u.phone || '');
-              const kId = String(u.id || '');
+              const kPhone = String(u.phone || '').replace(/\D/g, '');
+              const kId = String(u.id || '').trim();
+              const kName = String(u.name || '').trim().toLowerCase();
               if (kPhone) localApprovedUserMap[kPhone] = u;
               if (kId) localApprovedUserMap[kId] = u;
+              if (kName) localApprovedUserMap['name_' + kName] = u;
             }
           });
 
@@ -353,7 +355,13 @@ export const StoreProvider = ({ children }) => {
               return cleanUser;
             }
 
-            const prevApproved = localApprovedUserMap[String(u.phone)] || localApprovedUserMap[String(u.id)];
+            const cPhone = String(u.phone || '').replace(/\D/g, '');
+            const cId = String(u.id || '').trim();
+            const cName = String(u.name || '').trim().toLowerCase();
+
+            const prevApproved = (cPhone && localApprovedUserMap[cPhone]) || 
+                               (cId && localApprovedUserMap[cId]) || 
+                               (cName && localApprovedUserMap['name_' + cName]);
 
             const validRoles = ['admin', 'scot_member', 'champion', 'wing_captain'];
             let parsedRole = String(u.role || '').toLowerCase();
@@ -366,7 +374,9 @@ export const StoreProvider = ({ children }) => {
             }
 
             const isAdmin = String(u.phone) === '9876543210' || parsedRole === 'admin';
-            const finalStatus = prevApproved ? 'APPROVED' : (u.status || 'PENDING_APPROVAL');
+            const sheetStatus = String(u.status || '').toUpperCase();
+            const isApprovedInSheet = sheetStatus.includes('APPROVED');
+            const finalStatus = (prevApproved || isApprovedInSheet) ? 'APPROVED' : (u.status || 'PENDING_APPROVAL');
 
             return {
               ...u,
@@ -458,7 +468,7 @@ export const StoreProvider = ({ children }) => {
       await fetch(GOOGLE_SHEETS_API_URL, {
         method: 'POST',
         mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ action, sheetName, data, keyIndex, keyValue })
       });
     } catch (e) {
