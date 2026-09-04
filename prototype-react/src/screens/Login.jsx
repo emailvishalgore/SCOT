@@ -38,8 +38,9 @@ export default function Login({ onLoginSuccess, onShowToast }) {
       return;
     }
 
-    if (!/^\d{3}$/.test(flat)) {
-      setErrorMsg('Flat number must be exactly 3 digits (e.g., 101, 304)!');
+    const VALID_FLATS = ['101','102','103','104','201','202','203','204','301','302','303','304','401','402','403','404','501','502','503','504','601','602','603','604','701','702','703','704'];
+    if (!VALID_FLATS.includes(flat)) {
+      setErrorMsg('Please select a valid flat number!');
       return;
     }
 
@@ -63,7 +64,7 @@ export default function Login({ onLoginSuccess, onShowToast }) {
       const { requestForToken } = await import('../firebase');
       token = await requestForToken() || '';
     } catch (err) {
-      console.log('Firebase registration token fetch skipped: ', err);
+      // token fetch skipped
     }
 
     // Register with selected role ('scot_member' or 'wing_captain')
@@ -306,15 +307,12 @@ export default function Login({ onLoginSuccess, onShowToast }) {
                 </div>
                 <div className="form-group">
                   <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Flat No.</label>
-                  <input 
-                    type="text" 
-                    className="input" 
-                    placeholder="402" 
-                    value={flat} 
-                    onChange={(e) => setFlat(e.target.value.replace(/\D/g, '').slice(0, 3))} 
-                    maxLength={3}
-                    required 
-                  />
+                  <select className="select" value={flat} onChange={(e) => setFlat(e.target.value)} required>
+                    <option value="">Select Flat</option>
+                    {[101,102,103,104,201,202,203,204,301,302,303,304,401,402,403,404,501,502,503,504,601,602,603,604,701,702,703,704].map(f => (
+                      <option key={f} value={String(f)}>{f}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -401,61 +399,6 @@ export default function Login({ onLoginSuccess, onShowToast }) {
               <button type="submit" className="btn btn-violet" style={{ width: '100%', height: '44px', borderRadius: '10px', marginTop: '0.5rem' }}>
                 Sign In to Platform &rarr;
               </button>
-
-              {/* Contact Admin facility */}
-              <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem', textAlign: 'left' }}>
-                {!showContactAdmin ? (
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary btn-sm"
-                    style={{ width: '100%', borderRadius: '8px', fontSize: '0.8rem', justifyContent: 'center' }}
-                    onClick={() => setShowContactAdmin(true)}
-                  >
-                    Need Help? Contact Admin
-                  </button>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 700 }}>
-                      Send message to Topaz Park Admin
-                    </label>
-                    <textarea 
-                      className="textarea" 
-                      rows={3} 
-                      placeholder="Describe your issue or verification request..."
-                      value={adminMessage}
-                      onChange={(e) => setAdminMessage(e.target.value)}
-                      style={{ fontSize: '0.8rem', borderRadius: '8px' }}
-                      required
-                    />
-                    <input 
-                      type="text" 
-                      className="input" 
-                      placeholder="Your Name, Phone, or Flat (e.g. Wing P - 302)"
-                      value={contactSender}
-                      onChange={(e) => setContactSender(e.target.value)}
-                      style={{ fontSize: '0.8rem', borderRadius: '8px', padding: '6px 10px' }}
-                    />
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button 
-                        type="button" 
-                        className="btn btn-secondary btn-sm" 
-                        onClick={() => setShowContactAdmin(false)}
-                        style={{ flex: 1 }}
-                      >
-                        Cancel
-                      </button>
-                      <button 
-                        type="button" 
-                        className="btn btn-primary btn-sm"
-                        style={{ flex: 1.5 }}
-                        onClick={handleContactSubmit}
-                      >
-                        Send Message
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
             </motion.form>
           )}
         </AnimatePresence>

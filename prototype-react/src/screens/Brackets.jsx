@@ -57,7 +57,11 @@ export default function Brackets({ onShowToast }) {
 
   // Manual participant entry states
   const [manualName, setManualName] = useState('');
-  const [manualWing, setManualWing] = useState('N');
+  const [manualWing, setManualWing] = useState(() => {
+    const cw = currentUser?.wing;
+    if (cw) return String(cw).replace(/Wing\s*/i, '').trim().toUpperCase() || 'N';
+    return 'N';
+  });
   const [manualFlat, setManualFlat] = useState('');
   const [manualGender, setManualGender] = useState('Male');
   const [manualAge, setManualAge] = useState('Above 16');
@@ -134,6 +138,8 @@ export default function Brackets({ onShowToast }) {
 
   const handleOpenScoreModal = (fixture) => {
     if (!matchingComp) return;
+    setEditMatchModal(null);
+    setIsAddMatchModalOpen(false);
     setScoringModal({ compId: matchingComp.id, fixture });
     setScoreA(fixture.scoreA || '');
     setScoreB(fixture.scoreB || '');
@@ -142,6 +148,8 @@ export default function Brackets({ onShowToast }) {
   // --- ✏️ Open / Save Match Pairing Edit ---
   const handleOpenEditMatch = (fixture) => {
     if (!matchingComp) return;
+    setScoringModal(null);
+    setIsAddMatchModalOpen(false);
     setEditMatchModal({ fixture, compId: matchingComp.id });
     setEditPlayerA(fixture.playerA);
     setEditPlayerB(fixture.playerB);
@@ -179,6 +187,7 @@ export default function Brackets({ onShowToast }) {
           })
         };
       });
+      try { localStorage.setItem('scot_comps_cache', JSON.stringify(nextComps)); } catch (e) {}
       return { ...prev, competitions: nextComps };
     });
 
@@ -199,6 +208,7 @@ export default function Brackets({ onShowToast }) {
           fixtures: (c.fixtures || []).filter(f => f.id !== fixtureId)
         };
       });
+      try { localStorage.setItem('scot_comps_cache', JSON.stringify(nextComps)); } catch (e) {}
       return { ...prev, competitions: nextComps };
     });
 
@@ -207,7 +217,38 @@ export default function Brackets({ onShowToast }) {
 
   const handleSaveNewMatch = (e) => {
     e.preventDefault();
-    if (!matchingComp) return;
+    if (!matchingComp) {
+      // No bracket exists yet - create one
+      const subEvtId = selectedSubEventId === 'all' ? (activeEvent?.subEvents?.[0]?.id || '') : selectedSubEventId;
+      const compName = `${activeEvent?.name || 'Event'} - ${getSubEventName(subEvtId)} Draw`;
+      const newFix = {
+        id: `fix-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        round: newMatchRound || 'Round 1',
+        playerA: newMatchPlayerA,
+        playerB: newMatchPlayerB,
+        scoreA: '',
+        scoreB: '',
+        winnerId: null
+      };
+      const newComp = {
+        id: `comp-${Date.now()}`,
+        name: compName,
+        eventId: selectedEventId,
+        subEventId: subEvtId,
+        type: 'SINGLE_ELIMINATION',
+        fixtures: [newFix]
+      };
+      setStoreState(prev => {
+        const nextComps = [...(prev.competitions || []), newComp];
+        try { localStorage.setItem('scot_comps_cache', JSON.stringify(nextComps)); } catch (e) {}
+        return { ...prev, competitions: nextComps };
+      });
+      onShowToast('New bracket created with custom match fixture!', 'success');
+      setIsAddMatchModalOpen(false);
+      setNewMatchPlayerA('');
+      setNewMatchPlayerB('');
+      return;
+    }
     if (!newMatchPlayerA || !newMatchPlayerB) {
       onShowToast('Please select both Player A and Player B', 'error');
       return;
@@ -235,6 +276,7 @@ export default function Brackets({ onShowToast }) {
           fixtures: [...(c.fixtures || []), newFix]
         };
       });
+      try { localStorage.setItem('scot_comps_cache', JSON.stringify(nextComps)); } catch (e) {}
       return { ...prev, competitions: nextComps };
     });
 
@@ -252,8 +294,13 @@ export default function Brackets({ onShowToast }) {
     const { playerA, playerB } = fixture;
 
     let winnerId = null;
-    if (parseInt(scoreA) > parseInt(scoreB)) winnerId = playerA;
-    if (parseInt(scoreB) > parseInt(scoreA)) winnerId = playerB;
+    const numA = parseInt(scoreA, 10);
+    const numB = parseInt(scoreB, 10);
+    if (!isNaN(numA) && !isNaN(numB)) {
+      if (numA > numB) winnerId = playerA;
+      else if (numB > numA) winnerId = playerB;
+      else winnerId = playerA; // Tie: default winner to Player A (home advantage)
+    }
 
     recordFixtureScore(matchingComp.id, fixture.id, scoreA, scoreB, winnerId);
 
@@ -332,11 +379,9 @@ export default function Brackets({ onShowToast }) {
 
     const result = registerForEvent(selectedEventId, subEvtId, displayName, manualGender, manualAge, []);
     if (result.success) {
-      // Auto-approve the registration immediately
-      const newRegs = state.registrations || [];
-      const latestReg = newRegs[newRegs.length - 1];
-      if (latestReg && latestReg.status === 'PENDING') {
-        approveEventRegistration(latestReg.id);
+      // Auto-approve using the registration ID returned from registerForEvent
+      if (result.registration && result.registration.id && result.registration.status === 'PENDING') {
+        approveEventRegistration(result.registration.id);
       }
       onShowToast(`✅ ${manualName} (${wingName}, Flat ${manualFlat}) registered and approved!`, 'success');
       setManualName('');
@@ -531,7 +576,7 @@ export default function Brackets({ onShowToast }) {
                 <button 
                   type="button"
                   className="btn btn-secondary btn-sm" 
-                  onClick={() => setIsAddMatchModalOpen(true)}
+                  onClick={() => { setScoringModal(null); setEditMatchModal(null); setIsAddMatchModalOpen(true); }}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: 700 }}
                 >
                   <Plus size={13} /> Add Match Pair
@@ -570,7 +615,8 @@ export default function Brackets({ onShowToast }) {
           {matchingComp && matchingComp.fixtures && matchingComp.fixtures.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {matchingComp.fixtures.map((f, idx) => {
-                const isCompleted = !!f.winnerId && f.scoreA !== '' && f.scoreB !== '';
+                const isBye = f.playerB === 'BYE' || f.playerA === 'BYE';
+                const isCompleted = isBye ? !!f.winnerId : (!!f.winnerId && f.scoreA !== '' && f.scoreB !== '');
                 const isPlayerAWinner = f.winnerId === f.playerA;
                 const isPlayerBWinner = f.winnerId === f.playerB;
 

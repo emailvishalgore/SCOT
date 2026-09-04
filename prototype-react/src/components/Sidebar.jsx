@@ -29,10 +29,12 @@ export default function Sidebar({ currentScreen, onViewScreen, isOpen, onClose }
   const initials = user.name ? String(user.name).split(' ').map(n => n[0]).join('') : 'U';
 
   // All users see the organizer tools
+  const isAdminOrChamp = user.role === 'admin' || user.role === 'champion' || user.role === 'scot_member';
+
   const organizerLinks = [
     { title: 'Dashboard', screen: 'dashboard', icon: <LayoutDashboard size={18} /> },
     { title: 'Events Hub', screen: 'events', icon: <Calendar size={18} /> },
-    { title: 'Event Editor', screen: 'admin/events', icon: <Edit size={18} /> },
+    ...(isAdminOrChamp ? [{ title: 'Event Editor', screen: 'admin/events', icon: <Edit size={18} /> }] : []),
     { title: 'Brackets & Scores', screen: 'admin/competitions', icon: <GitBranch size={18} /> },
     { title: 'Leaderboard', screen: 'leaderboard', icon: <Trophy size={18} /> },
     { title: 'Announcements', screen: 'announcements', icon: <Megaphone size={18} /> },

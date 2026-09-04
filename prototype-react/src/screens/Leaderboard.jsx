@@ -30,6 +30,7 @@ export default function Leaderboard({ onShowToast }) {
   // Helper to extract wing from winner text, registration records, or flat directory
   const getWingForPlayer = (playerStr) => {
     if (!playerStr || playerStr === 'BYE') return null;
+    playerStr = String(playerStr);
     const m1 = playerStr.match(/\[Wing\s*([A-Za-z0-9]+)\]/i);
     if (m1) return m1[1].toUpperCase();
     const m2 = playerStr.match(/Wing\s*([A-Za-z0-9]+)/i);

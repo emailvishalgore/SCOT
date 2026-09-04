@@ -126,8 +126,9 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
         onShowToast(`${pLabel} name is required!`, 'error');
         return;
       }
-      if (!p.flat || !/^\d{3}$/.test(p.flat)) {
-        onShowToast(`${pLabel} Flat number must be exactly 3 digits (e.g. 402)!`, 'error');
+      const VALID_FLATS = ['101','102','103','104','201','202','203','204','301','302','303','304','401','402','403','404','501','502','503','504','601','602','603','604','701','702','703','704'];
+      if (!p.flat || !VALID_FLATS.includes(p.flat)) {
+        onShowToast(`${pLabel} Please select a valid flat number!`, 'error');
         return;
       }
       if (p.phone && !/^\d{10}$/.test(p.phone)) {
@@ -864,17 +865,18 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                           <div className="form-group" style={{ margin: 0 }}>
                             <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, marginBottom: '2px' }}>Flat No.</label>
-                            <input 
-                              type="text" 
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              className="input" 
-                              placeholder="e.g. 402" 
+                            <select
+                              className="select"
                               value={p.flat}
-                              onChange={(e) => handleUpdateParticipant(idx, 'flat', e.target.value.replace(/\D/g, '').slice(0, 3))}
-                              maxLength={3}
+                              onChange={(e) => handleUpdateParticipant(idx, 'flat', e.target.value)}
                               required
-                            />
+                              style={{ fontSize: '0.82rem', padding: '6px 8px' }}
+                            >
+                              <option value="">Select</option>
+                              {[101,102,103,104,201,202,203,204,301,302,303,304,401,402,403,404,501,502,503,504,601,602,603,604,701,702,703,704].map(f => (
+                                <option key={f} value={String(f)}>{f}</option>
+                              ))}
+                            </select>
                           </div>
 
                           <div className="form-group" style={{ margin: 0 }}>
@@ -916,15 +918,17 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                     ))}
                   </div>
 
-                  {/* ➕ Add Partner / Participant Button */}
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={handleAddParticipant}
-                    style={{ width: '100%', borderStyle: 'dashed', borderColor: 'var(--color-primary)', fontWeight: 700 }}
-                  >
-                    ➕ Add {participants.length === 1 ? 'Doubles Partner' : 'Another Participant'}
-                  </button>
+                  {/* ➕ Add Partner / Participant Button - Only for doubles/multi events */}
+                  {confirmModalData?.isDoubles && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={handleAddParticipant}
+                      style={{ width: '100%', borderStyle: 'dashed', borderColor: 'var(--color-primary)', fontWeight: 700 }}
+                    >
+                      ➕ Add {participants.length === 1 ? 'Doubles Partner' : 'Another Participant'}
+                    </button>
+                  )}
 
                   <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', justifyContent: 'flex-end' }}>
                     <button type="button" className="btn btn-secondary" onClick={() => setConfirmModalData(null)}>Cancel</button>

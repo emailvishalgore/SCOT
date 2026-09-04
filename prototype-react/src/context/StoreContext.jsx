@@ -292,7 +292,7 @@ export const StoreProvider = ({ children }) => {
               wingId: isAdmin ? '' : (u.wingId || (u.wing ? 'wing-' + String(u.wing).split(' ')[1].toLowerCase() : '')),
               flat: isAdmin ? '' : String(u.flat || ''),
               role: parsedRole,
-              isChampion: true,
+              isChampion: u.isChampion === true || String(u.isChampion).toUpperCase() === 'TRUE',
               status: finalStatus,
               contributionStatus: finalStatus === 'APPROVED' ? 'PAID' : 'UNPAID',
               registeredAt: u.registeredAt || '2026-08-15',
@@ -448,7 +448,7 @@ export const StoreProvider = ({ children }) => {
   // Run live sync immediately on load and every 5 seconds for fast real-time multi-device sync
   useEffect(() => {
     fetchLiveData();
-    const interval = setInterval(fetchLiveData, 5000);
+    const interval = setInterval(fetchLiveData, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -577,7 +577,7 @@ export const StoreProvider = ({ children }) => {
       wingId,
       flat,
       role: assignedRole,
-      isChampion: true,
+      isChampion: false,
       status: isDuesPaid ? 'APPROVED' : 'PENDING_APPROVAL',
       contributionStatus: isDuesPaid ? 'PAID' : 'UNPAID',
       registeredAt: new Date().toISOString().split('T')[0],

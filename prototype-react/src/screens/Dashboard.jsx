@@ -57,7 +57,7 @@ export default function Dashboard({ onViewScreen }) {
 
       {/* Stats Cards Grid */}
       <div className="grid-4 mb-lg" style={{ marginBottom: '2rem' }}>
-        <div className="stat-card">
+        <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => onViewScreen('events')}>
           <div className="stat-info">
             <span className="stat-label">Season Events</span>
             <span className="stat-value">{events.length}</span>
@@ -67,7 +67,7 @@ export default function Dashboard({ onViewScreen }) {
           </div>
         </div>
 
-        <div className="stat-card green">
+        <div className="stat-card green" style={{ cursor: 'pointer' }} onClick={() => onViewScreen('events')}>
           <div className="stat-info">
             <span className="stat-label">My Registrations</span>
             <span className="stat-value">{userRegs.length}</span>
@@ -77,7 +77,7 @@ export default function Dashboard({ onViewScreen }) {
           </div>
         </div>
 
-        <div className="stat-card amber">
+        <div className="stat-card amber" style={{ cursor: 'pointer' }} onClick={() => onViewScreen('leaderboard')}>
           <div className="stat-info">
             <span className="stat-label">{user.wing} Rank</span>
             <span className="stat-value">{rankDisplay}</span>
@@ -87,7 +87,7 @@ export default function Dashboard({ onViewScreen }) {
           </div>
         </div>
 
-        <div className="stat-card blue">
+        <div className="stat-card blue" style={{ cursor: 'pointer' }} onClick={() => onViewScreen('leaderboard')}>
           <div className="stat-info">
             <span className="stat-label">Wing Points</span>
             <span className="stat-value">{wingPoints}</span>

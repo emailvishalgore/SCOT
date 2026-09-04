@@ -19,6 +19,30 @@ import Brackets from './screens/Brackets';
 
 import { AnimatePresence } from 'framer-motion';
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '3rem 1.5rem', textAlign: 'center', fontFamily: 'system-ui' }}>
+          <h2 style={{ color: '#DC2626', marginBottom: '1rem' }}>⚠️ Something went wrong</h2>
+          <p style={{ color: '#64748B', marginBottom: '0.5rem' }}>The application encountered a runtime error. This might be due to outdated cached storage or a mismatch in database records.</p>
+          <p style={{ fontSize: '0.8rem', color: '#94A3B8', marginBottom: '1.5rem', fontFamily: 'monospace' }}>{this.state.error?.toString()}</p>
+          <button onClick={() => { localStorage.clear(); window.location.reload(); }} style={{ padding: '10px 20px', background: '#6366F1', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', marginRight: '8px' }}>Clear Cache &amp; Reload</button>
+          <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', background: '#E2E8F0', color: '#334155', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Reload Page</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function AppContent() {
   const { state, updateUserFcmToken } = useStore();
   const currentUser = state.currentUser;
@@ -41,17 +65,27 @@ function AppContent() {
 
   // Foreground message listener
   useEffect(() => {
+    let unsubscribe;
     import('./firebase').then(({ onMessageListener }) => {
-      onMessageListener().then(payload => {
-        triggerToast(`${payload.notification.title}: ${payload.notification.body}`, 'success');
-      }).catch(err => console.log('FCM listener error:', err));
+      const listenForMessages = () => {
+        onMessageListener().then(payload => {
+          if (payload?.notification) {
+            triggerToast(`${payload.notification.title}: ${payload.notification.body}`, 'success');
+          }
+          listenForMessages();
+        }).catch(() => {
+          setTimeout(listenForMessages, 5000);
+        });
+      };
+      listenForMessages();
     });
+    return () => { if (unsubscribe) unsubscribe(); };
   }, []);
 
   // Hash-based simple router syncing
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace('#/', '');
+      const hash = window.location.hash.replace(/^#\/?/, '');
       if (hash) {
         setCurrentScreen(hash);
       } else {
@@ -83,7 +117,10 @@ function AppContent() {
   if (!state.currentUser) {
     return (
       <>
-        <Login onLoginSuccess={() => setView('dashboard')} onShowToast={triggerToast} />
+        <Login onLoginSuccess={() => {
+          const existingHash = window.location.hash.replace(/^#\/?/, '');
+          setView(existingHash || 'dashboard');
+        }} onShowToast={triggerToast} />
         <div className="toast-container">
           <AnimatePresence>
             {toastList.map(t => (
@@ -119,7 +156,7 @@ function AppContent() {
       );
     }
     if (currentScreen === 'leaderboard') {
-      return <Leaderboard />;
+      return <Leaderboard onShowToast={triggerToast} />;
     }
     if (currentScreen === 'announcements') {
       return <Announcements onShowToast={triggerToast} />;
@@ -193,8 +230,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <StoreProvider>
-      <AppContent />
-    </StoreProvider>
+    <ErrorBoundary>
+      <StoreProvider>
+        <AppContent />
+      </StoreProvider>
+    </ErrorBoundary>
   );
 }
