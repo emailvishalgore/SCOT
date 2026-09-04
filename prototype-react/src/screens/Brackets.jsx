@@ -61,6 +61,36 @@ const getRegistrationWing = (r, users = [], paidFlats = []) => {
   return 'OTHER';
 };
 
+// Helper to extract winner and runner-up points configured for an event / sub-event
+const getEventPoints = (event, subEventId) => {
+  if (!event) return { winnerPoints: 100, runnerUpPoints: 50 };
+  
+  let targetObj = event;
+  if (subEventId && event.subEvents && event.subEvents.length > 0) {
+    const sub = event.subEvents.find(s => s.id === subEventId);
+    if (sub) targetObj = sub;
+  }
+
+  let winPts = targetObj.winnerPoints !== undefined && targetObj.winnerPoints !== '' ? parseInt(targetObj.winnerPoints, 10) : NaN;
+  let runPts = targetObj.runnerUpPoints !== undefined && targetObj.runnerUpPoints !== '' ? parseInt(targetObj.runnerUpPoints, 10) : NaN;
+
+  if (isNaN(winPts) && targetObj.points) {
+    const pStr = String(targetObj.points);
+    const winMatch = pStr.match(/Winner:\s*(\d+)/i) || pStr.match(/(\d+)\s*pts/i) || pStr.match(/^(\d+)$/);
+    if (winMatch) winPts = parseInt(winMatch[1], 10);
+  }
+  if (isNaN(runPts) && targetObj.points) {
+    const pStr = String(targetObj.points);
+    const runMatch = pStr.match(/Runner:\s*(\d+)/i) || pStr.match(/Runner-?up:\s*(\d+)/i);
+    if (runMatch) runPts = parseInt(runMatch[1], 10);
+  }
+
+  if (isNaN(winPts) || winPts <= 0) winPts = 100;
+  if (isNaN(runPts) || runPts <= 0) runPts = 50;
+
+  return { winnerPoints: winPts, runnerUpPoints: runPts };
+};
+
 export default function Brackets({ onShowToast }) {
   const { state, setStoreState, recordFixtureScore, approveEventRegistration, rejectEventRegistration, postAnnouncement, toggleParticipantVoting, publishParticipantResults, validateFlatDues, registerForEvent, canEditEvent, canEditSubEvent, canSubmitNominations } = useStore();
   const currentUser = state.currentUser;
@@ -550,12 +580,16 @@ export default function Brackets({ onShowToast }) {
       [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
     }
 
+    const defaultDrawRound = pairs.length === 1 
+      ? 'Finals (Championship)' 
+      : (pairs.length === 2 ? 'Semi Finals' : (pairs.length <= 4 ? 'Quarter Finals' : 'Round 1'));
+
     // 6. Build the fixtures list
     const newFixtures = pairs.map((pair, idx) => {
       if (pair.isBye || pair.pB.name === 'BYE') {
         return {
           id: `fix-${Date.now()}-${idx}`,
-          round: 'Round 1',
+          round: defaultDrawRound,
           playerA: pair.pA.name,
           playerB: 'BYE',
           scoreA: '',
@@ -565,7 +599,7 @@ export default function Brackets({ onShowToast }) {
       }
       return {
         id: `fix-${Date.now()}-${idx}`,
-        round: 'Round 1',
+        round: defaultDrawRound,
         playerA: pair.pA.name,
         playerB: pair.pB.name,
         scoreA: '',
@@ -575,6 +609,7 @@ export default function Brackets({ onShowToast }) {
     });
 
     if (byeFixture) {
+      byeFixture.round = defaultDrawRound;
       newFixtures.push(byeFixture);
     }
 
@@ -1314,9 +1349,30 @@ export default function Brackets({ onShowToast }) {
                 <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.35rem', fontWeight: 800 }}>
                   Record Match Outcome
                 </h2>
-                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '-8px' }}>
-                  Enter results to declare match winner. Winner's wing earns <strong>+30 points</strong> automatically.
-                </p>
+                {(() => {
+                  const isFinals = scoringModal?.fixture?.round && (
+                    String(scoringModal.fixture.round).toLowerCase() === 'finals' ||
+                    String(scoringModal.fixture.round).toLowerCase() === 'final' ||
+                    String(scoringModal.fixture.round).toLowerCase().includes('finals (championship)') ||
+                    (String(scoringModal.fixture.round).toLowerCase().includes('final') && !String(scoringModal.fixture.round).toLowerCase().includes('semi') && !String(scoringModal.fixture.round).toLowerCase().includes('quarter'))
+                  );
+                  const subEvtId = selectedSubEventId === 'all' ? (activeEvent?.subEvents?.[0]?.id || '') : selectedSubEventId;
+                  const { winnerPoints, runnerUpPoints } = getEventPoints(activeEvent, subEvtId);
+
+                  return (
+                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '-8px', lineHeight: 1.4 }}>
+                      {isFinals ? (
+                        <span>
+                          🏆 <strong>Finals Championship Match:</strong> Winner earns <strong>+{winnerPoints} pts</strong> (Gold), Runner-up earns <strong>+{runnerUpPoints} pts</strong> (Silver) for their Wing.
+                        </span>
+                      ) : (
+                        <span>
+                          ℹ️ <strong>{scoringModal?.fixture?.round || 'Preliminary Match'}:</strong> Winner advances to next round. Championship points are awarded at the <strong>Finals</strong>.
+                        </span>
+                      )}
+                    </p>
+                  );
+                })()}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 12px 1fr', alignItems: 'center', gap: '1rem' }}>
                   <div className="form-group">

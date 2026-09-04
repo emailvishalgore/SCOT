@@ -1059,6 +1059,36 @@ export const StoreProvider = ({ children }) => {
     return null;
   };
 
+  // Helper to extract winner and runner-up points configured for an event / sub-event
+  const getEventPoints = (event, subEventId) => {
+    if (!event) return { winnerPoints: 100, runnerUpPoints: 50 };
+    
+    let targetObj = event;
+    if (subEventId && event.subEvents && event.subEvents.length > 0) {
+      const sub = event.subEvents.find(s => s.id === subEventId);
+      if (sub) targetObj = sub;
+    }
+
+    let winPts = targetObj.winnerPoints !== undefined && targetObj.winnerPoints !== '' ? parseInt(targetObj.winnerPoints, 10) : NaN;
+    let runPts = targetObj.runnerUpPoints !== undefined && targetObj.runnerUpPoints !== '' ? parseInt(targetObj.runnerUpPoints, 10) : NaN;
+
+    if (isNaN(winPts) && targetObj.points) {
+      const pStr = String(targetObj.points);
+      const winMatch = pStr.match(/Winner:\s*(\d+)/i) || pStr.match(/(\d+)\s*pts/i) || pStr.match(/^(\d+)$/);
+      if (winMatch) winPts = parseInt(winMatch[1], 10);
+    }
+    if (isNaN(runPts) && targetObj.points) {
+      const pStr = String(targetObj.points);
+      const runMatch = pStr.match(/Runner:\s*(\d+)/i) || pStr.match(/Runner-?up:\s*(\d+)/i);
+      if (runMatch) runPts = parseInt(runMatch[1], 10);
+    }
+
+    if (isNaN(winPts) || winPts <= 0) winPts = 100;
+    if (isNaN(runPts) || runPts <= 0) runPts = 50;
+
+    return { winnerPoints: winPts, runnerUpPoints: runPts };
+  };
+
   const recordFixtureScore = (compId, fixtureId, scoreA, scoreB, winnerId) => {
     setStoreState(prev => {
       const nextCompetitions = (prev.competitions || []).map(c => {
@@ -1079,13 +1109,37 @@ export const StoreProvider = ({ children }) => {
       });
 
       nextCompetitions.forEach(c => {
+        const targetEvt = (prev.events || []).find(e => e.id === c.eventId);
+        const { winnerPoints, runnerUpPoints } = getEventPoints(targetEvt, c.subEventId);
+
         (c.fixtures || []).forEach(f => {
           if (f.winnerId && f.winnerId !== 'BYE') {
-            const wLetter = extractWingLetter(f.winnerId, prev.registrations, prev.users, prev.paidFlats);
-            if (wLetter && wingStats[wLetter]) {
-              wingStats[wLetter].points += 30;
-              wingStats[wLetter].wins += 1;
-              if (c.eventId) wingStats[wLetter].events.add(c.eventId);
+            const isFinals = f.round && (
+              String(f.round).toLowerCase() === 'finals' ||
+              String(f.round).toLowerCase() === 'final' ||
+              String(f.round).toLowerCase().includes('finals (championship)') ||
+              (String(f.round).toLowerCase().includes('final') && !String(f.round).toLowerCase().includes('semi') && !String(f.round).toLowerCase().includes('quarter'))
+            );
+
+            const winWing = extractWingLetter(f.winnerId, prev.registrations, prev.users, prev.paidFlats);
+            if (winWing && wingStats[winWing]) {
+              wingStats[winWing].wins += 1;
+              if (c.eventId) wingStats[winWing].events.add(c.eventId);
+
+              if (isFinals) {
+                wingStats[winWing].points += winnerPoints;
+              }
+            }
+
+            if (isFinals) {
+              const loser = f.winnerId === f.playerA ? f.playerB : f.playerA;
+              if (loser && loser !== 'BYE') {
+                const runnerWing = extractWingLetter(loser, prev.registrations, prev.users, prev.paidFlats);
+                if (runnerWing && runnerWing !== winWing && wingStats[runnerWing]) {
+                  wingStats[runnerWing].points += runnerUpPoints;
+                  if (c.eventId) wingStats[runnerWing].events.add(c.eventId);
+                }
+              }
             }
           }
         });

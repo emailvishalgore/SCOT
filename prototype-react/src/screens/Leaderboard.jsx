@@ -64,10 +64,40 @@ export default function Leaderboard({ onShowToast }) {
     return null;
   };
 
+  // Helper to extract winner and runner-up points configured for an event / sub-event
+  const getEventPoints = (event, subEventId) => {
+    if (!event) return { winnerPoints: 100, runnerUpPoints: 50 };
+    
+    let targetObj = event;
+    if (subEventId && event.subEvents && event.subEvents.length > 0) {
+      const sub = event.subEvents.find(s => s.id === subEventId);
+      if (sub) targetObj = sub;
+    }
+
+    let winPts = targetObj.winnerPoints !== undefined && targetObj.winnerPoints !== '' ? parseInt(targetObj.winnerPoints, 10) : NaN;
+    let runPts = targetObj.runnerUpPoints !== undefined && targetObj.runnerUpPoints !== '' ? parseInt(targetObj.runnerUpPoints, 10) : NaN;
+
+    if (isNaN(winPts) && targetObj.points) {
+      const pStr = String(targetObj.points);
+      const winMatch = pStr.match(/Winner:\s*(\d+)/i) || pStr.match(/(\d+)\s*pts/i) || pStr.match(/^(\d+)$/);
+      if (winMatch) winPts = parseInt(winMatch[1], 10);
+    }
+    if (isNaN(runPts) && targetObj.points) {
+      const pStr = String(targetObj.points);
+      const runMatch = pStr.match(/Runner:\s*(\d+)/i) || pStr.match(/Runner-?up:\s*(\d+)/i);
+      if (runMatch) runPts = parseInt(runMatch[1], 10);
+    }
+
+    if (isNaN(winPts) || winPts <= 0) winPts = 100;
+    if (isNaN(runPts) || runPts <= 0) runPts = 50;
+
+    return { winnerPoints: winPts, runnerUpPoints: runPts };
+  };
+
   // Compute standings & match forms dynamically from competitions fixtures
   const wingStats = {};
   const wingMatches = {}; // Recent match results [ 'W', 'L' ]
-  const wingEventBreakdown = {}; // { 'U': { 'evt-1': 60, 'evt-2': 30 } }
+  const wingEventBreakdown = {}; // { 'U': { 'evt-1': 100, 'evt-2': 50 } }
   const playerStats = {}; // Top performers: { 'Player Name': { wing, wins: 0, points: 0, matches: 0 } }
   let totalCompletedMatches = 0;
 
@@ -81,6 +111,9 @@ export default function Leaderboard({ onShowToast }) {
     if (c.id === 'comp-carrom-singles' || c.id === 'comp-tt-singles' || c.eventId === 'evt-carrom-2026' || c.eventId === 'evt-tt-2026') return;
     if (state.events && state.events.length > 0 && !state.events.some(e => e.id === c.eventId)) return;
 
+    const targetEvt = (state.events || []).find(e => e.id === c.eventId);
+    const { winnerPoints, runnerUpPoints } = getEventPoints(targetEvt, c.subEventId);
+
     (c.fixtures || []).forEach(f => {
       if (f.scoreA !== '' && f.scoreB !== '' && f.winnerId && f.winnerId !== 'BYE') {
         totalCompletedMatches++;
@@ -91,19 +124,39 @@ export default function Leaderboard({ onShowToast }) {
         if (wingA && wingStats[wingA]) wingStats[wingA].matches++;
         if (wingB && wingStats[wingB] && wingB !== wingA) wingStats[wingB].matches++;
 
+        const isFinals = f.round && (
+          String(f.round).toLowerCase() === 'finals' ||
+          String(f.round).toLowerCase() === 'final' ||
+          String(f.round).toLowerCase().includes('finals (championship)') ||
+          (String(f.round).toLowerCase().includes('final') && !String(f.round).toLowerCase().includes('semi') && !String(f.round).toLowerCase().includes('quarter'))
+        );
+
         if (winWing && wingStats[winWing]) {
-          wingStats[winWing].points += 30;
           wingStats[winWing].wins += 1;
           if (c.eventId) {
             wingStats[winWing].events.add(c.eventId);
-            wingEventBreakdown[winWing][c.eventId] = (wingEventBreakdown[winWing][c.eventId] || 0) + 30;
           }
           wingMatches[winWing].push('W');
+
+          if (isFinals) {
+            wingStats[winWing].points += winnerPoints;
+            if (c.eventId) {
+              wingEventBreakdown[winWing][c.eventId] = (wingEventBreakdown[winWing][c.eventId] || 0) + winnerPoints;
+            }
+          }
         }
 
         const losingWing = winWing === wingA ? wingB : wingA;
         if (losingWing && losingWing !== winWing && wingMatches[losingWing]) {
           wingMatches[losingWing].push('L');
+
+          if (isFinals) {
+            wingStats[losingWing].points += runnerUpPoints;
+            if (c.eventId) {
+              wingStats[losingWing].events.add(c.eventId);
+              wingEventBreakdown[losingWing][c.eventId] = (wingEventBreakdown[losingWing][c.eventId] || 0) + runnerUpPoints;
+            }
+          }
         }
 
         // Track player MVP points
@@ -112,7 +165,17 @@ export default function Leaderboard({ onShowToast }) {
           playerStats[pKey] = { name: pKey, wing: winWing || 'Wing', wins: 0, points: 0 };
         }
         playerStats[pKey].wins += 1;
-        playerStats[pKey].points += 30;
+        if (isFinals) {
+          playerStats[pKey].points += winnerPoints;
+        }
+
+        const loserKey = f.winnerId === f.playerA ? f.playerB : f.playerA;
+        if (isFinals && loserKey && loserKey !== 'BYE') {
+          if (!playerStats[loserKey]) {
+            playerStats[loserKey] = { name: loserKey, wing: losingWing || 'Wing', wins: 0, points: 0 };
+          }
+          playerStats[loserKey].points += runnerUpPoints;
+        }
       }
     });
   });
