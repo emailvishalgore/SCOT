@@ -703,70 +703,92 @@ export const StoreProvider = ({ children }) => {
     if (!state.currentUser) return { success: false, error: 'Auth required' };
     const registeredByUserId = state.currentUser.id;
 
-    // Helper to extract flat numbers from a text string (e.g. "Flat 402" or "(Wing N, Flat 402)")
-    const extractFlats = (text) => {
-      const matches = String(text || '').match(/Flat\s*[:#-]?\s*(\d{3})/gi) || [];
-      return matches.map(m => m.replace(/\D/g, '')).filter(Boolean);
+    // Helper to parse participant identities { name, flat, wing }
+    const parseParticipants = (text, members = []) => {
+      const allStrings = [text, ...(members || [])].filter(Boolean);
+      const list = [];
+
+      allStrings.forEach(str => {
+        const subParts = String(str).split(/&|,|\band\b/i);
+        
+        const globalWingMatch = String(str).match(/Wing\s*([A-Za-z0-9]+)/i) || String(str).match(/\(\s*([N-W])\s*[\),]/i);
+        const globalWing = globalWingMatch ? globalWingMatch[1].toUpperCase() : '';
+        const globalFlatMatch = String(str).match(/Flat\s*[:#-]?\s*(\d{3})/i);
+        const globalFlat = globalFlatMatch ? globalFlatMatch[1] : '';
+
+        subParts.forEach(part => {
+          const partFlatMatch = String(part).match(/Flat\s*[:#-]?\s*(\d{3})/i);
+          const partFlat = partFlatMatch ? partFlatMatch[1] : globalFlat;
+          
+          const partWingMatch = String(part).match(/Wing\s*([A-Za-z0-9]+)/i) || String(part).match(/\(\s*([N-W])\s*[\),]/i);
+          const partWing = partWingMatch ? partWingMatch[1].toUpperCase() : globalWing;
+
+          const cleanName = String(part)
+            .replace(/\([^)]*\)/g, '')
+            .replace(/\[[^\]]*\]/g, '')
+            .replace(/•.*$/g, '')
+            .replace(/Ph:?\s*\d+/gi, '')
+            .replace(/Flat\s*[:#-]?\s*\d+/gi, '')
+            .replace(/Wing\s*[A-Za-z0-9]+/gi, '')
+            .replace(/[^a-zA-Z\s]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+
+          if (cleanName && cleanName.length >= 2) {
+            list.push({
+              raw: part.trim(),
+              name: cleanName,
+              flat: partFlat,
+              wing: partWing
+            });
+          }
+        });
+      });
+
+      return list;
     };
 
-    // Helper to extract individual player names from string
-    const extractNames = (text) => {
-      const clean = String(text || '')
-        .replace(/\([^)]*\)/g, '')
-        .replace(/\[[^\]]*\]/g, '')
-        .replace(/•.*$/g, '');
-      return clean.split(/&|,|and/i).map(s => s.trim().toLowerCase()).filter(Boolean);
-    };
+    const newParticipants = parseParticipants(name, groupMembers);
+    const newFlats = [...new Set(newParticipants.map(p => p.flat).filter(Boolean))];
 
-    const newFlats = extractFlats(name);
-    (groupMembers || []).forEach(m => {
-      extractFlats(m).forEach(f => {
-        if (!newFlats.includes(f)) newFlats.push(f);
-      });
-    });
-
-    const newNames = extractNames(name);
-    (groupMembers || []).forEach(m => {
-      extractNames(m).forEach(n => {
-        if (!newNames.includes(n)) newNames.push(n);
-      });
-    });
-
-    // 🚫 SMART DUPLICATE PREVENTION
+    // 🚫 SMART DUPLICATE PREVENTION (Exact Name + Flat combination check)
     const categoryRegs = (state.registrations || []).filter(
       r => r.eventId === eventId && r.subEventId === subEventId && r.status !== 'REJECTED'
     );
 
     for (const r of categoryRegs) {
-      // 1. Exact string match
+      // 1. Exact overall string match
       if (String(r.name || '').trim().toLowerCase() === String(name || '').trim().toLowerCase()) {
         return { success: false, error: `Duplicate Entry: "${name}" is already registered for this event category!` };
       }
 
-      // 2. Flat & Name match (cross-partner / duplicate checks)
-      const existingFlats = extractFlats(r.name);
-      (r.groupMembers || []).forEach(m => {
-        extractFlats(m).forEach(f => {
-          if (!existingFlats.includes(f)) existingFlats.push(f);
-        });
-      });
+      // 2. Exact Participant Name + Flat check
+      const existingParticipants = parseParticipants(r.name, r.groupMembers || []);
+      
+      for (const newP of newParticipants) {
+        const duplicateMatch = existingParticipants.find(exP => {
+          // Exact name match (case-insensitive)
+          const nameMatches = exP.name === newP.name;
+          if (!nameMatches) return false;
 
-      const existingNames = extractNames(r.name);
-      (r.groupMembers || []).forEach(m => {
-        extractNames(m).forEach(n => {
-          if (!existingNames.includes(n)) existingNames.push(n);
-        });
-      });
-
-      for (const nf of newFlats) {
-        if (existingFlats.includes(nf)) {
-          const sharedName = newNames.some(nn => existingNames.some(en => en.includes(nn) || nn.includes(en)));
-          if (sharedName) {
-            return { 
-              success: false, 
-              error: `Duplicate Entry: Flat ${nf} is already registered in this category (${r.name})!` 
-            };
+          // If both have flats specified, require exact flat match
+          if (newP.flat && exP.flat) {
+            const flatMatches = newP.flat === exP.flat;
+            const wingMatches = (!newP.wing || !exP.wing || newP.wing === exP.wing);
+            return flatMatches && wingMatches;
           }
+
+          // If no flat was extracted, exact full name match is flagged
+          return true;
+        });
+
+        if (duplicateMatch) {
+          const flatInfo = newP.flat ? ` (Flat ${newP.flat})` : '';
+          return {
+            success: false,
+            error: `Duplicate Entry: "${newP.raw || newP.name}"${flatInfo} is already registered in this category!`
+          };
         }
       }
     }
