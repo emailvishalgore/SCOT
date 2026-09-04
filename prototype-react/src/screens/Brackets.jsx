@@ -19,6 +19,48 @@ const formatPlayerDisplay = (str) => {
   return clean;
 };
 
+// Helper to extract wing letter for participant cross-wing matching
+const getRegistrationWing = (r, users = [], paidFlats = []) => {
+  if (!r) return 'OTHER';
+  if (r.wing) {
+    const clean = String(r.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
+    if (clean) return clean;
+  }
+  const str = String(r.name || '');
+  const m1 = str.match(/\[Wing\s*([A-Za-z0-9]+)\]/i);
+  if (m1) return m1[1].toUpperCase();
+  const m2 = str.match(/Wing\s*([A-Za-z0-9]+)/i);
+  if (m2) return m2[1].toUpperCase();
+  const m3 = str.match(/\(\s*([N-W])\s*[\),]/i);
+  if (m3) return m3[1].toUpperCase();
+
+  if (r.registeredByUserId && users.length > 0) {
+    const creator = users.find(u => u.id === r.registeredByUserId);
+    if (creator && creator.wing) {
+      const clean = String(creator.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
+      if (clean) return clean;
+    }
+  }
+
+  const flatMatch = str.match(/Flat\s*[:#-]?\s*(\d{3})/i) || str.match(/\b(\d{3})\b/);
+  if (flatMatch && paidFlats.length > 0) {
+    const flatNum = flatMatch[1];
+    const match = paidFlats.find(f => {
+      const ff = String(f.flat || '').replace(/\D/g, '');
+      return ff === flatNum || parseInt(ff, 10) === parseInt(flatNum, 10);
+    });
+    if (match && match.wing) {
+      const clean = String(match.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
+      if (clean) return clean;
+    }
+  }
+
+  const m4 = str.match(/\b([N-W])\b/i);
+  if (m4) return m4[1].toUpperCase();
+
+  return 'OTHER';
+};
+
 export default function Brackets({ onShowToast }) {
   const { state, setStoreState, recordFixtureScore, approveEventRegistration, rejectEventRegistration, postAnnouncement, toggleParticipantVoting, publishParticipantResults, validateFlatDues, registerForEvent, canEditEvent, canEditSubEvent, canSubmitNominations } = useStore();
   const currentUser = state.currentUser;
@@ -392,7 +434,7 @@ export default function Brackets({ onShowToast }) {
     }
   };
 
-  // --- Draw Generator ---
+  // --- Cross-Wing Randomized Draw Generator ---
   const handleGenerateRandomDraw = () => {
     if (!canGenerateDraws) {
       onShowToast('Bracket draw generation is reserved for SCOT Members and Admins.', 'error');
@@ -402,40 +444,138 @@ export default function Brackets({ onShowToast }) {
       onShowToast('Need at least 2 approved participants to generate a draw!', 'error');
       return;
     }
-    // Fisher-Yates shuffle
-    const shuffled = [...approvedRegistrations];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
 
-    // Create fixture pairs
-    const newFixtures = [];
-    for (let i = 0; i < shuffled.length; i += 2) {
-      const pA = shuffled[i];
-      const pB = shuffled[i + 1];
-      if (pA && pB) {
-        newFixtures.push({
-          id: `fix-${Date.now()}-${i}`,
+    // 1. Group approved participants by their Wing
+    const wingBuckets = {};
+    approvedRegistrations.forEach(r => {
+      const wing = getRegistrationWing(r, state.users || [], state.paidFlats || []);
+      if (!wingBuckets[wing]) wingBuckets[wing] = [];
+      wingBuckets[wing].push(r);
+    });
+
+    // 2. Shuffle participants inside each wing bucket for fairness
+    Object.keys(wingBuckets).forEach(w => {
+      const arr = wingBuckets[w];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+    });
+
+    // 3. Handle BYE if total participants is odd
+    // Choose BYE from the wing with the largest count (to maximize cross-wing matches among the rest)
+    let byeFixture = null;
+    const totalCount = approvedRegistrations.length;
+    if (totalCount % 2 !== 0) {
+      let maxWing = null;
+      let maxCount = -1;
+      const wingKeys = Object.keys(wingBuckets).filter(w => wingBuckets[w].length > 0);
+      // Shuffle wingKeys so ties in maxCount are broken randomly
+      for (let i = wingKeys.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [wingKeys[i], wingKeys[j]] = [wingKeys[j], wingKeys[i]];
+      }
+      wingKeys.forEach(w => {
+        if (wingBuckets[w].length > maxCount) {
+          maxCount = wingBuckets[w].length;
+          maxWing = w;
+        }
+      });
+
+      if (maxWing && wingBuckets[maxWing].length > 0) {
+        const byeParticipant = wingBuckets[maxWing].pop();
+        byeFixture = {
+          id: `fix-${Date.now()}-bye`,
           round: 'Round 1',
-          playerA: pA.name,
-          playerB: pB.name,
-          scoreA: '',
-          scoreB: '',
-          winnerId: null
-        });
-      } else if (pA) {
-        // Bye for odd participant
-        newFixtures.push({
-          id: `fix-${Date.now()}-${i}`,
-          round: 'Round 1',
-          playerA: pA.name,
+          playerA: byeParticipant.name,
           playerB: 'BYE',
           scoreA: '',
           scoreB: '',
-          winnerId: pA.name
-        });
+          winnerId: byeParticipant.name
+        };
       }
+    }
+
+    // 4. Pair participants giving priority to Cross-Wing matches
+    const pairs = [];
+    while (true) {
+      // Get all wings that still have participants
+      const activeWings = Object.keys(wingBuckets).filter(w => wingBuckets[w].length > 0);
+      if (activeWings.length === 0) break;
+
+      if (activeWings.length >= 2) {
+        // Sort active wings descending by remaining count, with random tie-breaking
+        activeWings.sort((a, b) => {
+          const diff = wingBuckets[b].length - wingBuckets[a].length;
+          return diff !== 0 ? diff : (Math.random() - 0.5);
+        });
+
+        const wingA = activeWings[0]; // Wing with most remaining participants
+        const otherWings = activeWings.slice(1);
+        
+        // Pick wingB: if wingA has >= sum of remaining other wings, must pick largest of others;
+        // otherwise pick randomly among other wings
+        const otherTotal = otherWings.reduce((s, w) => s + wingBuckets[w].length, 0);
+        let wingB = otherWings[0];
+        if (otherWings.length > 1 && wingBuckets[wingA].length < otherTotal) {
+          wingB = otherWings[Math.floor(Math.random() * otherWings.length)];
+        }
+
+        const pA = wingBuckets[wingA].pop();
+        const pB = wingBuckets[wingB].pop();
+
+        // 50% chance to swap position A and B for visual balance
+        if (Math.random() > 0.5) {
+          pairs.push({ pA, pB, crossWing: true });
+        } else {
+          pairs.push({ pA: pB, pB: pA, crossWing: true });
+        }
+      } else {
+        // Only 1 wing remains (more participants from the same wing)
+        const wing = activeWings[0];
+        if (wingBuckets[wing].length >= 2) {
+          const pA = wingBuckets[wing].pop();
+          const pB = wingBuckets[wing].pop();
+          pairs.push({ pA, pB, crossWing: false });
+        } else if (wingBuckets[wing].length === 1) {
+          const pA = wingBuckets[wing].pop();
+          pairs.push({ pA, pB: { name: 'BYE' }, crossWing: false, isBye: true });
+        }
+      }
+    }
+
+    // 5. Shuffle the created match pairs so they are distributed nicely
+    for (let i = pairs.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
+    }
+
+    // 6. Build the fixtures list
+    const newFixtures = pairs.map((pair, idx) => {
+      if (pair.isBye || pair.pB.name === 'BYE') {
+        return {
+          id: `fix-${Date.now()}-${idx}`,
+          round: 'Round 1',
+          playerA: pair.pA.name,
+          playerB: 'BYE',
+          scoreA: '',
+          scoreB: '',
+          winnerId: pair.pA.name
+        };
+      }
+      return {
+        id: `fix-${Date.now()}-${idx}`,
+        round: 'Round 1',
+        playerA: pair.pA.name,
+        playerB: pair.pB.name,
+        scoreA: '',
+        scoreB: '',
+        winnerId: null
+      };
+    });
+
+    if (byeFixture) {
+      newFixtures.push(byeFixture);
     }
 
     const subEvtId = selectedSubEventId === 'all' ? (activeEvent?.subEvents?.[0]?.id || '') : selectedSubEventId;
