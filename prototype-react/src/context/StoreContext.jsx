@@ -653,6 +653,52 @@ export const StoreProvider = ({ children }) => {
     postToSheet('deleteRow', 'Users', null, 0, id);
   };
 
+  const updateUserRole = (id, newRole) => {
+    let targetUser = state.users.find(u => u.id === id || String(u.phone) === String(id));
+    if (!targetUser) return;
+
+    const isChamp = newRole === 'admin' || newRole === 'scot_member' || newRole === 'champion';
+    const updatedUser = { 
+      ...targetUser, 
+      role: newRole,
+      isChampion: isChamp
+    };
+
+    setStoreState(prev => {
+      const nextUsers = prev.users.map(u => (u.id === targetUser.id || u.phone === targetUser.phone) ? updatedUser : u);
+      const nextCurrentUser = prev.currentUser && (prev.currentUser.id === targetUser.id || prev.currentUser.phone === targetUser.phone)
+        ? updatedUser
+        : prev.currentUser;
+      try { localStorage.setItem('scot_users_cache', JSON.stringify(nextUsers)); } catch (e) {}
+      if (nextCurrentUser && nextCurrentUser.id === targetUser.id) {
+        try { localStorage.setItem('scot_auth_user', JSON.stringify(nextCurrentUser)); } catch (e) {}
+      }
+      return { ...prev, users: nextUsers, currentUser: nextCurrentUser };
+    });
+
+    const fullRowData = [
+      updatedUser.id,
+      updatedUser.name,
+      updatedUser.phone,
+      updatedUser.pin,
+      updatedUser.wing || '',
+      updatedUser.wingId || '',
+      updatedUser.flat || '',
+      updatedUser.role,
+      updatedUser.isChampion ? 'TRUE' : 'FALSE',
+      updatedUser.status || 'APPROVED',
+      updatedUser.contributionStatus || 'PAID',
+      updatedUser.registeredAt || '2026-08-15',
+      updatedUser.profilePhoto || '',
+      updatedUser.fcmToken || ''
+    ];
+
+    postToSheet('updateRow', 'Users', fullRowData, 0, updatedUser.id);
+    if (updatedUser.phone) {
+      postToSheet('updateRow', 'Users', fullRowData, 2, updatedUser.phone);
+    }
+  };
+
   const registerForEvent = (eventId, subEventId, name, gender, ageCategory, groupMembers = []) => {
     if (!state.currentUser) return { success: false, error: 'Auth required' };
     const registeredByUserId = state.currentUser.id;
@@ -1499,6 +1545,7 @@ export const StoreProvider = ({ children }) => {
       uploadRegistrationMedia,
       publishParticipantResults,
       validateFlatDues,
+      updateUserRole,
       canEditEvent,
       canEditSubEvent,
       canSubmitNominations,

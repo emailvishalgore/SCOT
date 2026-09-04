@@ -4,7 +4,7 @@ import { Shield, UserCheck, Check, Clock, Inbox } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function MemberApprovals({ onShowToast }) {
-  const { state, approveUser, rejectUser, deleteSupportMessage } = useStore();
+  const { state, approveUser, rejectUser, deleteSupportMessage, updateUserRole } = useStore();
   const currentUser = state.currentUser;
   const [activeSubTab, setActiveSubTab] = useState('pending');
 
@@ -22,6 +22,12 @@ export default function MemberApprovals({ onShowToast }) {
   const pendingUsers = users.filter(u => u.status === 'PENDING_APPROVAL');
   const approvedUsers = users.filter(u => u.status !== 'PENDING_APPROVAL');
   const supportMessages = state.supportMessages || [];
+
+  const handleRoleChange = (userId, name, newRole) => {
+    updateUserRole(userId, newRole);
+    const roleLabel = newRole === 'admin' ? 'SCOT Admin' : (newRole === 'wing_captain' ? 'Wing Captain' : 'SCOT Member (Wing Champion)');
+    onShowToast(`Updated role for ${name} to "${roleLabel}"!`, 'success');
+  };
 
   const handleApprove = (userId, name) => {
     approveUser(userId);
@@ -110,9 +116,26 @@ export default function MemberApprovals({ onShowToast }) {
                       <td>{u.wing} ({u.flat})</td>
                       <td>{u.phone}</td>
                       <td>
-                        <span className={`badge ${u.role === 'admin' ? 'badge-amber' : (u.role === 'wing_captain' ? 'badge-cyan' : 'badge-violet')}`}>
-                          {u.role === 'admin' ? 'SCOT Admin' : (u.role === 'wing_captain' ? 'Wing Captain' : 'SCOT Member')}
-                        </span>
+                        <select
+                          className="select"
+                          value={u.role || 'scot_member'}
+                          onChange={(e) => handleRoleChange(u.id, u.name, e.target.value)}
+                          style={{
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            backgroundColor: u.role === 'admin' ? '#FEF3C7' : (u.role === 'wing_captain' ? '#ECFEFF' : '#F5F3FF'),
+                            color: u.role === 'admin' ? '#92400E' : (u.role === 'wing_captain' ? '#0E7490' : '#6D28D9'),
+                            borderColor: u.role === 'admin' ? '#FDE68A' : (u.role === 'wing_captain' ? '#A5F3FC' : '#DDD6FE'),
+                            cursor: 'pointer',
+                            width: 'auto'
+                          }}
+                        >
+                          <option value="scot_member">SCOT Member (Wing Champion)</option>
+                          <option value="wing_captain">Wing Captain</option>
+                          <option value="admin">SCOT Admin</option>
+                        </select>
                       </td>
                       <td><span className="badge badge-amber">Unverified / Unpaid</span></td>
                       <td style={{ textAlign: 'right' }}>
@@ -173,9 +196,26 @@ export default function MemberApprovals({ onShowToast }) {
                     <td>{u.wing} ({u.flat})</td>
                     <td>{u.phone}</td>
                     <td>
-                      <span className={`badge ${u.role === 'admin' ? 'badge-amber' : (u.role === 'wing_captain' ? 'badge-cyan' : 'badge-violet')}`}>
-                        {u.role === 'admin' ? 'SCOT Admin' : (u.role === 'wing_captain' ? 'Wing Captain' : 'SCOT Member')}
-                      </span>
+                      <select
+                        className="select"
+                        value={u.role || 'scot_member'}
+                        onChange={(e) => handleRoleChange(u.id, u.name, e.target.value)}
+                        style={{
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          backgroundColor: u.role === 'admin' ? '#FEF3C7' : (u.role === 'wing_captain' ? '#ECFEFF' : '#F5F3FF'),
+                          color: u.role === 'admin' ? '#92400E' : (u.role === 'wing_captain' ? '#0E7490' : '#6D28D9'),
+                          borderColor: u.role === 'admin' ? '#FDE68A' : (u.role === 'wing_captain' ? '#A5F3FC' : '#DDD6FE'),
+                          cursor: 'pointer',
+                          width: 'auto'
+                        }}
+                      >
+                        <option value="scot_member">SCOT Member (Wing Champion)</option>
+                        <option value="wing_captain">Wing Captain</option>
+                        <option value="admin">SCOT Admin</option>
+                      </select>
                     </td>
                     <td><span className="badge badge-green">PAID</span></td>
                     <td><span className="badge badge-green">APPROVED</span></td>
