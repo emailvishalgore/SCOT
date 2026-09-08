@@ -806,17 +806,21 @@ export const StoreProvider = ({ children }) => {
     const requireMembers = targetConfig?.regType === 'GROUP_REQUIRED' || targetConfig?.requireMembers;
 
     if (isGroup) {
-      // Validate wing quota limits
-      const userWing = state.currentUser.wing || 'Main';
+      // Validate wing quota limits for the target wing of the registration
+      const wingMatch = String(name || '').match(/Wing\s*([A-Za-z0-9]+)/i);
+      const targetWing = wingMatch ? `Wing ${wingMatch[1].toUpperCase()}` : (state.currentUser.wing || 'Main');
+      
       const existingWingGroupsCount = state.registrations.filter(r => {
         if (r.eventId !== eventId || r.subEventId !== subEventId) return false;
+        const rWing = String(r.name || '').match(/Wing\s*([A-Za-z0-9]+)/i);
+        if (rWing) return `Wing ${rWing[1].toUpperCase()}` === targetWing;
         const creator = state.users.find(u => u.id === r.registeredByUserId);
-        return creator && creator.wing === userWing;
+        return creator && creator.wing === targetWing;
       }).length;
 
       const maxGroupsPerWing = targetConfig?.maxGroupsPerWing || 2;
-      if (existingWingGroupsCount >= maxGroupsPerWing) {
-        return { success: false, error: `Registration Limit Exceeded: Wing ${userWing} already has ${existingWingGroupsCount} group(s) registered for this category.` };
+      if (existingWingGroupsCount >= maxGroupsPerWing && state.currentUser.role !== 'admin') {
+        return { success: false, error: `Registration Limit Exceeded: ${targetWing} already has ${existingWingGroupsCount} group(s) registered for this category.` };
       }
 
       // Validate roster sizes

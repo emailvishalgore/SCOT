@@ -447,7 +447,7 @@ export default function Brackets({ onShowToast }) {
 
     const subEvtId = selectedSubEventId === 'all' ? (activeEvent?.subEvents?.[0]?.id || '') : selectedSubEventId;
     const wingName = `Wing ${manualWing}`;
-    const displayName = `${manualName.trim()} (${manualWing})`;
+    const displayName = `${manualName.trim()} (${wingName}, Flat ${manualFlat})`;
 
     const result = registerForEvent(selectedEventId, subEvtId, displayName, manualGender, manualAge, []);
     if (result.success) {
@@ -1009,14 +1009,16 @@ export default function Brackets({ onShowToast }) {
                   </div>
                   <div className="form-group">
                     <label className="form-label" style={{ fontSize: '0.8rem' }}>Flat No.</label>
-                    <input
-                      type="text"
-                      className="input"
-                      placeholder="402"
+                    <select
+                      className="select"
                       value={manualFlat}
-                      onChange={(e) => { setManualFlat(e.target.value.replace(/\D/g, '').slice(0, 3)); setDuesStatus(null); }}
-                      maxLength={3}
-                    />
+                      onChange={(e) => { setManualFlat(e.target.value); setDuesStatus(null); }}
+                    >
+                      <option value="">Select Flat</option>
+                      {[101,102,103,104,201,202,203,204,301,302,303,304,401,402,403,404,501,502,503,504,601,602,603,604,701,702,703,704].map(f => (
+                        <option key={f} value={String(f)}>{f}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="form-group">
                     <label className="form-label" style={{ fontSize: '0.8rem' }}>Age Category</label>

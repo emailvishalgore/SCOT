@@ -14,6 +14,7 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
   // Modal registration form states
   const [confirmModalData, setConfirmModalData] = useState(null); // { subId, subName, isDoubles } or null
   const [teamName, setTeamName] = useState('');
+  const [selectedWing, setSelectedWing] = useState(user.wing || 'Wing N');
   const [participants, setParticipants] = useState([
     { name: '', flat: '', phone: '', gender: 'Male', ageCategory: 'Above 16' }
   ]);
@@ -61,6 +62,7 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
     const isDoubles = String(subName || '').toLowerCase().includes('double') || String(subName || '').toLowerCase().includes('pair');
     setConfirmModalData({ subId, subName, isDoubles });
     setTeamName('');
+    setSelectedWing(user.wing || 'Wing N');
     
     if (isDoubles) {
       setParticipants([
@@ -137,7 +139,7 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
       }
     }
 
-    const wingText = user.wing || 'Wing N';
+    const wingText = (user.role === 'admin' && selectedWing) ? selectedWing : (user.wing || selectedWing || 'Wing N');
     let finalDisplayName = '';
     let groupMembersList = [];
 
@@ -810,9 +812,32 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                       {confirmModalData.isDoubles ? '🏸 Doubles / Pair Nomination Form' : (participants.length > 1 ? '👥 Team / Multi-Participant Entry Form' : '👤 Wing Participant Nomination Form')}
                     </h2>
                     <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-                      Category: <strong>{confirmModalData.subName}</strong> • Wing: <strong>{user.wing || 'Wing N'}</strong>
+                      Category: <strong>{confirmModalData.subName}</strong>
+                      {user.role !== 'admin' && (
+                        <span> • Wing: <strong>{user.wing || 'Wing N'}</strong></span>
+                      )}
                     </p>
                   </div>
+
+                  {/* 🏛️ Admin Wing Selector (Allows Admin to submit entries for ANY wing) */}
+                  {user.role === 'admin' && (
+                    <div className="form-group" style={{ margin: 0, padding: '10px 12px', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '8px' }}>
+                      <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 800, color: '#92400E', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span>🏛️ Target Wing for this Entry:</span>
+                        <span className="badge badge-amber" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>Admin Entry</span>
+                      </label>
+                      <select 
+                        className="select" 
+                        value={selectedWing} 
+                        onChange={(e) => setSelectedWing(e.target.value)}
+                        style={{ fontWeight: 700, backgroundColor: '#FFFFFF', borderColor: '#FCD34D' }}
+                      >
+                        {['Wing N','Wing O','Wing P','Wing Q','Wing R','Wing S','Wing T','Wing U','Wing V','Wing W'].map(w => (
+                          <option key={w} value={w}>{w}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   {/* Optional Team / Pair Label */}
                   {participants.length > 1 && (
