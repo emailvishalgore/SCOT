@@ -1,6 +1,6 @@
 import React from 'react';
 import { useStore } from '../context/StoreContext';
-import { Shield, Users, Calendar, CheckCircle2, Flag, Edit, GitBranch, UserCheck, Megaphone } from 'lucide-react';
+import { Shield, Users, Calendar, CheckCircle2, Flag, Edit, UserCheck, Megaphone, Trophy } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function AdminDashboard({ onViewScreen }) {
@@ -70,7 +70,7 @@ export default function AdminDashboard({ onViewScreen }) {
   const quickLinks = [
     { title: 'Member Approvals', desc: 'Verify contribution dues & active profiles', icon: <UserCheck size={24} />, route: 'admin/members', count: pendingUsers.length },
     { title: 'Event Editor', desc: 'Schedule matches & categories', icon: <Edit size={24} />, route: 'admin/events' },
-    { title: 'Brackets & Scores', desc: 'Record tournament scores & fixtures', icon: <GitBranch size={24} />, route: 'admin/competitions' }
+    { title: 'Events & Results', desc: 'Declare winners, runner-ups & podiums', icon: <Trophy size={24} />, route: 'events' }
   ];
 
   return (

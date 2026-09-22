@@ -402,9 +402,14 @@ export const StoreProvider = ({ children }) => {
             fetchedEvents = mergedEventsList;
           }
 
+          const liveLeaderboard = computeLeaderboardFromEvents(fetchedEvents, prev.leaderboard);
+
           try {
             if (fetchedEvents && fetchedEvents.length > 0) {
               localStorage.setItem('scot_events_cache', JSON.stringify(fetchedEvents));
+            }
+            if (liveLeaderboard && liveLeaderboard.length > 0) {
+              localStorage.setItem('scot_leaderboard_cache', JSON.stringify(liveLeaderboard));
             }
             if (finalRegs && finalRegs.length > 0) {
               localStorage.setItem('scot_regs_cache', JSON.stringify(finalRegs));
@@ -434,6 +439,7 @@ export const StoreProvider = ({ children }) => {
             ...prev,
             currentUser: updatedCurrentUser,
             events: fetchedEvents,
+            leaderboard: liveLeaderboard,
             users: finalUsers,
             registrations: finalRegs,
             announcements: (data.announcements || prev.announcements || []).filter(Boolean),
@@ -1093,89 +1099,135 @@ export const StoreProvider = ({ children }) => {
     return { winnerPoints: winPts, runnerUpPoints: runPts };
   };
 
-  const recordFixtureScore = (compId, fixtureId, scoreA, scoreB, winnerId) => {
-    setStoreState(prev => {
-      const nextCompetitions = (prev.competitions || []).map(c => {
-        if (c.id !== compId) return c;
-        return {
-          ...c,
-          fixtures: (c.fixtures || []).map(f => {
-            if (f.id !== fixtureId) return f;
-            return { ...f, scoreA, scoreB, winnerId };
-          })
-        };
-      });
+  // Helper to compute leaderboard standings directly from completed events/sub-events
+  const computeLeaderboardFromEvents = (eventsList, baseLeaderboard) => {
+    const wingStats = {};
+    ['N','O','P','Q','R','S','T','U','V','W'].forEach(w => {
+      wingStats[w] = { points: 0, wins: 0, gold: 0, silver: 0, events: new Set(), breakdown: {} };
+    });
 
-      // Recalculate leaderboard dynamically across all competition fixtures
-      const wingStats = {};
-      ['N','O','P','Q','R','S','T','U','V','W'].forEach(w => {
-        wingStats[w] = { points: 0, wins: 0, events: new Set() };
-      });
-
-      nextCompetitions.forEach(c => {
-        const targetEvt = (prev.events || []).find(e => e.id === c.eventId);
-        const { winnerPoints, runnerUpPoints } = getEventPoints(targetEvt, c.subEventId);
-
-        (c.fixtures || []).forEach(f => {
-          if (f.winnerId && f.winnerId !== 'BYE') {
-            const isFinals = f.round && (
-              String(f.round).toLowerCase() === 'finals' ||
-              String(f.round).toLowerCase() === 'final' ||
-              String(f.round).toLowerCase().includes('finals (championship)') ||
-              (String(f.round).toLowerCase().includes('final') && !String(f.round).toLowerCase().includes('semi') && !String(f.round).toLowerCase().includes('quarter'))
-            );
-
-            const winWing = extractWingLetter(f.winnerId, prev.registrations, prev.users, prev.paidFlats);
-            if (winWing && wingStats[winWing]) {
-              wingStats[winWing].wins += 1;
-              if (c.eventId) wingStats[winWing].events.add(c.eventId);
-
-              if (isFinals) {
-                wingStats[winWing].points += winnerPoints;
-              }
-            }
-
-            if (isFinals) {
-              const loser = f.winnerId === f.playerA ? f.playerB : f.playerA;
-              if (loser && loser !== 'BYE') {
-                const runnerWing = extractWingLetter(loser, prev.registrations, prev.users, prev.paidFlats);
-                if (runnerWing && runnerWing !== winWing && wingStats[runnerWing]) {
-                  wingStats[runnerWing].points += runnerUpPoints;
-                  if (c.eventId) wingStats[runnerWing].events.add(c.eventId);
-                }
-              }
+    (eventsList || []).forEach(evt => {
+      const processResult = (item, parentEvtId) => {
+        if (item && item.status === 'COMPLETED') {
+          const { winnerPoints, runnerUpPoints } = getEventPoints(evt, item.id !== evt.id ? item.id : null);
+          if (item.winner && item.winner.wing) {
+            const w = String(item.winner.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
+            if (wingStats[w]) {
+              wingStats[w].points += winnerPoints;
+              wingStats[w].wins += 1;
+              wingStats[w].gold += 1;
+              wingStats[w].events.add(parentEvtId);
+              wingStats[w].breakdown[parentEvtId] = (wingStats[w].breakdown[parentEvtId] || 0) + winnerPoints;
             }
           }
-        });
+          if (item.runnerUp && item.runnerUp.wing) {
+            const r = String(item.runnerUp.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
+            if (wingStats[r]) {
+              wingStats[r].points += runnerUpPoints;
+              wingStats[r].silver += 1;
+              wingStats[r].events.add(parentEvtId);
+              wingStats[r].breakdown[parentEvtId] = (wingStats[r].breakdown[parentEvtId] || 0) + runnerUpPoints;
+            }
+          }
+        }
+      };
+
+      if (evt.subEvents && evt.subEvents.length > 0) {
+        evt.subEvents.forEach(sub => processResult(sub, evt.id));
+      } else {
+        processResult(evt, evt.id);
+      }
+    });
+
+    return (baseLeaderboard || []).map(item => {
+      const stats = wingStats[item.letter];
+      if (stats) {
+        return {
+          ...item,
+          points: stats.points,
+          wins: stats.wins,
+          gold: stats.gold,
+          silver: stats.silver,
+          events: stats.events.size,
+          breakdown: stats.breakdown
+        };
+      }
+      return item;
+    });
+  };
+
+  // Direct Event Results Declaration (Winner & Runner-up)
+  const recordEventResult = (eventId, subEventId, winnerData, runnerUpData, clearResult = false) => {
+    let updatedEvent = null;
+
+    setStoreState(prev => {
+      const nextEvents = prev.events.map(evt => {
+        if (evt.id !== eventId) return evt;
+
+        if (subEventId && evt.subEvents && evt.subEvents.length > 0) {
+          const nextSubs = evt.subEvents.map(sub => {
+            if (sub.id !== subEventId) return sub;
+            if (clearResult) {
+              const { winner, runnerUp, completedAt, ...rest } = sub;
+              return { ...rest, status: 'OPEN' };
+            }
+            return {
+              ...sub,
+              status: 'COMPLETED',
+              winner: winnerData,
+              runnerUp: runnerUpData,
+              completedAt: new Date().toISOString()
+            };
+          });
+          const allSubsCompleted = nextSubs.every(s => s.status === 'COMPLETED');
+          updatedEvent = {
+            ...evt,
+            subEvents: nextSubs,
+            status: allSubsCompleted ? 'COMPLETED' : evt.status
+          };
+          return updatedEvent;
+        } else {
+          if (clearResult) {
+            const { winner, runnerUp, completedAt, ...rest } = evt;
+            updatedEvent = { ...rest, status: 'OPEN' };
+            return updatedEvent;
+          }
+          updatedEvent = {
+            ...evt,
+            status: 'COMPLETED',
+            winner: winnerData,
+            runnerUp: runnerUpData,
+            completedAt: new Date().toISOString()
+          };
+          return updatedEvent;
+        }
       });
 
-      const nextLeaderboard = (prev.leaderboard || []).map(item => {
-        const stats = wingStats[item.letter];
-        if (stats) {
-          return {
-            ...item,
-            points: stats.points,
-            wins: stats.wins,
-            events: stats.events.size
-          };
-        }
-        return item;
-      });
+      const nextLeaderboard = computeLeaderboardFromEvents(nextEvents, prev.leaderboard);
 
       try {
-        localStorage.setItem('scot_comps_cache', JSON.stringify(nextCompetitions));
+        localStorage.setItem('scot_events_cache', JSON.stringify(nextEvents));
         localStorage.setItem('scot_leaderboard_cache', JSON.stringify(nextLeaderboard));
       } catch (e) {
-        console.warn("Failed caching competitions and leaderboard:", e);
+        console.warn("Failed caching event results and leaderboard:", e);
       }
 
       return {
         ...prev,
-        competitions: nextCompetitions,
+        events: nextEvents,
         leaderboard: nextLeaderboard
       };
     });
 
+    if (updatedEvent) {
+      saveEvent(updatedEvent);
+    }
+
+    return { success: true };
+  };
+
+  // Backward compatible stub
+  const recordFixtureScore = (compId, fixtureId, scoreA, scoreB, winnerId) => {
     postToSheet('upsertRow', 'Scores', [fixtureId, compId, scoreA, scoreB, winnerId || ''], 0, fixtureId);
   };
 
@@ -1626,6 +1678,7 @@ export const StoreProvider = ({ children }) => {
       publishParticipantResults,
       validateFlatDues,
       updateUserRole,
+      recordEventResult,
       canEditEvent,
       canEditSubEvent,
       canSubmitNominations,

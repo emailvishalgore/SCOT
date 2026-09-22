@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Trophy, Award, TrendingUp, Share2, Download, Flame, Sparkles, ChevronRight, MessageCircle, Copy, Check, Users, Swords, Activity, X } from 'lucide-react';
+import { Trophy, Award, Medal, Share2, Download, Sparkles, ChevronRight, MessageCircle, Copy, Check, Users, X, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const WING_COLORS = {
@@ -19,50 +19,12 @@ const WING_COLORS = {
 export default function Leaderboard({ onShowToast }) {
   const { state } = useStore();
   const user = state.currentUser || { wing: 'Wing N', wingId: 'wing-n' };
-  const [activeTab, setActiveTab] = useState('standings'); // 'standings', 'matrix', 'performers'
+  const [activeTab, setActiveTab] = useState('standings'); // 'standings', 'matrix', 'honor_roll'
   const [selectedWingDrawer, setSelectedWingDrawer] = useState(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [posterUrl, setPosterUrl] = useState(null);
   const [isGeneratingPoster, setIsGeneratingPoster] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
-  const canvasRef = useRef(null);
-
-  // Helper to extract wing from winner text, registration records, or flat directory
-  const getWingForPlayer = (playerStr) => {
-    if (!playerStr || playerStr === 'BYE') return null;
-    playerStr = String(playerStr);
-    const m1 = playerStr.match(/\[Wing\s*([A-Za-z0-9]+)\]/i);
-    if (m1) return m1[1].toUpperCase();
-    const m2 = playerStr.match(/Wing\s*([A-Za-z0-9]+)/i);
-    if (m2) return m2[1].toUpperCase();
-    const m3 = playerStr.match(/\(\s*([N-W])\s*[\),]/i);
-    if (m3) return m3[1].toUpperCase();
-
-    const matchedReg = (state.registrations || []).find(
-      r => r.name === playerStr || String(r.name).includes(playerStr) || String(playerStr).includes(String(r.name))
-    );
-    if (matchedReg) {
-      if (matchedReg.wing) return String(matchedReg.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
-      const creator = (state.users || []).find(u => u.id === matchedReg.registeredByUserId);
-      if (creator && creator.wing) return String(creator.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
-    }
-
-    const flatMatch = playerStr.match(/Flat\s*[:#-]?\s*(\d{3})/i) || playerStr.match(/\b(\d{3})\b/);
-    if (flatMatch && state.paidFlats && state.paidFlats.length > 0) {
-      const flatNum = flatMatch[1];
-      const match = state.paidFlats.find(f => {
-        const ff = String(f.flat || '').replace(/\D/g, '');
-        return ff === flatNum || parseInt(ff, 10) === parseInt(flatNum, 10);
-      });
-      if (match && match.wing) {
-        return String(match.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
-      }
-    }
-
-    const m4 = playerStr.match(/\b([N-W])\b/i);
-    if (m4) return m4[1].toUpperCase();
-    return null;
-  };
 
   // Helper to extract winner and runner-up points configured for an event / sub-event
   const getEventPoints = (event, subEventId) => {
@@ -94,97 +56,80 @@ export default function Leaderboard({ onShowToast }) {
     return { winnerPoints: winPts, runnerUpPoints: runPts };
   };
 
-  // Compute standings & match forms dynamically from competitions fixtures
+  // Compute standings directly from completed events/sub-events
   const wingStats = {};
-  const wingMatches = {}; // Recent match results [ 'W', 'L' ]
   const wingEventBreakdown = {}; // { 'U': { 'evt-1': 100, 'evt-2': 50 } }
-  const playerStats = {}; // Top performers: { 'Player Name': { wing, wins: 0, points: 0, matches: 0 } }
-  let totalCompletedMatches = 0;
+  const completedResultsList = []; // List of all completed tournament podiums
+  let totalDeclaredPodiums = 0;
 
   ['N','O','P','Q','R','S','T','U','V','W'].forEach(w => {
-    wingStats[w] = { points: 0, wins: 0, matches: 0, events: new Set() };
-    wingMatches[w] = [];
+    wingStats[w] = { points: 0, wins: 0, gold: 0, silver: 0, events: new Set() };
     wingEventBreakdown[w] = {};
   });
 
-  (state.competitions || []).forEach(c => {
-    if (c.id === 'comp-carrom-singles' || c.id === 'comp-tt-singles' || c.eventId === 'evt-carrom-2026' || c.eventId === 'evt-tt-2026') return;
-    if (state.events && state.events.length > 0 && !state.events.some(e => e.id === c.eventId)) return;
+  (state.events || []).forEach(evt => {
+    const processResult = (item, subId, subTitle) => {
+      if (item && item.status === 'COMPLETED' && (item.winner || item.runnerUp)) {
+        totalDeclaredPodiums++;
+        const { winnerPoints, runnerUpPoints } = getEventPoints(evt, subId);
 
-    const targetEvt = (state.events || []).find(e => e.id === c.eventId);
-    const { winnerPoints, runnerUpPoints } = getEventPoints(targetEvt, c.subEventId);
+        let winWingLetter = null;
+        let runWingLetter = null;
 
-    (c.fixtures || []).forEach(f => {
-      if (f.scoreA !== '' && f.scoreB !== '' && f.winnerId && f.winnerId !== 'BYE') {
-        totalCompletedMatches++;
-        const wingA = getWingForPlayer(f.playerA);
-        const wingB = getWingForPlayer(f.playerB);
-        const winWing = getWingForPlayer(f.winnerId);
-
-        if (wingA && wingStats[wingA]) wingStats[wingA].matches++;
-        if (wingB && wingStats[wingB] && wingB !== wingA) wingStats[wingB].matches++;
-
-        const isFinals = f.round && (
-          String(f.round).toLowerCase() === 'finals' ||
-          String(f.round).toLowerCase() === 'final' ||
-          String(f.round).toLowerCase().includes('finals (championship)') ||
-          (String(f.round).toLowerCase().includes('final') && !String(f.round).toLowerCase().includes('semi') && !String(f.round).toLowerCase().includes('quarter'))
-        );
-
-        if (winWing && wingStats[winWing]) {
-          wingStats[winWing].wins += 1;
-          if (c.eventId) {
-            wingStats[winWing].events.add(c.eventId);
-          }
-          wingMatches[winWing].push('W');
-
-          if (isFinals) {
-            wingStats[winWing].points += winnerPoints;
-            if (c.eventId) {
-              wingEventBreakdown[winWing][c.eventId] = (wingEventBreakdown[winWing][c.eventId] || 0) + winnerPoints;
-            }
+        if (item.winner && item.winner.wing) {
+          winWingLetter = String(item.winner.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
+          if (wingStats[winWingLetter]) {
+            wingStats[winWingLetter].points += winnerPoints;
+            wingStats[winWingLetter].wins += 1;
+            wingStats[winWingLetter].gold += 1;
+            wingStats[winWingLetter].events.add(evt.id);
+            wingEventBreakdown[winWingLetter][evt.id] = (wingEventBreakdown[winWingLetter][evt.id] || 0) + winnerPoints;
           }
         }
 
-        const losingWing = winWing === wingA ? wingB : wingA;
-        if (losingWing && losingWing !== winWing && wingMatches[losingWing]) {
-          wingMatches[losingWing].push('L');
-
-          if (isFinals) {
-            wingStats[losingWing].points += runnerUpPoints;
-            if (c.eventId) {
-              wingStats[losingWing].events.add(c.eventId);
-              wingEventBreakdown[losingWing][c.eventId] = (wingEventBreakdown[losingWing][c.eventId] || 0) + runnerUpPoints;
-            }
+        if (item.runnerUp && item.runnerUp.wing) {
+          runWingLetter = String(item.runnerUp.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
+          if (wingStats[runWingLetter]) {
+            wingStats[runWingLetter].points += runnerUpPoints;
+            wingStats[runWingLetter].silver += 1;
+            wingStats[runWingLetter].events.add(evt.id);
+            wingEventBreakdown[runWingLetter][evt.id] = (wingEventBreakdown[runWingLetter][evt.id] || 0) + runnerUpPoints;
           }
         }
 
-        // Track player MVP points
-        const pKey = f.winnerId;
-        if (!playerStats[pKey]) {
-          playerStats[pKey] = { name: pKey, wing: winWing || 'Wing', wins: 0, points: 0 };
-        }
-        playerStats[pKey].wins += 1;
-        if (isFinals) {
-          playerStats[pKey].points += winnerPoints;
-        }
-
-        const loserKey = f.winnerId === f.playerA ? f.playerB : f.playerA;
-        if (isFinals && loserKey && loserKey !== 'BYE') {
-          if (!playerStats[loserKey]) {
-            playerStats[loserKey] = { name: loserKey, wing: losingWing || 'Wing', wins: 0, points: 0 };
-          }
-          playerStats[loserKey].points += runnerUpPoints;
-        }
+        completedResultsList.push({
+          eventId: evt.id,
+          eventName: evt.name,
+          category: evt.category || 'Sports',
+          subId,
+          subName: subTitle || evt.name,
+          winner: item.winner,
+          runnerUp: item.runnerUp,
+          winnerPoints,
+          runnerUpPoints,
+          completedAt: item.completedAt
+        });
       }
-    });
+    };
+
+    if (evt.subEvents && evt.subEvents.length > 0) {
+      evt.subEvents.forEach(sub => processResult(sub, sub.id, sub.name));
+    } else {
+      processResult(evt, null, evt.name);
+    }
   });
 
   // Calculate nominations count per wing
   const wingNominationsCount = {};
   (state.registrations || []).forEach(r => {
-    const w = getWingForPlayer(r.name) || (r.wing ? String(r.wing).replace(/Wing\s*/i, '').trim().toUpperCase() : null);
-    if (w) {
+    let w = null;
+    if (r.wing) {
+      w = String(r.wing).replace(/Wing\s*/i, '').trim().toUpperCase();
+    } else {
+      const wm = String(r.name || '').match(/Wing\s*([A-Za-z0-9]+)/i);
+      if (wm) w = wm[1].toUpperCase();
+    }
+    if (w && wingStats[w]) {
       wingNominationsCount[w] = (wingNominationsCount[w] || 0) + 1;
     }
   });
@@ -202,9 +147,7 @@ export default function Leaderboard({ onShowToast }) {
     { id: 'wing-w', name: 'Wing W', letter: 'W' }
   ]).map(w => {
     const letter = w.letter || w.name.replace('Wing ', '').trim().toUpperCase();
-    const stats = wingStats[letter] || { points: 0, wins: 0, matches: 0, events: new Set() };
-    const form = (wingMatches[letter] || []).slice(-3);
-    const winRate = stats.matches > 0 ? Math.round((stats.wins / stats.matches) * 100) : 0;
+    const stats = wingStats[letter] || { points: 0, wins: 0, gold: 0, silver: 0, events: new Set() };
 
     return {
       wingId: w.id || `wing-${letter.toLowerCase()}`,
@@ -212,28 +155,25 @@ export default function Leaderboard({ onShowToast }) {
       letter,
       points: stats.points,
       wins: stats.wins,
-      matches: stats.matches,
-      winRate,
-      form,
-      events: stats.events.size || (stats.wins > 0 ? 1 : 0),
+      gold: stats.gold,
+      silver: stats.silver,
+      events: stats.events.size,
       nominations: wingNominationsCount[letter] || 0,
       breakdown: wingEventBreakdown[letter] || {}
     };
   });
 
-  // Sort wings by points descending
+  // Sort wings by points descending, then gold medals, then silver medals
   const sortedStandings = [...computedStandings].sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points;
-    if (b.wins !== a.wins) return b.wins - a.wins;
+    if (b.gold !== a.gold) return b.gold - a.gold;
+    if (b.silver !== a.silver) return b.silver - a.silver;
     return a.name.localeCompare(b.name);
   });
 
   const totalSeasonPoints = sortedStandings.reduce((sum, item) => sum + (item.points || 0), 0);
   const leaderWing = sortedStandings[0];
   const mostActiveWing = [...computedStandings].sort((a, b) => b.nominations - a.nominations)[0];
-
-  // Top performers list sorted
-  const topMVPs = Object.values(playerStats).sort((a, b) => b.points - a.points);
 
   // --- 🎨 Generate High-Resolution Scorecard Poster Image (Canvas) ---
   const generatePosterImage = () => {
@@ -245,41 +185,46 @@ export default function Leaderboard({ onShowToast }) {
     canvas.height = height;
     const ctx = canvas.getContext('2d');
 
-    // Background Gradient (Dark Festival Luxury)
+    // Background Gradient (Ultra-Luxury Deep Midnight & Indigo)
     const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
-    bgGradient.addColorStop(0, '#0F172A');
-    bgGradient.addColorStop(0.4, '#1E293B');
-    bgGradient.addColorStop(1, '#0F172A');
+    bgGradient.addColorStop(0, '#090D16');
+    bgGradient.addColorStop(0.3, '#111827');
+    bgGradient.addColorStop(0.7, '#1E1B4B');
+    bgGradient.addColorStop(1, '#090D16');
     ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, width, height);
 
-    // Decorative Gold Accent Lines
-    ctx.strokeStyle = '#F59E0B';
+    // Decorative Gold Accent Inlay Borders
+    ctx.strokeStyle = '#D97706';
     ctx.lineWidth = 4;
-    ctx.strokeRect(30, 30, width - 60, height - 60);
+    ctx.strokeRect(36, 36, width - 72, height - 72);
 
-    // Header Glow
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(44, 44, width - 88, height - 88);
+
+    // Header Crest & Title
     ctx.fillStyle = '#F59E0B';
     ctx.font = 'bold 24px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('⭐ TOPAZ PARK HOUSING SOCIETY ⭐', width / 2, 85);
+    ctx.fillText('⭐ TOPAZ PARK HOUSING SOCIETY ⭐', width / 2, 92);
 
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 44px sans-serif';
-    ctx.fillText('SCOT CHAMPIONSHIP 2026-27', width / 2, 140);
+    ctx.font = '900 44px sans-serif';
+    ctx.fillText('WING CHAMPIONSHIP 2026-27', width / 2, 146);
 
-    ctx.fillStyle = '#94A3B8';
-    ctx.font = '22px sans-serif';
-    ctx.fillText('Official Society Wing Standings & Points Leaderboard', width / 2, 180);
+    ctx.fillStyle = '#CBD5E1';
+    ctx.font = '600 20px sans-serif';
+    ctx.fillText('Official Society Points & Medals Leaderboard', width / 2, 184);
 
-    // Podium Graphic Box (Top 3 Wings)
-    const podiumY = 240;
-    const podiumHeight = 270;
-    ctx.fillStyle = '#1E293B';
+    // Top 3 Olympic Podium Graphic Box
+    const podiumY = 230;
+    const podiumHeight = 280;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
     ctx.strokeStyle = '#334155';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect(60, podiumY, width - 120, podiumHeight, 16);
+    ctx.roundRect(60, podiumY, width - 120, podiumHeight, 18);
     ctx.fill();
     ctx.stroke();
 
@@ -288,16 +233,19 @@ export default function Leaderboard({ onShowToast }) {
     if (rank1) {
       ctx.fillStyle = '#FEF08A';
       ctx.beginPath();
-      ctx.roundRect(width / 2 - 120, podiumY + 30, 240, 210, 16);
+      ctx.roundRect(width / 2 - 130, podiumY + 25, 260, 230, 16);
       ctx.fill();
       ctx.fillStyle = '#854D0E';
-      ctx.font = 'bold 28px sans-serif';
-      ctx.fillText('👑 1ST PLACE', width / 2, podiumY + 75);
-      ctx.font = 'bold 46px sans-serif';
-      ctx.fillText(`WING ${rank1.letter}`, width / 2, podiumY + 140);
+      ctx.font = '900 26px sans-serif';
+      ctx.fillText('👑 1ST PLACE', width / 2, podiumY + 70);
+      ctx.font = '900 48px sans-serif';
+      ctx.fillText(`WING ${rank1.letter}`, width / 2, podiumY + 135);
       ctx.fillStyle = '#B45309';
-      ctx.font = 'bold 30px sans-serif';
-      ctx.fillText(`${rank1.points} PTS • ${rank1.wins} WINS`, width / 2, podiumY + 195);
+      ctx.font = 'bold 28px sans-serif';
+      ctx.fillText(`${rank1.points} PTS`, width / 2, podiumY + 185);
+      ctx.fillStyle = '#78350F';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText(`🥇 ${rank1.gold} Gold  🥈 ${rank1.silver} Silver`, width / 2, podiumY + 220);
     }
 
     // 🥈 Rank 2 (Left)
@@ -305,15 +253,17 @@ export default function Leaderboard({ onShowToast }) {
     if (rank2) {
       ctx.fillStyle = '#E2E8F0';
       ctx.beginPath();
-      ctx.roundRect(90, podiumY + 65, 210, 175, 14);
+      ctx.roundRect(85, podiumY + 60, 220, 195, 14);
       ctx.fill();
       ctx.fillStyle = '#475569';
-      ctx.font = 'bold 20px sans-serif';
-      ctx.fillText('🥈 2ND PLACE', 195, podiumY + 105);
-      ctx.font = 'bold 36px sans-serif';
-      ctx.fillText(`WING ${rank2.letter}`, 195, podiumY + 160);
-      ctx.font = 'bold 24px sans-serif';
-      ctx.fillText(`${rank2.points} PTS`, 195, podiumY + 205);
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('🥈 2ND PLACE', 195, podiumY + 102);
+      ctx.font = '900 38px sans-serif';
+      ctx.fillText(`WING ${rank2.letter}`, 195, podiumY + 155);
+      ctx.font = 'bold 26px sans-serif';
+      ctx.fillText(`${rank2.points} PTS`, 195, podiumY + 198);
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(`🥇 ${rank2.gold}G  🥈 ${rank2.silver}S`, 195, podiumY + 230);
     }
 
     // 🥉 Rank 3 (Right)
@@ -321,83 +271,95 @@ export default function Leaderboard({ onShowToast }) {
     if (rank3) {
       ctx.fillStyle = '#FFEDD5';
       ctx.beginPath();
-      ctx.roundRect(width - 300, podiumY + 65, 210, 175, 14);
+      ctx.roundRect(width - 305, podiumY + 60, 220, 195, 14);
       ctx.fill();
       ctx.fillStyle = '#9A3412';
-      ctx.font = 'bold 20px sans-serif';
-      ctx.fillText('🥉 3RD PLACE', width - 195, podiumY + 105);
-      ctx.font = 'bold 36px sans-serif';
-      ctx.fillText(`WING ${rank3.letter}`, width - 195, podiumY + 160);
-      ctx.font = 'bold 24px sans-serif';
-      ctx.fillText(`${rank3.points} PTS`, width - 195, podiumY + 205);
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('🥉 3RD PLACE', width - 195, podiumY + 102);
+      ctx.font = '900 38px sans-serif';
+      ctx.fillText(`WING ${rank3.letter}`, width - 195, podiumY + 155);
+      ctx.font = 'bold 26px sans-serif';
+      ctx.fillText(`${rank3.points} PTS`, width - 195, podiumY + 198);
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(`🥇 ${rank3.gold}G  🥈 ${rank3.silver}S`, width - 195, podiumY + 230);
     }
 
     // Full Standings Table Header
-    const tableY = 560;
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(60, tableY, width - 120, 50);
+    const tableY = 550;
+    ctx.fillStyle = '#1E293B';
+    ctx.fillRect(60, tableY, width - 120, 52);
 
     ctx.fillStyle = '#94A3B8';
     ctx.font = 'bold 20px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('RANK', 90, tableY + 33);
-    ctx.fillText('WING', 220, tableY + 33);
+    ctx.fillText('RANK', 90, tableY + 34);
+    ctx.fillText('WING', 230, tableY + 34);
     ctx.textAlign = 'center';
-    ctx.fillText('MATCHES', 500, tableY + 33);
-    ctx.fillText('WINS', 660, tableY + 33);
-    ctx.fillText('WIN RATE', 800, tableY + 33);
+    ctx.fillText('GOLD 🥇', 540, tableY + 34);
+    ctx.fillText('SILVER 🥈', 720, tableY + 34);
     ctx.textAlign = 'right';
-    ctx.fillText('POINTS', 980, tableY + 33);
+    ctx.fillText('POINTS', 980, tableY + 34);
 
     // Standings Rows
-    let currentY = tableY + 60;
+    let currentY = tableY + 62;
     sortedStandings.slice(0, 10).forEach((wing, idx) => {
-      ctx.fillStyle = idx % 2 === 0 ? '#1E293B' : '#0F172A';
-      ctx.fillRect(60, currentY, width - 120, 54);
+      ctx.fillStyle = idx % 2 === 0 ? 'rgba(30, 41, 59, 0.85)' : 'rgba(15, 23, 42, 0.85)';
+      ctx.fillRect(60, currentY, width - 120, 56);
 
       // Rank badge
       ctx.textAlign = 'left';
       if (idx === 0) {
         ctx.fillStyle = '#F59E0B';
         ctx.font = 'bold 24px sans-serif';
-        ctx.fillText('🥇 #1', 90, currentY + 35);
+        ctx.fillText('🥇 #1', 90, currentY + 36);
       } else if (idx === 1) {
-        ctx.fillStyle = '#94A3B8';
+        ctx.fillStyle = '#CBD5E1';
         ctx.font = 'bold 24px sans-serif';
-        ctx.fillText('🥈 #2', 90, currentY + 35);
+        ctx.fillText('🥈 #2', 90, currentY + 36);
       } else if (idx === 2) {
-        ctx.fillStyle = '#D97706';
+        ctx.fillStyle = '#F97316';
         ctx.font = 'bold 24px sans-serif';
-        ctx.fillText('🥉 #3', 90, currentY + 35);
+        ctx.fillText('🥉 #3', 90, currentY + 36);
       } else {
         ctx.fillStyle = '#64748B';
         ctx.font = 'bold 22px sans-serif';
-        ctx.fillText(`   #${idx + 1}`, 90, currentY + 35);
+        ctx.fillText(`   #${idx + 1}`, 90, currentY + 36);
       }
 
       // Wing Name
       ctx.fillStyle = idx < 3 ? '#FFFFFF' : '#E2E8F0';
       ctx.font = idx < 3 ? 'bold 24px sans-serif' : '22px sans-serif';
-      ctx.fillText(wing.name, 220, currentY + 35);
+      ctx.fillText(wing.name, 230, currentY + 36);
 
-      // Matches, Wins, Win Rate
+      // Gold & Silver Medals
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#CBD5E1';
-      ctx.fillText(String(wing.matches), 500, currentY + 35);
-      ctx.fillText(String(wing.wins), 660, currentY + 35);
-      ctx.fillText(`${wing.winRate}%`, 800, currentY + 35);
+      ctx.fillStyle = wing.gold > 0 ? '#F59E0B' : '#64748B';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText(`${wing.gold}`, 540, currentY + 36);
 
-      // Points
+      ctx.fillStyle = wing.silver > 0 ? '#CBD5E1' : '#64748B';
+      ctx.fillText(`${wing.silver}`, 720, currentY + 36);
+
+      // Total Points
       ctx.textAlign = 'right';
-      ctx.fillStyle = idx < 3 ? '#F59E0B' : '#38BDF8';
-      ctx.font = 'bold 26px sans-serif';
-      ctx.fillText(`${wing.points} pts`, 980, currentY + 35);
+      ctx.fillStyle = idx === 0 ? '#F59E0B' : (idx < 3 ? '#38BDF8' : '#FFFFFF');
+      ctx.font = '900 26px sans-serif';
+      ctx.fillText(`${wing.points} pts`, 980, currentY + 36);
 
-      currentY += 56;
+      currentY += 58;
     });
 
+    // Summary Ribbon Above Footer
+    const summaryY = height - 145;
+    ctx.fillStyle = 'rgba(30, 41, 59, 0.6)';
+    ctx.fillRect(60, summaryY, width - 120, 42);
+    ctx.fillStyle = '#FCD34D';
+    ctx.font = '600 17px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`🏆 Total Championship Points: ${totalSeasonPoints} pts  •  Total Events Decided: ${totalDeclaredPodiums}`, width / 2, summaryY + 27);
+
     // Footer Timestamp & Branding
-    const footerY = height - 90;
+    const footerY = height - 85;
     ctx.strokeStyle = '#334155';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -406,14 +368,14 @@ export default function Leaderboard({ onShowToast }) {
     ctx.stroke();
 
     ctx.fillStyle = '#94A3B8';
-    ctx.font = '18px sans-serif';
+    ctx.font = '16px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`🗓️ Updated: ${new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, 70, footerY + 40);
+    ctx.fillText(`🗓️ Bulletin Generated: ${new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, 70, footerY + 38);
 
     ctx.textAlign = 'right';
     ctx.fillStyle = '#F59E0B';
-    ctx.font = 'bold 18px sans-serif';
-    ctx.fillText('🔗 Live at: github.io/SCOT/wing-champions', width - 70, footerY + 40);
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText('🔗 Live at: emailvishalgore.github.io/SCOT/wing-champions/', width - 70, footerY + 38);
 
     const dataUrl = canvas.toDataURL('image/png');
     setPosterUrl(dataUrl);
@@ -428,14 +390,15 @@ export default function Leaderboard({ onShowToast }) {
 
     sortedStandings.forEach((w, idx) => {
       const medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : '🔹'));
-      msg += `${medal} *#${idx + 1} ${w.name}* — ${w.points} pts (${w.wins} Wins, ${w.winRate}% Win Rate)\n`;
+      msg += `${medal} *#${idx + 1} ${w.name}* — *${w.points} pts* (🥇 ${w.gold} Gold, 🥈 ${w.silver} Silver)\n`;
     });
 
-    msg += `\n📊 *Total Completed Matches:* ${totalCompletedMatches}\n`;
+    msg += `\n📊 *Total Season Points:* ${totalSeasonPoints} pts\n`;
+    msg += `🎯 *Decided Events:* ${totalDeclaredPodiums}\n`;
     if (leaderWing && leaderWing.points > 0) {
       msg += `👑 *Championship Leader:* ${leaderWing.name} (${leaderWing.points} pts)\n`;
     }
-    msg += `\n📲 *View live tournament brackets & scores:* https://emailvishalgore.github.io/SCOT/wing-champions/\n`;
+    msg += `\n📲 *Track live scores & results:* https://emailvishalgore.github.io/SCOT/wing-champions/\n`;
     return msg;
   };
 
@@ -474,17 +437,17 @@ export default function Leaderboard({ onShowToast }) {
       <div className="page-header">
         <div className="page-title-row" style={{ flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
           <div>
-            <h1 className="page-title">Wing Championship Leaderboard</h1>
-            <p className="page-subtitle">Track housing society wing standings, match forms, and points for Season 2026-27</p>
+            <h1 className="page-title">Leaderboard & Posters</h1>
+            <p className="page-subtitle">Track housing society wing standings, medal tallies, and points for Season 2026-27</p>
           </div>
 
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button 
               className="btn btn-primary"
               onClick={generatePosterImage}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #10B981, #059669)', border: 'none', fontWeight: 700 }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #F59E0B, #D97706)', border: 'none', fontWeight: 800, padding: '10px 18px', fontSize: '0.95rem' }}
             >
-              <Share2 size={16} /> Share on WhatsApp
+              <Share2 size={18} /> Generate Shareable Poster (WhatsApp)
             </button>
           </div>
         </div>
@@ -504,10 +467,10 @@ export default function Leaderboard({ onShowToast }) {
             📊 Event-Wise Points
           </button>
           <button 
-            className={`tab ${activeTab === 'performers' ? 'active' : ''}`}
-            onClick={() => setActiveTab('performers')}
+            className={`tab ${activeTab === 'honor_roll' ? 'active' : ''}`}
+            onClick={() => setActiveTab('honor_roll')}
           >
-            ⭐ Society MVPs ({topMVPs.length})
+            🎖️ Medals Honor Roll ({completedResultsList.length})
           </button>
         </div>
       </div>
@@ -518,7 +481,7 @@ export default function Leaderboard({ onShowToast }) {
           <div className="stat-info">
             <span className="stat-label">Season Leader</span>
             <span className="stat-value" style={{ color: '#D97706', fontSize: '1.3rem' }}>
-              {totalSeasonPoints > 0 ? `${leaderWing?.name} (${leaderWing?.points} pts)` : 'No matches yet'}
+              {totalSeasonPoints > 0 ? `${leaderWing?.name} (${leaderWing?.points} pts)` : 'No events scored'}
             </span>
           </div>
           <div className="stat-icon-wrapper" style={{ background: '#FEF3C7', color: '#D97706' }}>
@@ -528,11 +491,11 @@ export default function Leaderboard({ onShowToast }) {
 
         <div className="stat-card green" style={{ borderLeft: '4px solid #10B981' }}>
           <div className="stat-info">
-            <span className="stat-label">Completed Matches</span>
-            <span className="stat-value">{totalCompletedMatches}</span>
+            <span className="stat-label">Decided Podiums</span>
+            <span className="stat-value">{totalDeclaredPodiums}</span>
           </div>
           <div className="stat-icon-wrapper green">
-            <Swords size={20} />
+            <Medal size={20} />
           </div>
         </div>
 
@@ -648,7 +611,7 @@ export default function Leaderboard({ onShowToast }) {
                         {sortedStandings[0].letter}
                       </div>
                       <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#854D0E' }}>👑 {sortedStandings[0].name}</div>
-                      <div style={{ fontSize: '0.9rem', color: '#B45309', fontWeight: 800 }}>{sortedStandings[0].points} pts • {sortedStandings[0].wins} W</div>
+                      <div style={{ fontSize: '0.9rem', color: '#B45309', fontWeight: 800 }}>{sortedStandings[0].points} pts • {sortedStandings[0].gold} 🥇</div>
                       <div style={{ 
                         height: '150px', 
                         background: 'linear-gradient(180deg, #FCD34D 0%, #F59E0B 100%)', 
@@ -715,7 +678,7 @@ export default function Leaderboard({ onShowToast }) {
             </div>
           )}
 
-          {/* Full Table List with Form Guide */}
+          {/* Full Table List */}
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div className="table-responsive">
               <table className="data-table">
@@ -723,10 +686,9 @@ export default function Leaderboard({ onShowToast }) {
                   <tr>
                     <th style={{ width: '70px' }}>Rank</th>
                     <th>Wing Name</th>
-                    <th style={{ textAlign: 'center' }}>Matches</th>
-                    <th style={{ textAlign: 'center' }}>Wins</th>
-                    <th style={{ textAlign: 'center' }}>Win Rate</th>
-                    <th style={{ textAlign: 'center' }}>Recent Form</th>
+                    <th style={{ textAlign: 'center' }}>Gold 🥇</th>
+                    <th style={{ textAlign: 'center' }}>Silver 🥈</th>
+                    <th style={{ textAlign: 'center' }}>Events Scored</th>
                     <th style={{ textAlign: 'right' }}>Total Points</th>
                     <th style={{ width: '40px' }}></th>
                   </tr>
@@ -778,41 +740,14 @@ export default function Leaderboard({ onShowToast }) {
                             </div>
                           </div>
                         </td>
-                        <td style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>{row.matches}</td>
-                        <td style={{ textAlign: 'center', fontWeight: 700, color: row.wins > 0 ? '#059669' : 'var(--color-text-secondary)' }}>
-                          {row.wins}
+                        <td style={{ textAlign: 'center', fontWeight: 700, color: row.gold > 0 ? '#D97706' : 'var(--color-text-secondary)' }}>
+                          {row.gold > 0 ? `${row.gold} 🥇` : '0'}
                         </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: row.winRate >= 50 ? '#059669' : '#64748B' }}>
-                            {row.winRate}%
-                          </span>
+                        <td style={{ textAlign: 'center', fontWeight: 700, color: row.silver > 0 ? '#64748B' : 'var(--color-text-secondary)' }}>
+                          {row.silver > 0 ? `${row.silver} 🥈` : '0'}
                         </td>
-                        <td style={{ textAlign: 'center' }}>
-                          {row.form.length > 0 ? (
-                            <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                              {row.form.map((res, i) => (
-                                <span 
-                                  key={i} 
-                                  style={{ 
-                                    width: '18px', 
-                                    height: '18px', 
-                                    borderRadius: '50%', 
-                                    background: res === 'W' ? '#10B981' : '#EF4444', 
-                                    color: '#FFFFFF', 
-                                    fontSize: '0.65rem', 
-                                    fontWeight: 800, 
-                                    display: 'inline-flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center' 
-                                  }}
-                                >
-                                  {res}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span style={{ color: '#94A3B8', fontSize: '0.8rem' }}>—</span>
-                          )}
+                        <td style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                          {row.events}
                         </td>
                         <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-primary-dark)', fontSize: '1.05rem' }}>
                           {row.points} pts
@@ -835,10 +770,10 @@ export default function Leaderboard({ onShowToast }) {
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #E2E8F0' }}>
             <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.15rem', fontWeight: 700 }}>
-              Sport-Wise Championship Points Breakdown
+              Event-Wise Championship Points Breakdown
             </h2>
             <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-              View points earned by each wing across specific society sports and cultural tournaments.
+              Points earned by each wing across tournaments and cultural categories.
             </p>
           </div>
 
@@ -882,61 +817,66 @@ export default function Leaderboard({ onShowToast }) {
         </div>
       )}
 
-      {/* --- TAB 3: TOP PERFORMERS / MVPS --- */}
-      {activeTab === 'performers' && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #E2E8F0' }}>
-            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.15rem', fontWeight: 700 }}>
-              ⭐ Tournament MVPs & Top Performers
+      {/* --- TAB 3: MEDALS & RESULTS HONOR ROLL --- */}
+      {activeTab === 'honor_roll' && (
+        <div className="card" style={{ padding: '1.25rem' }}>
+          <div style={{ marginBottom: '1.25rem', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.75rem' }}>
+            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: 800 }}>
+              🎖️ Tournament Medals & Results Honor Roll
             </h2>
             <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-              Celebrating star players with the highest match victories and points contribution.
+              Official Winner (Gold 🥇) and Runner-Up (Silver 🥈) podium results declared for SCOT 2026-27.
             </p>
           </div>
 
-          {topMVPs.length > 0 ? (
-            <div className="table-responsive">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '60px' }}>Rank</th>
-                    <th>Player / Team Name</th>
-                    <th>Wing</th>
-                    <th style={{ textAlign: 'center' }}>Matches Won</th>
-                    <th style={{ textAlign: 'right' }}>Points Earned</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topMVPs.map((row, index) => (
-                    <tr key={index}>
-                      <td>
-                        <span className={`rank-badge ${index === 0 ? 'rank-1' : (index === 1 ? 'rank-2' : 'rank-3')}`}>
-                          {index + 1}
-                        </span>
-                      </td>
-                      <td>
-                        <strong style={{ color: 'var(--color-text)' }}>{row.name}</strong>
-                      </td>
-                      <td>
-                        <span className="badge badge-violet">{row.wing ? `Wing ${row.wing}` : 'Society'}</span>
-                      </td>
-                      <td style={{ textAlign: 'center', fontWeight: 700, color: '#059669' }}>
-                        {row.wins} {row.wins === 1 ? 'Win' : 'Wins'}
-                      </td>
-                      <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-primary-dark)' }}>
-                        +{row.points} pts
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {completedResultsList.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
+              {completedResultsList.map((res, idx) => (
+                <div key={idx} style={{ background: '#FAF5FF', border: '1px solid #E9D5FF', borderRadius: '10px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div className="flex-between">
+                    <div>
+                      <span className="badge badge-violet" style={{ fontSize: '0.68rem', marginBottom: '4px' }}>{res.category}</span>
+                      <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.05rem', fontWeight: 800, margin: 0 }}>
+                        {res.subName}
+                      </h3>
+                      {res.subName !== res.eventName && (
+                        <span style={{ fontSize: '0.75rem', color: '#6B21A8' }}>{res.eventName}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {res.winner && (
+                      <div style={{ background: '#FFFFFF', padding: '8px 10px', borderRadius: '6px', border: '1px solid #FCD34D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#D97706', textTransform: 'uppercase' }}>🥇 Winner (Gold)</div>
+                          <strong style={{ fontSize: '0.85rem', color: '#78350F' }}>{res.winner.name}</strong>
+                          <div style={{ fontSize: '0.75rem', color: '#92400E' }}>{res.winner.wing} {res.winner.flat ? `(Flat ${res.winner.flat})` : ''}</div>
+                        </div>
+                        <span style={{ fontWeight: 800, color: '#B45309', fontFamily: 'var(--font-mono)' }}>+{res.winnerPoints} pts</span>
+                      </div>
+                    )}
+
+                    {res.runnerUp && (
+                      <div style={{ background: '#FFFFFF', padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>🥈 Runner-Up (Silver)</div>
+                          <strong style={{ fontSize: '0.85rem', color: '#1E293B' }}>{res.runnerUp.name}</strong>
+                          <div style={{ fontSize: '0.75rem', color: '#475569' }}>{res.runnerUp.wing} {res.runnerUp.flat ? `(Flat ${res.runnerUp.flat})` : ''}</div>
+                        </div>
+                        <span style={{ fontWeight: 800, color: '#475569', fontFamily: 'var(--font-mono)' }}>+{res.runnerUpPoints} pts</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--color-text-secondary)' }}>
               <Award size={48} style={{ margin: '0 auto 0.75rem', opacity: 0.4 }} />
-              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.125rem', fontWeight: 700 }}>No Match Winners Recorded Yet</h3>
+              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.125rem', fontWeight: 700 }}>No Event Results Declared Yet</h3>
               <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '420px', margin: '0.5rem auto 0' }}>
-                MVP standings will populate as Champions enter scores and complete tournament brackets.
+                Podiums will appear here as Admins and Event Champions declare Winner and Runner-Up results for competitions.
               </p>
             </div>
           )}
@@ -975,7 +915,7 @@ export default function Leaderboard({ onShowToast }) {
                   <div>
                     <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{selectedWingDrawer.name} Profile</h3>
                     <span style={{ fontSize: '0.78rem', color: '#64748B' }}>
-                      {selectedWingDrawer.points} Total Points • {selectedWingDrawer.wins} Match Wins
+                      {selectedWingDrawer.points} Total Points • 🥇 {selectedWingDrawer.gold} Gold • 🥈 {selectedWingDrawer.silver} Silver
                     </span>
                   </div>
                 </div>
@@ -986,20 +926,20 @@ export default function Leaderboard({ onShowToast }) {
 
               <div style={{ padding: '1rem 0' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                  <div style={{ padding: '0.75rem', background: '#F8FAFC', borderRadius: '10px', textAlign: 'center', border: '1px solid #E2E8F0' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#64748B' }}>Win Rate</div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#059669', marginTop: '2px' }}>
-                      {selectedWingDrawer.winRate}%
+                  <div style={{ padding: '0.75rem', background: '#FEF3C7', borderRadius: '10px', textAlign: 'center', border: '1px solid #FCD34D' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#92400E' }}>Gold 🥇</div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#B45309', marginTop: '2px' }}>
+                      {selectedWingDrawer.gold}
                     </div>
                   </div>
-                  <div style={{ padding: '0.75rem', background: '#F8FAFC', borderRadius: '10px', textAlign: 'center', border: '1px solid #E2E8F0' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#64748B' }}>Matches</div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1E293B', marginTop: '2px' }}>
-                      {selectedWingDrawer.matches}
+                  <div style={{ padding: '0.75rem', background: '#F8FAFC', borderRadius: '10px', textAlign: 'center', border: '1px solid #CBD5E1' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#64748B' }}>Silver 🥈</div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#475569', marginTop: '2px' }}>
+                      {selectedWingDrawer.silver}
                     </div>
                   </div>
-                  <div style={{ padding: '0.75rem', background: '#F8FAFC', borderRadius: '10px', textAlign: 'center', border: '1px solid #E2E8F0' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#64748B' }}>Registrations</div>
+                  <div style={{ padding: '0.75rem', background: '#EFF6FF', borderRadius: '10px', textAlign: 'center', border: '1px solid #BFDBFE' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#1E40AF' }}>Registrations</div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#2563EB', marginTop: '2px' }}>
                       {selectedWingDrawer.nominations}
                     </div>
@@ -1029,7 +969,7 @@ export default function Leaderboard({ onShowToast }) {
                   className="btn btn-primary" 
                   style={{ width: '100%' }}
                   onClick={() => {
-                    const text = `🎉 Cheer for *${selectedWingDrawer.name}* in SCOT 2026!\n🔥 Current Points: *${selectedWingDrawer.points} pts* (${selectedWingDrawer.wins} Wins, ${selectedWingDrawer.winRate}% Win Rate)\n📲 Track our wing on the live leaderboard: https://emailvishalgore.github.io/SCOT/wing-champions/`;
+                    const text = `🎉 Cheer for *${selectedWingDrawer.name}* in SCOT 2026!\n🔥 Current Points: *${selectedWingDrawer.points} pts* (🥇 ${selectedWingDrawer.gold} Gold, 🥈 ${selectedWingDrawer.silver} Silver)\n📲 Track our wing on the live leaderboard: https://emailvishalgore.github.io/SCOT/wing-champions/`;
                     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
                   }}
                 >
@@ -1041,7 +981,7 @@ export default function Leaderboard({ onShowToast }) {
         )}
       </AnimatePresence>
 
-      {/* --- 📸 WHATSAPP POSTER SHARE MODAL (Option B) --- */}
+      {/* --- 📸 WHATSAPP POSTER SHARE MODAL --- */}
       <AnimatePresence>
         {isShareModalOpen && (
           <div className="modal-backdrop" onClick={() => setIsShareModalOpen(false)}>

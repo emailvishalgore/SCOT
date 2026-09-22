@@ -35,8 +35,7 @@ export default function Sidebar({ currentScreen, onViewScreen, isOpen, onClose }
     { title: 'Dashboard', screen: 'dashboard', icon: <LayoutDashboard size={18} /> },
     { title: 'Events Hub', screen: 'events', icon: <Calendar size={18} /> },
     ...(isAdminOrChamp ? [{ title: 'Event Editor', screen: 'admin/events', icon: <Edit size={18} /> }] : []),
-    { title: 'Brackets & Scores', screen: 'admin/competitions', icon: <GitBranch size={18} /> },
-    { title: 'Leaderboard', screen: 'leaderboard', icon: <Trophy size={18} /> },
+    { title: 'Leaderboard & Posters', screen: 'leaderboard', icon: <Trophy size={18} /> },
     { title: 'Announcements', screen: 'announcements', icon: <Megaphone size={18} /> },
   ];
 

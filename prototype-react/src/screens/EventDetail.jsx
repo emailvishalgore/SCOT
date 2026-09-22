@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { ArrowLeft, Calendar, MapPin, Clock, CheckCircle2, UserPlus, AlertTriangle, Trash2, CalendarDays, Eye } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, CheckCircle2, UserPlus, AlertTriangle, Trash2, CalendarDays, Eye, Trophy, Award, Sparkles, Edit3, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
-  const { state, registerForEvent, withdrawRegistration, uploadRegistrationMedia, castParticipantVote, approveEventRegistration, rejectEventRegistration } = useStore();
+  const { state, registerForEvent, withdrawRegistration, uploadRegistrationMedia, castParticipantVote, approveEventRegistration, rejectEventRegistration, recordEventResult } = useStore();
   const user = state.currentUser || { id: 'anon', name: 'Guest Resident', status: 'PENDING_APPROVAL' };
   const event = state.events.find(e => e.id === eventId) || state.events[0];
   const allApprovedEventRegs = (state.registrations || []).filter(
@@ -18,6 +18,20 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
   const [participants, setParticipants] = useState([
     { name: '', flat: '', phone: '', gender: 'Male', ageCategory: 'Above 16' }
   ]);
+
+  // Direct Results Declaration Modal states
+  const [resultModalData, setResultModalData] = useState(null); // { subId, subName, winnerPoints, runnerUpPoints, isCompleted }
+  const [winnerType, setWinnerType] = useState('registered'); // 'registered' | 'custom'
+  const [winnerRegId, setWinnerRegId] = useState('');
+  const [winnerName, setWinnerName] = useState('');
+  const [winnerWing, setWinnerWing] = useState('Wing N');
+  const [winnerFlat, setWinnerFlat] = useState('');
+  
+  const [runnerUpType, setRunnerUpType] = useState('registered'); // 'registered' | 'custom'
+  const [runnerUpRegId, setRunnerUpRegId] = useState('');
+  const [runnerUpName, setRunnerUpName] = useState('');
+  const [runnerUpWing, setRunnerUpWing] = useState('Wing N');
+  const [runnerUpFlat, setRunnerUpFlat] = useState('');
 
   if (!event) {
     return (
@@ -52,6 +66,170 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
       }
       return false;
     });
+  };
+
+  const getEventRegistrations = () => {
+    return (state.registrations || []).filter(r => {
+      if (r.eventId !== eventId) return false;
+      if (r.registeredByUserId === user.id) return true;
+      if (isWingLeader) {
+        if (user.role === 'admin') return true;
+        const regCreator = state.users.find(u => u.id === r.registeredByUserId);
+        if (regCreator && user.wing && regCreator.wing === user.wing) return true;
+        if (user.wing && String(r.name || '').includes(user.wing)) return true;
+      }
+      return false;
+    });
+  };
+
+  const getEventPoints = (evt, subId) => {
+    if (!evt) return { winnerPoints: 100, runnerUpPoints: 50 };
+    let target = evt;
+    if (subId && evt.subEvents && evt.subEvents.length > 0) {
+      const sub = evt.subEvents.find(s => s.id === subId);
+      if (sub) target = sub;
+    }
+    let win = target.winnerPoints !== undefined && target.winnerPoints !== '' ? parseInt(target.winnerPoints, 10) : NaN;
+    let run = target.runnerUpPoints !== undefined && target.runnerUpPoints !== '' ? parseInt(target.runnerUpPoints, 10) : NaN;
+    if (isNaN(win) && target.points) {
+      const pStr = String(target.points);
+      const winMatch = pStr.match(/Winner:\s*(\d+)/i) || pStr.match(/(\d+)\s*pts/i) || pStr.match(/^(\d+)$/);
+      if (winMatch) win = parseInt(winMatch[1], 10);
+    }
+    if (isNaN(run) && target.points) {
+      const pStr = String(target.points);
+      const runMatch = pStr.match(/Runner:\s*(\d+)/i) || pStr.match(/Runner-?up:\s*(\d+)/i);
+      if (runMatch) run = parseInt(runMatch[1], 10);
+    }
+    if (isNaN(win) || win <= 0) win = 100;
+    if (isNaN(run) || run <= 0) run = 50;
+    return { winnerPoints: win, runnerUpPoints: run };
+  };
+
+  const handleOpenDeclareResult = (subId = null, subName = null) => {
+    const targetSub = subId && event.subEvents ? event.subEvents.find(s => s.id === subId) : null;
+    const target = targetSub || event;
+    const displayName = subName || target.name;
+    const { winnerPoints, runnerUpPoints } = getEventPoints(event, subId);
+
+    const existingWinner = target.winner || null;
+    const existingRunnerUp = target.runnerUp || null;
+
+    setResultModalData({
+      subId,
+      subName: displayName,
+      winnerPoints,
+      runnerUpPoints,
+      isCompleted: target.status === 'COMPLETED'
+    });
+
+    if (existingWinner) {
+      setWinnerType('custom');
+      setWinnerName(existingWinner.name || '');
+      setWinnerWing(existingWinner.wing || 'Wing N');
+      setWinnerFlat(existingWinner.flat || '');
+      setWinnerRegId('');
+    } else {
+      setWinnerType('registered');
+      setWinnerName('');
+      setWinnerWing('Wing N');
+      setWinnerFlat('');
+      setWinnerRegId('');
+    }
+
+    if (existingRunnerUp) {
+      setRunnerUpType('custom');
+      setRunnerUpName(existingRunnerUp.name || '');
+      setRunnerUpWing(existingRunnerUp.wing || 'Wing N');
+      setRunnerUpFlat(existingRunnerUp.flat || '');
+      setRunnerUpRegId('');
+    } else {
+      setRunnerUpType('registered');
+      setRunnerUpName('');
+      setRunnerUpWing('Wing N');
+      setRunnerUpFlat('');
+      setRunnerUpRegId('');
+    }
+  };
+
+  const handleSaveResult = (e) => {
+    e.preventDefault();
+    if (!resultModalData) return;
+
+    // Resolve winner data
+    let finalWinner = null;
+    if (winnerType === 'registered') {
+      const reg = (state.registrations || []).find(r => r.id === winnerRegId);
+      if (!reg) {
+        onShowToast('Please select a registered Winner participant or choose Manual Entry!', 'error');
+        return;
+      }
+      const wingMatch = reg.name.match(/Wing\s*([A-Za-z0-9]+)/i);
+      const flatMatch = reg.name.match(/Flat\s*[:#-]?\s*(\d{3})/i);
+      const wWing = wingMatch ? `Wing ${wingMatch[1].toUpperCase()}` : (reg.wing || user.wing || 'Wing N');
+      const wFlat = flatMatch ? flatMatch[1] : '';
+      finalWinner = {
+        name: reg.name,
+        wing: wWing,
+        flat: wFlat,
+        registrationId: reg.id
+      };
+    } else {
+      if (!winnerName.trim()) {
+        onShowToast('Winner name is required!', 'error');
+        return;
+      }
+      finalWinner = {
+        name: winnerName.trim(),
+        wing: winnerWing,
+        flat: winnerFlat
+      };
+    }
+
+    // Resolve runner-up data
+    let finalRunnerUp = null;
+    if (runnerUpType === 'registered') {
+      const reg = (state.registrations || []).find(r => r.id === runnerUpRegId);
+      if (!reg) {
+        onShowToast('Please select a registered Runner-Up participant or choose Manual Entry!', 'error');
+        return;
+      }
+      const wingMatch = reg.name.match(/Wing\s*([A-Za-z0-9]+)/i);
+      const flatMatch = reg.name.match(/Flat\s*[:#-]?\s*(\d{3})/i);
+      const rWing = wingMatch ? `Wing ${wingMatch[1].toUpperCase()}` : (reg.wing || user.wing || 'Wing N');
+      const rFlat = flatMatch ? flatMatch[1] : '';
+      finalRunnerUp = {
+        name: reg.name,
+        wing: rWing,
+        flat: rFlat,
+        registrationId: reg.id
+      };
+    } else {
+      if (!runnerUpName.trim()) {
+        onShowToast('Runner-Up name is required!', 'error');
+        return;
+      }
+      finalRunnerUp = {
+        name: runnerUpName.trim(),
+        wing: runnerUpWing,
+        flat: runnerUpFlat
+      };
+    }
+
+    const res = recordEventResult(event.id, resultModalData.subId, finalWinner, finalRunnerUp);
+    if (res.success) {
+      onShowToast(`🏆 Results declared for ${resultModalData.subName}! Leaderboard updated.`, 'success');
+      setResultModalData(null);
+    }
+  };
+
+  const handleClearResult = () => {
+    if (!resultModalData) return;
+    if (window.confirm(`Are you sure you want to clear results for ${resultModalData.subName}? This will revoke awarded championship points.`)) {
+      recordEventResult(event.id, resultModalData.subId, null, null, true);
+      onShowToast(`Results cleared for ${resultModalData.subName}.`, 'info');
+      setResultModalData(null);
+    }
   };
 
   const handleOpenRegister = (subId, subName) => {
@@ -462,9 +640,56 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
 
       {/* Sub-events configure list */}
       <div className="card">
-        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.35rem', fontWeight: 800, marginBottom: '1.25rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)' }}>
-          {event.type === 'UMBRELLA' ? 'Sub-Events & Competition Categories' : 'Registration Options'}
-        </h2>
+        <div className="flex-between" style={{ marginBottom: '1.25rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--color-border)', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.35rem', fontWeight: 800, margin: 0 }}>
+            {event.type === 'UMBRELLA' ? 'Sub-Events & Competition Categories' : 'Registration & Results'}
+          </h2>
+          {isWingLeader && (!event.subEvents || event.subEvents.length === 0) && (
+            <button 
+              className="btn btn-secondary btn-sm"
+              onClick={() => handleOpenDeclareResult(null, event.name)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', borderColor: '#F59E0B', color: '#B45309', fontWeight: 700 }}
+            >
+              <Trophy size={14} /> {event.status === 'COMPLETED' ? 'Edit Event Results' : 'Declare Winner & Runner-up'}
+            </button>
+          )}
+        </div>
+
+        {/* Standalone Event Podium Banner if completed */}
+        {(!event.subEvents || event.subEvents.length === 0) && event.status === 'COMPLETED' && event.winner && (
+          <div style={{ background: 'linear-gradient(135deg, #FEF3C7 0%, #FFFBEB 100%)', border: '1.5px solid #F59E0B', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Trophy size={16} style={{ color: '#D97706' }} /> Official Podium Declared
+              </span>
+              <span className="badge badge-amber" style={{ fontSize: '0.72rem', fontWeight: 800 }}>
+                COMPLETED
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+              <div style={{ background: '#FFFFFF', padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #FCD34D', boxShadow: '0 2px 6px rgba(245, 158, 11, 0.15)' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#D97706', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  🥇 Winner (Gold Medal)
+                </div>
+                <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#78350F', marginTop: '4px' }}>{event.winner.name}</div>
+                <div style={{ fontSize: '0.82rem', color: '#92400E', fontWeight: 600, marginTop: '2px' }}>
+                  {event.winner.wing} {event.winner.flat ? `• Flat ${event.winner.flat}` : ''} • <strong style={{ color: '#B45309' }}>+{getEventPoints(event, null).winnerPoints} pts</strong>
+                </div>
+              </div>
+              {event.runnerUp && (
+                <div style={{ background: '#FFFFFF', padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #CBD5E1', boxShadow: '0 2px 6px rgba(100, 116, 139, 0.12)' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    🥈 Runner-Up (Silver Medal)
+                  </div>
+                  <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#1E293B', marginTop: '4px' }}>{event.runnerUp.name}</div>
+                  <div style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 600, marginTop: '2px' }}>
+                    {event.runnerUp.wing} {event.runnerUp.flat ? `• Flat ${event.runnerUp.flat}` : ''} • <strong style={{ color: '#475569' }}>+{getEventPoints(event, null).runnerUpPoints} pts</strong>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {event.subEvents && event.subEvents.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -476,6 +701,8 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
               const subDeadlineDate = sub.deadlineDate || mainDeadlineDate;
               const subDeadlineTime = sub.deadlineTime || mainDeadlineTime;
               const isSubDeadlinePassed = checkDeadlinePassed(subDeadlineDate, subDeadlineTime);
+              const { winnerPoints: subWinPts, runnerUpPoints: subRunPts } = getEventPoints(event, sub.id);
+
               return (
                 <div 
                   key={sub.id}
@@ -483,9 +710,16 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                 >
                   <div className="flex-between" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
                     <div>
-                      <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.1rem', fontWeight: 700 }}>{sub.name}</h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>{sub.name}</h3>
+                        {sub.status === 'COMPLETED' && (
+                          <span className="badge badge-amber" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
+                            🏆 Results Declared
+                          </span>
+                        )}
+                      </div>
                       <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-                        {sub.points ? `Points Scale: ${sub.points}` : 'Wing Performance / Non-Point Category'}
+                        {`Points Template: Winner ${subWinPts} pts • Runner-up ${subRunPts} pts`}
                       </p>
                       {/* Sub-Category Date & Time details */}
                       {(sub.startDate || sub.time) && (
@@ -519,19 +753,64 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                       )}
                     </div>
 
-                    {isSubDeadlinePassed ? (
-                      <button className="btn btn-secondary btn-sm" disabled style={{ opacity: 0.7, cursor: 'not-allowed' }}>
-                        Closed
-                      </button>
-                    ) : (
-                      <button 
-                        className="btn btn-primary btn-sm"
-                        onClick={() => handleOpenRegister(sub.id, sub.name)}
-                      >
-                        <UserPlus size={14} /> Add Registration
-                      </button>
-                    )}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {/* Declare / Edit Results Button (for Admin & Event Leaders) */}
+                      {isWingLeader && (
+                        <button 
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleOpenDeclareResult(sub.id, sub.name)}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', borderColor: '#F59E0B', color: '#B45309', fontWeight: 700 }}
+                        >
+                          <Trophy size={14} /> {sub.status === 'COMPLETED' ? 'Edit Results' : 'Declare Results'}
+                        </button>
+                      )}
+
+                      {isSubDeadlinePassed ? (
+                        <button className="btn btn-secondary btn-sm" disabled style={{ opacity: 0.7, cursor: 'not-allowed' }}>
+                          Closed
+                        </button>
+                      ) : (
+                        <button 
+                          className="btn btn-primary btn-sm"
+                          onClick={() => handleOpenRegister(sub.id, sub.name)}
+                        >
+                          <UserPlus size={14} /> Add Registration
+                        </button>
+                      )}
+                    </div>
                   </div>
+
+                  {/* 🏆 Sub-Event Podium Card if Completed */}
+                  {sub.status === 'COMPLETED' && sub.winner && (
+                    <div style={{ background: 'linear-gradient(135deg, #FEF3C7 0%, #FFFBEB 100%)', border: '1.5px solid #F59E0B', borderRadius: '10px', padding: '12px 14px', margin: '4px 0' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          🏆 Official Podium Declared
+                        </span>
+                        <span className="badge badge-amber" style={{ fontSize: '0.7rem', fontWeight: 700 }}>
+                          Completed
+                        </span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                        <div style={{ background: '#FFFFFF', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #FCD34D', boxShadow: '0 2px 4px rgba(245, 158, 11, 0.1)' }}>
+                          <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#D97706', textTransform: 'uppercase' }}>🥇 Winner (Gold Medal)</div>
+                          <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#78350F', marginTop: '2px' }}>{sub.winner.name}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#92400E', fontWeight: 600, marginTop: '2px' }}>
+                            {sub.winner.wing} {sub.winner.flat ? `• Flat ${sub.winner.flat}` : ''} • <strong style={{ color: '#B45309' }}>+{subWinPts} pts</strong>
+                          </div>
+                        </div>
+                        {sub.runnerUp && (
+                          <div style={{ background: '#FFFFFF', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', boxShadow: '0 2px 4px rgba(100, 116, 139, 0.1)' }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>🥈 Runner-Up (Silver Medal)</div>
+                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#1E293B', marginTop: '2px' }}>{sub.runnerUp.name}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600, marginTop: '2px' }}>
+                              {sub.runnerUp.wing} {sub.runnerUp.flat ? `• Flat ${sub.runnerUp.flat}` : ''} • <strong style={{ color: '#475569' }}>+{subRunPts} pts</strong>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Registered Flat Members List for this Sub-Event */}
                   {subRegs.length > 0 && (
@@ -788,15 +1067,6 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
       {/* Upgraded Participant Registration Modal */}
       <AnimatePresence>
         {confirmModalData && (() => {
-          const sub = event.subEvents?.find(s => s.id === confirmModalData.subId);
-          const targetConfig = sub || event;
-          const isGroup = targetConfig?.regType === 'GROUP_REQUIRED' || targetConfig?.regType === 'GROUP_OPTIONAL' || targetConfig?.regType === 'GROUP';
-          const requireMembers = targetConfig?.regType === 'GROUP_REQUIRED' || targetConfig?.requireMembers;
-
-          const wingNeighbors = (state.users || []).filter(
-            u => u.status === 'APPROVED' && u.wing === user.wing && u.id !== user.id
-          );
-
           return (
             <div className="modal-overlay">
               <motion.div 
@@ -960,6 +1230,278 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                     <button type="submit" className="btn btn-primary">
                       {participants.length > 1 ? `Submit Pair (${participants.length} Players)` : 'Submit Nomination'}
                     </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* 🏆 Direct Event Results Declaration Modal (Winner & Runner-Up) */}
+      <AnimatePresence>
+        {resultModalData && (() => {
+          const categoryRegs = (state.registrations || []).filter(r => {
+            if (r.eventId !== event.id) return false;
+            if (resultModalData.subId) return r.subEventId === resultModalData.subId;
+            return true;
+          });
+
+          // Compute live preview of points and wings
+          const getPreviewWing = (type, regId, customWing) => {
+            if (type === 'registered') {
+              const reg = categoryRegs.find(r => r.id === regId);
+              if (reg) {
+                const wm = reg.name.match(/Wing\s*([A-Za-z0-9]+)/i);
+                if (wm) return `Wing ${wm[1].toUpperCase()}`;
+                return reg.wing || 'Wing N';
+              }
+              return 'Select Participant';
+            }
+            return customWing || 'Wing N';
+          };
+
+          const winnerWingPreview = getPreviewWing(winnerType, winnerRegId, winnerWing);
+          const runnerUpWingPreview = getPreviewWing(runnerUpType, runnerUpRegId, runnerUpWing);
+
+          return (
+            <div className="modal-overlay">
+              <motion.div 
+                className="modal"
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                style={{ maxWidth: '480px', maxHeight: '92vh', overflowY: 'auto' }}
+              >
+                <form onSubmit={handleSaveResult} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'left' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <Trophy size={20} style={{ color: '#F59E0B' }} />
+                      <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.3rem', fontWeight: 800, margin: 0 }}>
+                        Declare Event Podium Results
+                      </h2>
+                    </div>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', margin: 0 }}>
+                      Category: <strong>{resultModalData.subName}</strong>
+                    </p>
+                  </div>
+
+                  {/* Points Allocation Notice */}
+                  <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '8px', padding: '10px 12px', display: 'flex', justifyContent: 'space-around', alignItems: 'center', textAlign: 'center' }}>
+                    <div>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#92400E', textTransform: 'uppercase' }}>🥇 1st Place (Gold)</span>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#B45309' }}>+{resultModalData.winnerPoints} pts</div>
+                    </div>
+                    <div style={{ height: '24px', width: '1px', background: '#FCD34D' }}></div>
+                    <div>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>🥈 2nd Place (Silver)</span>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#475569' }}>+{resultModalData.runnerUpPoints} pts</div>
+                    </div>
+                  </div>
+
+                  {/* 🥇 WINNER SELECTION */}
+                  <div style={{ background: '#FFFBEB', border: '1.5px solid #FCD34D', borderRadius: '10px', padding: '12px 14px' }}>
+                    <div className="flex-between" style={{ marginBottom: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 800, color: '#92400E', display: 'flex', alignItems: 'center', gap: '4px', margin: 0 }}>
+                        🥇 Select 1st Place Winner (Gold)
+                      </label>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button
+                          type="button"
+                          className={`btn btn-xs ${winnerType === 'registered' ? 'btn-primary' : 'btn-secondary'}`}
+                          onClick={() => setWinnerType('registered')}
+                          style={{ fontSize: '0.7rem', padding: '2px 8px' }}
+                        >
+                          From Registrations
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-xs ${winnerType === 'custom' ? 'btn-primary' : 'btn-secondary'}`}
+                          onClick={() => setWinnerType('custom')}
+                          style={{ fontSize: '0.7rem', padding: '2px 8px' }}
+                        >
+                          Manual Entry
+                        </button>
+                      </div>
+                    </div>
+
+                    {winnerType === 'registered' ? (
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <select
+                          className="select"
+                          value={winnerRegId}
+                          onChange={(e) => setWinnerRegId(e.target.value)}
+                          required
+                          style={{ backgroundColor: '#FFFFFF', fontWeight: 600, fontSize: '0.85rem' }}
+                        >
+                          <option value="">-- Choose Approved Winner --</option>
+                          {categoryRegs.map(r => (
+                            <option key={r.id} value={r.id}>
+                              {r.name} {r.wing ? `(${r.wing})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {categoryRegs.length === 0 && (
+                          <p style={{ fontSize: '0.72rem', color: '#D97706', marginTop: '4px' }}>
+                            No approved participants in this category yet. Use "Manual Entry" above.
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <input
+                            type="text"
+                            className="input"
+                            placeholder="Winner Name / Team Name"
+                            value={winnerName}
+                            onChange={(e) => setWinnerName(e.target.value)}
+                            required
+                            style={{ backgroundColor: '#FFFFFF' }}
+                          />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px' }}>
+                          <select
+                            className="select"
+                            value={winnerWing}
+                            onChange={(e) => setWinnerWing(e.target.value)}
+                            style={{ backgroundColor: '#FFFFFF', fontSize: '0.85rem' }}
+                          >
+                            {['Wing N','Wing O','Wing P','Wing Q','Wing R','Wing S','Wing T','Wing U','Wing V','Wing W'].map(w => (
+                              <option key={w} value={w}>{w}</option>
+                            ))}
+                          </select>
+                          <select
+                            className="select"
+                            value={winnerFlat}
+                            onChange={(e) => setWinnerFlat(e.target.value)}
+                            style={{ backgroundColor: '#FFFFFF', fontSize: '0.85rem' }}
+                          >
+                            <option value="">Flat (Opt)</option>
+                            {[101,102,103,104,201,202,203,204,301,302,303,304,401,402,403,404,501,502,503,504,601,602,603,604,701,702,703,704].map(f => (
+                              <option key={f} value={String(f)}>{f}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 🥈 RUNNER-UP SELECTION */}
+                  <div style={{ background: '#F8FAFC', border: '1.5px solid #CBD5E1', borderRadius: '10px', padding: '12px 14px' }}>
+                    <div className="flex-between" style={{ marginBottom: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 800, color: '#334155', display: 'flex', alignItems: 'center', gap: '4px', margin: 0 }}>
+                        🥈 Select 2nd Place Runner-Up (Silver)
+                      </label>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button
+                          type="button"
+                          className={`btn btn-xs ${runnerUpType === 'registered' ? 'btn-primary' : 'btn-secondary'}`}
+                          onClick={() => setRunnerUpType('registered')}
+                          style={{ fontSize: '0.7rem', padding: '2px 8px' }}
+                        >
+                          From Registrations
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-xs ${runnerUpType === 'custom' ? 'btn-primary' : 'btn-secondary'}`}
+                          onClick={() => setRunnerUpType('custom')}
+                          style={{ fontSize: '0.7rem', padding: '2px 8px' }}
+                        >
+                          Manual Entry
+                        </button>
+                      </div>
+                    </div>
+
+                    {runnerUpType === 'registered' ? (
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <select
+                          className="select"
+                          value={runnerUpRegId}
+                          onChange={(e) => setRunnerUpRegId(e.target.value)}
+                          required
+                          style={{ backgroundColor: '#FFFFFF', fontWeight: 600, fontSize: '0.85rem' }}
+                        >
+                          <option value="">-- Choose Approved Runner-Up --</option>
+                          {categoryRegs.map(r => (
+                            <option key={r.id} value={r.id}>
+                              {r.name} {r.wing ? `(${r.wing})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {categoryRegs.length === 0 && (
+                          <p style={{ fontSize: '0.72rem', color: '#64748B', marginTop: '4px' }}>
+                            No approved participants in this category yet. Use "Manual Entry" above.
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <input
+                            type="text"
+                            className="input"
+                            placeholder="Runner-Up Name / Team Name"
+                            value={runnerUpName}
+                            onChange={(e) => setRunnerUpName(e.target.value)}
+                            required
+                            style={{ backgroundColor: '#FFFFFF' }}
+                          />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px' }}>
+                          <select
+                            className="select"
+                            value={runnerUpWing}
+                            onChange={(e) => setRunnerUpWing(e.target.value)}
+                            style={{ backgroundColor: '#FFFFFF', fontSize: '0.85rem' }}
+                          >
+                            {['Wing N','Wing O','Wing P','Wing Q','Wing R','Wing S','Wing T','Wing U','Wing V','Wing W'].map(w => (
+                              <option key={w} value={w}>{w}</option>
+                            ))}
+                          </select>
+                          <select
+                            className="select"
+                            value={runnerUpFlat}
+                            onChange={(e) => setRunnerUpFlat(e.target.value)}
+                            style={{ backgroundColor: '#FFFFFF', fontSize: '0.85rem' }}
+                          >
+                            <option value="">Flat (Opt)</option>
+                            {[101,102,103,104,201,202,203,204,301,302,303,304,401,402,403,404,501,502,503,504,601,602,603,604,701,702,703,704].map(f => (
+                              <option key={f} value={String(f)}>{f}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Impact Preview */}
+                  <div style={{ background: '#F1F5F9', borderRadius: '8px', padding: '10px 12px', fontSize: '0.78rem', color: '#475569' }}>
+                    <div style={{ fontWeight: 700, marginBottom: '4px', color: '#1E293B' }}>📊 Standings Impact:</div>
+                    <div>🥇 Gold Winner: +{resultModalData.winnerPoints} pts awarded to <strong>{winnerWingPreview}</strong></div>
+                    <div>🥈 Silver Runner-Up: +{resultModalData.runnerUpPoints} pts awarded to <strong>{runnerUpWingPreview}</strong></div>
+                  </div>
+
+                  {/* Modal Action Buttons */}
+                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
+                    {resultModalData.isCompleted ? (
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={handleClearResult}
+                        style={{ color: 'var(--color-danger)', borderColor: '#FECACA' }}
+                      >
+                        <RotateCcw size={14} /> Clear Result
+                      </button>
+                    ) : (
+                      <div></div>
+                    )}
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button type="button" className="btn btn-secondary" onClick={() => setResultModalData(null)}>Cancel</button>
+                      <button type="submit" className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)', border: 'none', fontWeight: 800 }}>
+                        🏆 Publish Results
+                      </button>
+                    </div>
                   </div>
                 </form>
               </motion.div>

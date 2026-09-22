@@ -15,7 +15,6 @@ import Gallery from './screens/Gallery';
 import AdminDashboard from './screens/AdminDashboard';
 import MemberApprovals from './screens/MemberApprovals';
 import EventEditor from './screens/EventEditor';
-import Brackets from './screens/Brackets';
 
 import { AnimatePresence } from 'framer-motion';
 
@@ -174,7 +173,7 @@ function AppContent() {
       return <EventEditor onShowToast={triggerToast} onViewScreen={setView} />;
     }
     if (currentScreen === 'admin/competitions') {
-      return <Brackets onShowToast={triggerToast} />;
+      return <Events onViewScreen={setView} />;
     }
 
     return (
