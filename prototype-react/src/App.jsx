@@ -64,21 +64,23 @@ function AppContent() {
 
   // Foreground message listener
   useEffect(() => {
-    let unsubscribe;
+    let isMounted = true;
     import('./firebase').then(({ onMessageListener }) => {
       const listenForMessages = () => {
+        if (!isMounted) return;
         onMessageListener().then(payload => {
+          if (!isMounted) return;
           if (payload?.notification) {
             triggerToast(`${payload.notification.title}: ${payload.notification.body}`, 'success');
           }
           listenForMessages();
         }).catch(() => {
-          setTimeout(listenForMessages, 5000);
+          if (isMounted) setTimeout(listenForMessages, 5000);
         });
       };
       listenForMessages();
     });
-    return () => { if (unsubscribe) unsubscribe(); };
+    return () => { isMounted = false; };
   }, []);
 
   // Hash-based simple router syncing

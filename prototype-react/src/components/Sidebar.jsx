@@ -1,6 +1,6 @@
 import React from 'react';
 import { useStore } from '../context/StoreContext';
-import { LayoutDashboard, Trophy, Megaphone, Shield, Edit, GitBranch, UserCheck, LogOut, X, Calendar } from 'lucide-react';
+import { LayoutDashboard, Trophy, Megaphone, Shield, Edit, UserCheck, LogOut, X, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
 import TextRoll from './TextRoll';
 

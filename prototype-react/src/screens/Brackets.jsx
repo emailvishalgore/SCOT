@@ -98,15 +98,6 @@ export default function Brackets({ onShowToast }) {
   const isAdminOrChamp = currentUser?.role === 'admin' || currentUser?.role === 'champion' || currentUser?.role === 'scot_member' || currentUser?.role === 'wing_captain' || currentUser?.isChampion;
   const canGenerateDraws = currentUser?.role === 'admin' || currentUser?.role === 'champion' || currentUser?.role === 'scot_member';
 
-  if (!isAdminOrChamp) {
-    return (
-      <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
-        <Shield size={48} style={{ color: 'var(--color-danger)', marginBottom: '1rem' }} />
-        <h2>Access Denied</h2>
-        <p style={{ color: 'var(--color-text-secondary)' }}>You must be registered as an Event Champion or Admin to access this panel.</p>
-      </div>
-    );
-  }
 
   const events = state.events || [];
   const [selectedEventId, setSelectedEventId] = useState(events[0]?.id || '');
@@ -646,6 +637,16 @@ export default function Brackets({ onShowToast }) {
     onShowToast(`🎲 Random draw generated! ${newFixtures.length} matches created.`, 'success');
     setActiveTab('fixtures');
   };
+
+  if (!isAdminOrChamp) {
+    return (
+      <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
+        <Shield size={48} style={{ color: 'var(--color-danger)', marginBottom: '1rem' }} />
+        <h2>Access Denied</h2>
+        <p style={{ color: 'var(--color-text-secondary)' }}>You must be registered as an Event Champion or Admin to access this panel.</p>
+      </div>
+    );
+  }
 
   if (!events || events.length === 0 || !activeEvent) {
     return (

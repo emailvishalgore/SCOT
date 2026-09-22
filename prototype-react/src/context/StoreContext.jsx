@@ -383,7 +383,17 @@ export const StoreProvider = ({ children }) => {
                 ...e,
                 subEvents: Array.isArray(parsedSubEvents) ? parsedSubEvents : [],
                 assignedManagerIds: Array.isArray(parsedManagers) ? parsedManagers : [],
-                nominationsRequired: e.nominationsRequired === true || String(e.nominationsRequired).toUpperCase() === 'TRUE'
+                nominationsRequired: e.nominationsRequired === true || String(e.nominationsRequired).toUpperCase() === 'TRUE',
+                winner: (() => {
+                  if (!e.winner) return undefined;
+                  if (typeof e.winner === 'object') return e.winner;
+                  try { return JSON.parse(e.winner); } catch { return undefined; }
+                })(),
+                runnerUp: (() => {
+                  if (!e.runnerUp) return undefined;
+                  if (typeof e.runnerUp === 'object') return e.runnerUp;
+                  try { return JSON.parse(e.runnerUp); } catch { return undefined; }
+                })()
               };
             });
 
@@ -1093,8 +1103,8 @@ export const StoreProvider = ({ children }) => {
       if (runMatch) runPts = parseInt(runMatch[1], 10);
     }
 
-    if (isNaN(winPts) || winPts <= 0) winPts = 100;
-    if (isNaN(runPts) || runPts <= 0) runPts = 50;
+    if (isNaN(winPts)) winPts = 100;
+    if (isNaN(runPts)) runPts = 50;
 
     return { winnerPoints: winPts, runnerUpPoints: runPts };
   };
@@ -1140,10 +1150,12 @@ export const StoreProvider = ({ children }) => {
     });
 
     return (baseLeaderboard || []).map(item => {
-      const stats = wingStats[item.letter];
+      const letter = item.letter || String(item.name || '').replace(/Wing\s*/i, '').trim().toUpperCase();
+      const stats = wingStats[letter];
       if (stats) {
         return {
           ...item,
+          letter,
           points: stats.points,
           wins: stats.wins,
           gold: stats.gold,
@@ -1152,57 +1164,57 @@ export const StoreProvider = ({ children }) => {
           breakdown: stats.breakdown
         };
       }
-      return item;
+      return { ...item, letter };
     });
   };
 
   // Direct Event Results Declaration (Winner & Runner-up)
   const recordEventResult = (eventId, subEventId, winnerData, runnerUpData, clearResult = false) => {
+    // Compute the updated event BEFORE setStoreState to avoid race condition
+    // (setStoreState callback is async, so updatedEvent would be null if set inside it)
     let updatedEvent = null;
 
     setStoreState(prev => {
-      const nextEvents = prev.events.map(evt => {
-        if (evt.id !== eventId) return evt;
+      const sourceEvent = prev.events.find(evt => evt.id === eventId);
+      if (!sourceEvent) return prev;
 
-        if (subEventId && evt.subEvents && evt.subEvents.length > 0) {
-          const nextSubs = evt.subEvents.map(sub => {
-            if (sub.id !== subEventId) return sub;
-            if (clearResult) {
-              const { winner, runnerUp, completedAt, ...rest } = sub;
-              return { ...rest, status: 'OPEN' };
-            }
-            return {
-              ...sub,
-              status: 'COMPLETED',
-              winner: winnerData,
-              runnerUp: runnerUpData,
-              completedAt: new Date().toISOString()
-            };
-          });
-          const allSubsCompleted = nextSubs.every(s => s.status === 'COMPLETED');
-          updatedEvent = {
-            ...evt,
-            subEvents: nextSubs,
-            status: allSubsCompleted ? 'COMPLETED' : evt.status
-          };
-          return updatedEvent;
-        } else {
+      if (subEventId && sourceEvent.subEvents && sourceEvent.subEvents.length > 0) {
+        const nextSubs = sourceEvent.subEvents.map(sub => {
+          if (sub.id !== subEventId) return sub;
           if (clearResult) {
-            const { winner, runnerUp, completedAt, ...rest } = evt;
-            updatedEvent = { ...rest, status: 'OPEN' };
-            return updatedEvent;
+            const { winner, runnerUp, completedAt, ...rest } = sub;
+            return { ...rest, status: 'OPEN' };
           }
-          updatedEvent = {
-            ...evt,
+          return {
+            ...sub,
             status: 'COMPLETED',
             winner: winnerData,
             runnerUp: runnerUpData,
             completedAt: new Date().toISOString()
           };
-          return updatedEvent;
+        });
+        const allSubsCompleted = nextSubs.every(s => s.status === 'COMPLETED');
+        updatedEvent = {
+          ...sourceEvent,
+          subEvents: nextSubs,
+          status: allSubsCompleted ? 'COMPLETED' : sourceEvent.status
+        };
+      } else {
+        if (clearResult) {
+          const { winner, runnerUp, completedAt, ...rest } = sourceEvent;
+          updatedEvent = { ...rest, status: 'OPEN' };
+        } else {
+          updatedEvent = {
+            ...sourceEvent,
+            status: 'COMPLETED',
+            winner: winnerData,
+            runnerUp: runnerUpData,
+            completedAt: new Date().toISOString()
+          };
         }
-      });
+      }
 
+      const nextEvents = prev.events.map(evt => evt.id === eventId ? updatedEvent : evt);
       const nextLeaderboard = computeLeaderboardFromEvents(nextEvents, prev.leaderboard);
 
       try {
@@ -1219,8 +1231,10 @@ export const StoreProvider = ({ children }) => {
       };
     });
 
+    // updatedEvent is now guaranteed to be set synchronously before setStoreState callback runs
+    // Use setTimeout to ensure saveEvent runs after the state update is enqueued
     if (updatedEvent) {
-      saveEvent(updatedEvent);
+      setTimeout(() => saveEvent(updatedEvent), 0);
     }
 
     return { success: true };
@@ -1598,7 +1612,10 @@ export const StoreProvider = ({ children }) => {
       finalEvent.winnerPoints || '',
       finalEvent.runnerUpPoints || '',
       finalEvent.points || '',
-      finalEvent.rules || ''
+      finalEvent.rules || '',
+      finalEvent.winner ? JSON.stringify(finalEvent.winner) : '',
+      finalEvent.runnerUp ? JSON.stringify(finalEvent.runnerUp) : '',
+      finalEvent.completedAt || ''
     ];
 
     postToSheet('upsertRow', 'Events', rowData, 0, finalEvent.id);

@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Trophy, Award, Medal, Share2, Download, Sparkles, ChevronRight, MessageCircle, Copy, Check, Users, X, Calendar } from 'lucide-react';
+import { Trophy, Award, Medal, Share2, Download, Sparkles, ChevronRight, MessageCircle, Copy, Check, Users, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const WING_COLORS = {
@@ -50,8 +50,8 @@ export default function Leaderboard({ onShowToast }) {
       if (runMatch) runPts = parseInt(runMatch[1], 10);
     }
 
-    if (isNaN(winPts) || winPts <= 0) winPts = 100;
-    if (isNaN(runPts) || runPts <= 0) runPts = 50;
+    if (isNaN(winPts)) winPts = 100;
+    if (isNaN(runPts)) runPts = 50;
 
     return { winnerPoints: winPts, runnerUpPoints: runPts };
   };
@@ -445,9 +445,10 @@ export default function Leaderboard({ onShowToast }) {
             <button 
               className="btn btn-primary"
               onClick={generatePosterImage}
+              disabled={isGeneratingPoster}
               style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #F59E0B, #D97706)', border: 'none', fontWeight: 800, padding: '10px 18px', fontSize: '0.95rem' }}
             >
-              <Share2 size={18} /> Generate Shareable Poster (WhatsApp)
+              <Share2 size={18} /> {isGeneratingPoster ? 'Generating Poster...' : 'Generate Shareable Poster (WhatsApp)'}
             </button>
           </div>
         </div>

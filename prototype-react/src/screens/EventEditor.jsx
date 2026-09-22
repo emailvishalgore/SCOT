@@ -9,15 +9,6 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
 
   const isAdminOrChamp = currentUser?.role === 'admin' || currentUser?.role === 'champion' || currentUser?.role === 'scot_member' || currentUser?.role === 'wing_captain' || currentUser?.isChampion;
 
-  if (!isAdminOrChamp) {
-    return (
-      <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
-        <Shield size={48} style={{ color: 'var(--color-danger)', marginBottom: '1rem' }} />
-        <h2>Access Denied</h2>
-        <p style={{ color: 'var(--color-text-secondary)' }}>You must be registered as an Event Champion or Admin to access this editor.</p>
-      </div>
-    );
-  }
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -241,6 +232,16 @@ export default function EventEditor({ onShowToast, onViewScreen }) {
     deleteEvent(eventId);
     onShowToast('Event deleted successfully.', 'info');
   };
+
+  if (!isAdminOrChamp) {
+    return (
+      <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
+        <Shield size={48} style={{ color: 'var(--color-danger)', marginBottom: '1rem' }} />
+        <h2>Access Denied</h2>
+        <p style={{ color: 'var(--color-text-secondary)' }}>You must be registered as an Event Champion or Admin to access this editor.</p>
+      </div>
+    );
+  }
 
   return (
     <motion.div 

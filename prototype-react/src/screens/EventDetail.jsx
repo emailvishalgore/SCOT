@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { ArrowLeft, Calendar, MapPin, Clock, CheckCircle2, UserPlus, AlertTriangle, Trash2, CalendarDays, Eye, Trophy, Award, Sparkles, Edit3, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, UserPlus, AlertTriangle, Trash2, CalendarDays, Eye, Trophy, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
-  const { state, registerForEvent, withdrawRegistration, uploadRegistrationMedia, castParticipantVote, approveEventRegistration, rejectEventRegistration, recordEventResult } = useStore();
+  const { state, registerForEvent, withdrawRegistration, uploadRegistrationMedia, castParticipantVote, approveEventRegistration, recordEventResult } = useStore();
   const user = state.currentUser || { id: 'anon', name: 'Guest Resident', status: 'PENDING_APPROVAL' };
   const event = state.events.find(e => e.id === eventId) || state.events[0];
   const allApprovedEventRegs = (state.registrations || []).filter(
@@ -101,10 +101,14 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
       const runMatch = pStr.match(/Runner:\s*(\d+)/i) || pStr.match(/Runner-?up:\s*(\d+)/i);
       if (runMatch) run = parseInt(runMatch[1], 10);
     }
-    if (isNaN(win) || win <= 0) win = 100;
-    if (isNaN(run) || run <= 0) run = 50;
+    if (isNaN(win)) win = 100;
+    if (isNaN(run)) run = 50;
     return { winnerPoints: win, runnerUpPoints: run };
   };
+
+  const mainDeadlineDate = event.registrationDeadline || '2026-12-31';
+  const mainDeadlineTime = event.registrationDeadlineTime || '23:59';
+  const isMainDeadlinePassed = checkDeadlinePassed(mainDeadlineDate, mainDeadlineTime);
 
   const handleOpenDeclareResult = (subId = null, subName = null) => {
     const targetSub = subId && event.subEvents ? event.subEvents.find(s => s.id === subId) : null;
@@ -391,14 +395,7 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
     }
   };
 
-  const handleRegTypeChange = (type) => {
-    setRegType(type);
-    if (type === 'self') {
-      setRegName(user.name || '');
-    } else {
-      setRegName('');
-    }
-  };
+
 
   const handleMediaUpload = (e, registrationId) => {
     const file = e.target.files[0];
@@ -412,8 +409,8 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
     }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
-      uploadRegistrationMedia(registrationId, event.target.result);
+    reader.onload = (ev) => {
+      uploadRegistrationMedia(registrationId, ev.target.result);
       onShowToast(`Backing track "${file.name}" uploaded successfully!`, 'success');
     };
     reader.onerror = () => {
@@ -429,9 +426,6 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
     }
   };
 
-  const mainDeadlineDate = event.registrationDeadline || '2026-12-31';
-  const mainDeadlineTime = event.registrationDeadlineTime || '23:59';
-  const isMainDeadlinePassed = checkDeadlinePassed(mainDeadlineDate, mainDeadlineTime);
 
   return (
     <motion.div 
@@ -695,9 +689,6 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {event.subEvents.map(sub => {
               const subRegs = getSubRegistrations(sub.id);
-              const allApprovedSubRegs = (state.registrations || []).filter(
-                r => r.eventId === event.id && r.subEventId === sub.id && r.status === 'APPROVED'
-              );
               const subDeadlineDate = sub.deadlineDate || mainDeadlineDate;
               const subDeadlineTime = sub.deadlineTime || mainDeadlineTime;
               const isSubDeadlinePassed = checkDeadlinePassed(subDeadlineDate, subDeadlineTime);
