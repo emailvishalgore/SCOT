@@ -397,6 +397,85 @@ export const StoreProvider = ({ children }) => {
               };
             });
 
+            // If data.results exists from Google Sheets, seamlessly apply official podium results
+            if (data.results && Array.isArray(data.results)) {
+              data.results.forEach(res => {
+                if (!res || !res.eventId) return;
+                const targetEvt = sheetEventsMap[res.eventId];
+                if (!targetEvt) return;
+
+                const parsedWinner = {
+                  victoryType: res.victoryType || 'Individual',
+                  name: res.winnerName,
+                  wing: res.winnerWing,
+                  flat: res.winnerFlat,
+                  members: res.winnerMembers ? String(res.winnerMembers).split(',').map(s => {
+                    const sTrim = s.trim();
+                    const fm = sTrim.match(/Flat\s*[:#-]?\s*(\d{3})/i);
+                    const nm = sTrim.replace(/\(Flat.*?\)/i, '').trim();
+                    return { name: nm || sTrim, flat: fm ? fm[1] : '' };
+                  }) : []
+                };
+
+                const parsedRunnerUp = {
+                  victoryType: res.victoryType || 'Individual',
+                  name: res.runnerUpName,
+                  wing: res.runnerUpWing,
+                  flat: res.runnerUpFlat,
+                  members: res.runnerUpMembers ? String(res.runnerUpMembers).split(',').map(s => {
+                    const sTrim = s.trim();
+                    const fm = sTrim.match(/Flat\s*[:#-]?\s*(\d{3})/i);
+                    const nm = sTrim.replace(/\(Flat.*?\)/i, '').trim();
+                    return { name: nm || sTrim, flat: fm ? fm[1] : '' };
+                  }) : []
+                };
+
+                if (res.subEventId && targetEvt.subEvents) {
+                  const sub = targetEvt.subEvents.find(s => s.id === res.subEventId);
+                  if (sub) {
+                    sub.status = 'COMPLETED';
+                    sub.winner = parsedWinner;
+                    sub.runnerUp = parsedRunnerUp;
+                    sub.completedAt = res.declaredAt;
+                  }
+                  if (targetEvt.subEvents.every(s => s.status === 'COMPLETED')) {
+                    targetEvt.status = 'COMPLETED';
+                  }
+                } else {
+                  targetEvt.status = 'COMPLETED';
+                  targetEvt.winner = parsedWinner;
+                  targetEvt.runnerUp = parsedRunnerUp;
+                  targetEvt.completedAt = res.declaredAt;
+                }
+              });
+            }
+
+            // Preserve any recently declared results in local state to prevent sync lag flicker
+            prev.events.forEach(pe => {
+              const liveEvt = sheetEventsMap[pe.id];
+              if (liveEvt) {
+                if (pe.status === 'COMPLETED' && pe.winner && (!liveEvt.winner || liveEvt.status !== 'COMPLETED')) {
+                  liveEvt.status = 'COMPLETED';
+                  liveEvt.winner = pe.winner;
+                  liveEvt.runnerUp = pe.runnerUp;
+                  liveEvt.completedAt = pe.completedAt;
+                }
+                if (pe.subEvents && liveEvt.subEvents) {
+                  pe.subEvents.forEach(pSub => {
+                    if (pSub.status === 'COMPLETED' && pSub.winner) {
+                      const liveSub = liveEvt.subEvents.find(s => s.id === pSub.id);
+                      if (liveSub && (!liveSub.winner || liveSub.status !== 'COMPLETED')) {
+                        liveSub.status = 'COMPLETED';
+                        liveSub.winner = pSub.winner;
+                        liveSub.runnerUp = pSub.runnerUp;
+                        liveSub.completedAt = pSub.completedAt;
+                      }
+                    }
+                  });
+                }
+              }
+            });
+
             // Start with all sheet events as the base (authoritative)
             const mergedEventsList = Object.values(sheetEventsMap);
             const sheetIds = new Set(Object.keys(sheetEventsMap));
@@ -1169,72 +1248,113 @@ export const StoreProvider = ({ children }) => {
   };
 
   // Direct Event Results Declaration (Winner & Runner-up)
-  const recordEventResult = (eventId, subEventId, winnerData, runnerUpData, clearResult = false) => {
-    // Compute the updated event BEFORE setStoreState to avoid race condition
-    // (setStoreState callback is async, so updatedEvent would be null if set inside it)
+  const recordEventResult = async (eventId, subEventId, winnerData, runnerUpData, clearResult = false) => {
+    // 1. Find source event synchronously from current state
+    const sourceEvent = (state.events || []).find(evt => evt.id === eventId);
+    if (!sourceEvent) {
+      console.warn("Event not found for recording result:", eventId);
+      return { success: false, error: "Event not found" };
+    }
+
     let updatedEvent = null;
+    let targetSubName = null;
+    const { winnerPoints: winPts, runnerUpPoints: runPts } = getEventPoints(sourceEvent, subEventId);
 
-    setStoreState(prev => {
-      const sourceEvent = prev.events.find(evt => evt.id === eventId);
-      if (!sourceEvent) return prev;
+    if (subEventId && sourceEvent.subEvents && sourceEvent.subEvents.length > 0) {
+      const targetSub = sourceEvent.subEvents.find(s => s.id === subEventId);
+      targetSubName = targetSub ? targetSub.name : sourceEvent.name;
 
-      if (subEventId && sourceEvent.subEvents && sourceEvent.subEvents.length > 0) {
-        const nextSubs = sourceEvent.subEvents.map(sub => {
-          if (sub.id !== subEventId) return sub;
-          if (clearResult) {
-            const { winner, runnerUp, completedAt, ...rest } = sub;
-            return { ...rest, status: 'OPEN' };
-          }
-          return {
-            ...sub,
-            status: 'COMPLETED',
-            winner: winnerData,
-            runnerUp: runnerUpData,
-            completedAt: new Date().toISOString()
-          };
-        });
-        const allSubsCompleted = nextSubs.every(s => s.status === 'COMPLETED');
+      const nextSubs = sourceEvent.subEvents.map(sub => {
+        if (sub.id !== subEventId) return sub;
+        if (clearResult) {
+          const { winner, runnerUp, completedAt, ...rest } = sub;
+          return { ...rest, status: 'OPEN' };
+        }
+        return {
+          ...sub,
+          status: 'COMPLETED',
+          winner: winnerData,
+          runnerUp: runnerUpData,
+          completedAt: new Date().toISOString()
+        };
+      });
+      const allSubsCompleted = nextSubs.every(s => s.status === 'COMPLETED');
+      updatedEvent = {
+        ...sourceEvent,
+        subEvents: nextSubs,
+        status: allSubsCompleted ? 'COMPLETED' : sourceEvent.status
+      };
+    } else {
+      targetSubName = sourceEvent.name;
+      if (clearResult) {
+        const { winner, runnerUp, completedAt, ...rest } = sourceEvent;
+        updatedEvent = { ...rest, status: 'OPEN' };
+      } else {
         updatedEvent = {
           ...sourceEvent,
-          subEvents: nextSubs,
-          status: allSubsCompleted ? 'COMPLETED' : sourceEvent.status
+          status: 'COMPLETED',
+          winner: winnerData,
+          runnerUp: runnerUpData,
+          completedAt: new Date().toISOString()
         };
-      } else {
-        if (clearResult) {
-          const { winner, runnerUp, completedAt, ...rest } = sourceEvent;
-          updatedEvent = { ...rest, status: 'OPEN' };
-        } else {
-          updatedEvent = {
-            ...sourceEvent,
-            status: 'COMPLETED',
-            winner: winnerData,
-            runnerUp: runnerUpData,
-            completedAt: new Date().toISOString()
-          };
-        }
       }
+    }
 
-      const nextEvents = prev.events.map(evt => evt.id === eventId ? updatedEvent : evt);
-      const nextLeaderboard = computeLeaderboardFromEvents(nextEvents, prev.leaderboard);
+    // 2. Synchronous state update and local caching
+    const nextEvents = (state.events || []).map(evt => evt.id === eventId ? updatedEvent : evt);
+    const nextLeaderboard = computeLeaderboardFromEvents(nextEvents, state.leaderboard);
 
-      try {
-        localStorage.setItem('scot_events_cache', JSON.stringify(nextEvents));
-        localStorage.setItem('scot_leaderboard_cache', JSON.stringify(nextLeaderboard));
-      } catch (e) {
-        console.warn("Failed caching event results and leaderboard:", e);
-      }
+    try {
+      localStorage.setItem('scot_events_cache', JSON.stringify(nextEvents));
+      localStorage.setItem('scot_leaderboard_cache', JSON.stringify(nextLeaderboard));
+    } catch (e) {
+      console.warn("Failed caching event results and leaderboard:", e);
+    }
 
-      return {
-        ...prev,
-        events: nextEvents,
-        leaderboard: nextLeaderboard
-      };
-    });
+    setStoreState(prev => ({
+      ...prev,
+      events: nextEvents,
+      leaderboard: nextLeaderboard
+    }));
 
-    // updatedEvent is now guaranteed to be set synchronously before setStoreState callback runs
-    // Use setTimeout to ensure saveEvent runs after the state update is enqueued
-    if (updatedEvent) {
-      setTimeout(() => saveEvent(updatedEvent), 0);
+    // 3. Save to Google Sheets Events sheet (updates subEvents JSON & status)
+    saveEvent(updatedEvent);
+
+    // 4. Save to Google Sheets dedicated human-readable 'Results' sheet
+    const resultKey = `res_${eventId}_${subEventId || 'main'}`;
+    if (clearResult) {
+      await postToSheet('deleteRow', 'Results', null, 0, resultKey);
+    } else {
+      const victoryType = winnerData?.victoryType || (winnerData?.members && winnerData.members.length > 0 ? 'Team' : 'Individual');
+      const winnerMembersStr = Array.isArray(winnerData?.members) && winnerData.members.length > 0
+        ? winnerData.members.map(m => `${m.name}${m.flat ? ` (Flat ${m.flat})` : ''}`).join(', ')
+        : (winnerData?.flat ? `Flat ${winnerData.flat}` : '');
+      const runnerUpMembersStr = Array.isArray(runnerUpData?.members) && runnerUpData.members.length > 0
+        ? runnerUpData.members.map(m => `${m.name}${m.flat ? ` (Flat ${m.flat})` : ''}`).join(', ')
+        : (runnerUpData?.flat ? `Flat ${runnerUpData.flat}` : '');
+
+      const resultRowData = [
+        resultKey,                                                    // 0: Result Key
+        eventId,                                                      // 1: Event ID
+        sourceEvent.name,                                             // 2: Event Name
+        subEventId || '',                                             // 3: Sub-Event ID
+        targetSubName || sourceEvent.name,                            // 4: Category / Sub-Event Name
+        victoryType,                                                  // 5: Victory Type (Individual / Team)
+        winnerData?.wing || '',                                       // 6: Winner Wing
+        winnerData?.name || '',                                       // 7: Winner Name / Team Name
+        winnerData?.flat || '',                                       // 8: Winner Flat
+        winnerMembersStr,                                             // 9: Winner Members (for Team Victory)
+        winPts,                                                       // 10: Winner Points Awarded (Overall)
+        runnerUpData?.wing || '',                                     // 11: Runner-Up Wing
+        runnerUpData?.name || '',                                     // 12: Runner-Up Name / Team Name
+        runnerUpData?.flat || '',                                     // 13: Runner-Up Flat
+        runnerUpMembersStr,                                           // 14: Runner-Up Members (for Team Victory)
+        runPts,                                                       // 15: Runner-Up Points Awarded (Overall)
+        state.currentUser?.name || 'SCOT Admin',                      // 16: Declared By
+        new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) // 17: Declared At
+      ];
+
+      await postToSheet('upsertRow', 'Results', resultRowData, 0, resultKey);
     }
 
     return { success: true };

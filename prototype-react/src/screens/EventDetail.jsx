@@ -21,17 +21,57 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
 
   // Direct Results Declaration Modal states
   const [resultModalData, setResultModalData] = useState(null); // { subId, subName, winnerPoints, runnerUpPoints, isCompleted }
+  const [isSavingResult, setIsSavingResult] = useState(false);
+  
   const [winnerType, setWinnerType] = useState('registered'); // 'registered' | 'custom'
   const [winnerRegId, setWinnerRegId] = useState('');
   const [winnerName, setWinnerName] = useState('');
   const [winnerWing, setWinnerWing] = useState('Wing N');
   const [winnerFlat, setWinnerFlat] = useState('');
+  const [winnerVictoryType, setWinnerVictoryType] = useState('individual'); // 'individual' | 'team'
+  const [winnerTeamMembers, setWinnerTeamMembers] = useState([{ name: '', flat: '' }]);
   
   const [runnerUpType, setRunnerUpType] = useState('registered'); // 'registered' | 'custom'
   const [runnerUpRegId, setRunnerUpRegId] = useState('');
   const [runnerUpName, setRunnerUpName] = useState('');
   const [runnerUpWing, setRunnerUpWing] = useState('Wing N');
   const [runnerUpFlat, setRunnerUpFlat] = useState('');
+  const [runnerUpVictoryType, setRunnerUpVictoryType] = useState('individual'); // 'individual' | 'team'
+  const [runnerUpTeamMembers, setRunnerUpTeamMembers] = useState([{ name: '', flat: '' }]);
+
+  const handleAddWinnerMember = () => {
+    if (winnerTeamMembers.length >= 12) {
+      onShowToast('Maximum 12 members per team.', 'warning');
+      return;
+    }
+    setWinnerTeamMembers(prev => [...prev, { name: '', flat: '' }]);
+  };
+
+  const handleRemoveWinnerMember = (index) => {
+    if (winnerTeamMembers.length <= 1) return;
+    setWinnerTeamMembers(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleUpdateWinnerMember = (index, field, value) => {
+    setWinnerTeamMembers(prev => prev.map((m, idx) => idx === index ? { ...m, [field]: value } : m));
+  };
+
+  const handleAddRunnerUpMember = () => {
+    if (runnerUpTeamMembers.length >= 12) {
+      onShowToast('Maximum 12 members per team.', 'warning');
+      return;
+    }
+    setRunnerUpTeamMembers(prev => [...prev, { name: '', flat: '' }]);
+  };
+
+  const handleRemoveRunnerUpMember = (index) => {
+    if (runnerUpTeamMembers.length <= 1) return;
+    setRunnerUpTeamMembers(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleUpdateRunnerUpMember = (index, field, value) => {
+    setRunnerUpTeamMembers(prev => prev.map((m, idx) => idx === index ? { ...m, [field]: value } : m));
+  };
 
   if (!event) {
     return (
@@ -119,6 +159,11 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
     const existingWinner = target.winner || null;
     const existingRunnerUp = target.runnerUp || null;
 
+    // Detect if this category is naturally a team/group event
+    const isGroupByDefault = target.regType === 'GROUP_REQUIRED' || target.regType === 'GROUP_OPTIONAL' ||
+      String(displayName).toLowerCase().includes('group') || String(displayName).toLowerCase().includes('team') ||
+      String(displayName).toLowerCase().includes('pair') || String(displayName).toLowerCase().includes('double');
+
     setResultModalData({
       subId,
       subName: displayName,
@@ -128,37 +173,51 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
     });
 
     if (existingWinner) {
-      setWinnerType('custom');
+      setWinnerType(existingWinner.registrationId ? 'registered' : 'custom');
+      setWinnerRegId(existingWinner.registrationId || '');
       setWinnerName(existingWinner.name || '');
       setWinnerWing(existingWinner.wing || 'Wing N');
       setWinnerFlat(existingWinner.flat || '');
-      setWinnerRegId('');
+      const isTeam = existingWinner.victoryType === 'team' || (existingWinner.members && existingWinner.members.length > 0);
+      setWinnerVictoryType(isTeam ? 'team' : 'individual');
+      setWinnerTeamMembers(existingWinner.members && existingWinner.members.length > 0 
+        ? existingWinner.members 
+        : [{ name: '', flat: '' }]);
     } else {
       setWinnerType('registered');
       setWinnerName('');
       setWinnerWing('Wing N');
       setWinnerFlat('');
       setWinnerRegId('');
+      setWinnerVictoryType(isGroupByDefault ? 'team' : 'individual');
+      setWinnerTeamMembers([{ name: '', flat: '' }, { name: '', flat: '' }]);
     }
 
     if (existingRunnerUp) {
-      setRunnerUpType('custom');
+      setRunnerUpType(existingRunnerUp.registrationId ? 'registered' : 'custom');
+      setRunnerUpRegId(existingRunnerUp.registrationId || '');
       setRunnerUpName(existingRunnerUp.name || '');
       setRunnerUpWing(existingRunnerUp.wing || 'Wing N');
       setRunnerUpFlat(existingRunnerUp.flat || '');
-      setRunnerUpRegId('');
+      const isTeam = existingRunnerUp.victoryType === 'team' || (existingRunnerUp.members && existingRunnerUp.members.length > 0);
+      setRunnerUpVictoryType(isTeam ? 'team' : 'individual');
+      setRunnerUpTeamMembers(existingRunnerUp.members && existingRunnerUp.members.length > 0 
+        ? existingRunnerUp.members 
+        : [{ name: '', flat: '' }]);
     } else {
       setRunnerUpType('registered');
       setRunnerUpName('');
       setRunnerUpWing('Wing N');
       setRunnerUpFlat('');
       setRunnerUpRegId('');
+      setRunnerUpVictoryType(isGroupByDefault ? 'team' : 'individual');
+      setRunnerUpTeamMembers([{ name: '', flat: '' }, { name: '', flat: '' }]);
     }
   };
 
-  const handleSaveResult = (e) => {
+  const handleSaveResult = async (e) => {
     e.preventDefault();
-    if (!resultModalData) return;
+    if (!resultModalData || isSavingResult) return;
 
     // Resolve winner data
     let finalWinner = null;
@@ -172,21 +231,47 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
       const flatMatch = reg.name.match(/Flat\s*[:#-]?\s*(\d{3})/i);
       const wWing = wingMatch ? `Wing ${wingMatch[1].toUpperCase()}` : (reg.wing || user.wing || 'Wing N');
       const wFlat = flatMatch ? flatMatch[1] : '';
+      const isTeam = reg.gender === 'Group' || reg.gender === 'Doubles' || (reg.groupMembers && reg.groupMembers.length > 0);
+
+      let parsedMembers = [];
+      if (reg.groupMembers && Array.isArray(reg.groupMembers)) {
+        parsedMembers = reg.groupMembers.map(mStr => {
+          const fm = String(mStr).match(/Flat\s*[:#-]?\s*(\d{3})/i);
+          const nm = String(mStr).replace(/\(Flat.*?\)/i, '').replace(/Ph:.*$/i, '').trim();
+          return { name: nm || mStr, flat: fm ? fm[1] : '' };
+        });
+      }
+
       finalWinner = {
+        victoryType: isTeam ? 'team' : 'individual',
         name: reg.name,
         wing: wWing,
         flat: wFlat,
+        members: parsedMembers,
         registrationId: reg.id
       };
     } else {
+      // Manual Entry
       if (!winnerName.trim()) {
-        onShowToast('Winner name is required!', 'error');
+        onShowToast(winnerVictoryType === 'team' ? 'Winner Team Name is required!' : 'Winner Name is required!', 'error');
         return;
       }
+
+      let validMembers = [];
+      if (winnerVictoryType === 'team') {
+        validMembers = winnerTeamMembers.filter(m => m.name && m.name.trim().length > 0);
+        if (validMembers.length === 0) {
+          onShowToast('Please add at least 1 member name for the winning team!', 'error');
+          return;
+        }
+      }
+
       finalWinner = {
+        victoryType: winnerVictoryType,
         name: winnerName.trim(),
         wing: winnerWing,
-        flat: winnerFlat
+        flat: winnerVictoryType === 'individual' ? winnerFlat : (validMembers[0]?.flat || winnerFlat),
+        members: validMembers
       };
     }
 
@@ -202,37 +287,81 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
       const flatMatch = reg.name.match(/Flat\s*[:#-]?\s*(\d{3})/i);
       const rWing = wingMatch ? `Wing ${wingMatch[1].toUpperCase()}` : (reg.wing || user.wing || 'Wing N');
       const rFlat = flatMatch ? flatMatch[1] : '';
+      const isTeam = reg.gender === 'Group' || reg.gender === 'Doubles' || (reg.groupMembers && reg.groupMembers.length > 0);
+
+      let parsedMembers = [];
+      if (reg.groupMembers && Array.isArray(reg.groupMembers)) {
+        parsedMembers = reg.groupMembers.map(mStr => {
+          const fm = String(mStr).match(/Flat\s*[:#-]?\s*(\d{3})/i);
+          const nm = String(mStr).replace(/\(Flat.*?\)/i, '').replace(/Ph:.*$/i, '').trim();
+          return { name: nm || mStr, flat: fm ? fm[1] : '' };
+        });
+      }
+
       finalRunnerUp = {
+        victoryType: isTeam ? 'team' : 'individual',
         name: reg.name,
         wing: rWing,
         flat: rFlat,
+        members: parsedMembers,
         registrationId: reg.id
       };
     } else {
+      // Manual Entry
       if (!runnerUpName.trim()) {
-        onShowToast('Runner-Up name is required!', 'error');
+        onShowToast(runnerUpVictoryType === 'team' ? 'Runner-Up Team Name is required!' : 'Runner-Up Name is required!', 'error');
         return;
       }
+
+      let validMembers = [];
+      if (runnerUpVictoryType === 'team') {
+        validMembers = runnerUpTeamMembers.filter(m => m.name && m.name.trim().length > 0);
+        if (validMembers.length === 0) {
+          onShowToast('Please add at least 1 member name for the runner-up team!', 'error');
+          return;
+        }
+      }
+
       finalRunnerUp = {
+        victoryType: runnerUpVictoryType,
         name: runnerUpName.trim(),
         wing: runnerUpWing,
-        flat: runnerUpFlat
+        flat: runnerUpVictoryType === 'individual' ? runnerUpFlat : (validMembers[0]?.flat || runnerUpFlat),
+        members: validMembers
       };
     }
 
-    const res = recordEventResult(event.id, resultModalData.subId, finalWinner, finalRunnerUp);
-    if (res.success) {
-      onShowToast(`🏆 Results declared for ${resultModalData.subName}! Leaderboard updated.`, 'success');
-      setResultModalData(null);
+    try {
+      setIsSavingResult(true);
+      const res = await recordEventResult(event.id, resultModalData.subId, finalWinner, finalRunnerUp);
+      if (res.success) {
+        onShowToast(`🏆 Results saved & published for ${resultModalData.subName}! Synced live to Google Sheets.`, 'success');
+        setResultModalData(null);
+      } else {
+        onShowToast(res.error || 'Failed to save results.', 'error');
+      }
+    } catch (err) {
+      console.error("Save result failed:", err);
+      onShowToast('Failed to save results. Please try again.', 'error');
+    } finally {
+      setIsSavingResult(false);
     }
   };
 
-  const handleClearResult = () => {
-    if (!resultModalData) return;
+  const handleClearResult = async () => {
+    if (!resultModalData || isSavingResult) return;
     if (window.confirm(`Are you sure you want to clear results for ${resultModalData.subName}? This will revoke awarded championship points.`)) {
-      recordEventResult(event.id, resultModalData.subId, null, null, true);
-      onShowToast(`Results cleared for ${resultModalData.subName}.`, 'info');
-      setResultModalData(null);
+      try {
+        setIsSavingResult(true);
+        await recordEventResult(event.id, resultModalData.subId, null, null, true);
+        onShowToast(`Results cleared for ${resultModalData.subName}. Google Sheets updated.`, 'info');
+        setResultModalData(null);
+      } catch (err) {
+        console.error("Clear result failed:", err);
+        onShowToast('Failed to clear result.', 'error');
+      } finally {
+        setIsSavingResult(false);
+      }
     }
   };
 
@@ -669,6 +798,11 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                 <div style={{ fontSize: '0.82rem', color: '#92400E', fontWeight: 600, marginTop: '2px' }}>
                   {event.winner.wing} {event.winner.flat ? `• Flat ${event.winner.flat}` : ''} • <strong style={{ color: '#B45309' }}>+{getEventPoints(event, null).winnerPoints} pts</strong>
                 </div>
+                {event.winner.members && event.winner.members.length > 0 && (
+                  <div style={{ fontSize: '0.74rem', color: '#92400E', marginTop: '6px', background: '#FEF9C3', padding: '4px 8px', borderRadius: '6px', border: '1px solid #FEF08A' }}>
+                    👥 <strong>Team Members:</strong> {event.winner.members.map(m => `${m.name}${m.flat ? ` (${m.flat})` : ''}`).join(', ')}
+                  </div>
+                )}
               </div>
               {event.runnerUp && (
                 <div style={{ background: '#FFFFFF', padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #CBD5E1', boxShadow: '0 2px 6px rgba(100, 116, 139, 0.12)' }}>
@@ -679,6 +813,11 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                   <div style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 600, marginTop: '2px' }}>
                     {event.runnerUp.wing} {event.runnerUp.flat ? `• Flat ${event.runnerUp.flat}` : ''} • <strong style={{ color: '#475569' }}>+{getEventPoints(event, null).runnerUpPoints} pts</strong>
                   </div>
+                  {event.runnerUp.members && event.runnerUp.members.length > 0 && (
+                    <div style={{ fontSize: '0.74rem', color: '#475569', marginTop: '6px', background: '#F1F5F9', padding: '4px 8px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
+                      👥 <strong>Team Members:</strong> {event.runnerUp.members.map(m => `${m.name}${m.flat ? ` (${m.flat})` : ''}`).join(', ')}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -789,6 +928,11 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                           <div style={{ fontSize: '0.8rem', color: '#92400E', fontWeight: 600, marginTop: '2px' }}>
                             {sub.winner.wing} {sub.winner.flat ? `• Flat ${sub.winner.flat}` : ''} • <strong style={{ color: '#B45309' }}>+{subWinPts} pts</strong>
                           </div>
+                          {sub.winner.members && sub.winner.members.length > 0 && (
+                            <div style={{ fontSize: '0.72rem', color: '#92400E', marginTop: '6px', background: '#FEF9C3', padding: '3px 6px', borderRadius: '4px', border: '1px solid #FEF08A' }}>
+                              👥 <strong>Team:</strong> {sub.winner.members.map(m => `${m.name}${m.flat ? ` (${m.flat})` : ''}`).join(', ')}
+                            </div>
+                          )}
                         </div>
                         {sub.runnerUp && (
                           <div style={{ background: '#FFFFFF', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', boxShadow: '0 2px 4px rgba(100, 116, 139, 0.1)' }}>
@@ -797,6 +941,11 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                             <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600, marginTop: '2px' }}>
                               {sub.runnerUp.wing} {sub.runnerUp.flat ? `• Flat ${sub.runnerUp.flat}` : ''} • <strong style={{ color: '#475569' }}>+{subRunPts} pts</strong>
                             </div>
+                            {sub.runnerUp.members && sub.runnerUp.members.length > 0 && (
+                              <div style={{ fontSize: '0.72rem', color: '#475569', marginTop: '6px', background: '#F1F5F9', padding: '3px 6px', borderRadius: '4px', border: '1px solid #E2E8F0' }}>
+                                👥 <strong>Team:</strong> {sub.runnerUp.members.map(m => `${m.name}${m.flat ? ` (${m.flat})` : ''}`).join(', ')}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1340,40 +1489,139 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                       </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {/* Victory Type Selector for Winner */}
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#92400E' }}>Format:</span>
+                          <button
+                            type="button"
+                            className={`btn btn-xs ${winnerVictoryType === 'individual' ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setWinnerVictoryType('individual')}
+                            style={{ fontSize: '0.72rem', padding: '2px 8px' }}
+                          >
+                            👤 Individual
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn btn-xs ${winnerVictoryType === 'team' ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setWinnerVictoryType('team')}
+                            style={{ fontSize: '0.72rem', padding: '2px 8px' }}
+                          >
+                            👥 Team
+                          </button>
+                        </div>
+
                         <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>
+                            {winnerVictoryType === 'team' ? '🏆 Winner Team Name' : '👤 Winner Participant Name'}
+                          </label>
                           <input
                             type="text"
                             className="input"
-                            placeholder="Winner Name / Team Name"
+                            placeholder={winnerVictoryType === 'team' ? "e.g. MasterChef Queens / Wing N Culinary Crew" : "e.g. Pooja Sharma"}
                             value={winnerName}
                             onChange={(e) => setWinnerName(e.target.value)}
                             required
                             style={{ backgroundColor: '#FFFFFF' }}
                           />
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px' }}>
-                          <select
-                            className="select"
-                            value={winnerWing}
-                            onChange={(e) => setWinnerWing(e.target.value)}
-                            style={{ backgroundColor: '#FFFFFF', fontSize: '0.85rem' }}
-                          >
-                            {['Wing N','Wing O','Wing P','Wing Q','Wing R','Wing S','Wing T','Wing U','Wing V','Wing W'].map(w => (
-                              <option key={w} value={w}>{w}</option>
-                            ))}
-                          </select>
-                          <select
-                            className="select"
-                            value={winnerFlat}
-                            onChange={(e) => setWinnerFlat(e.target.value)}
-                            style={{ backgroundColor: '#FFFFFF', fontSize: '0.85rem' }}
-                          >
-                            <option value="">Flat (Opt)</option>
-                            {[101,102,103,104,201,202,203,204,301,302,303,304,401,402,403,404,501,502,503,504,601,602,603,604,701,702,703,704].map(f => (
-                              <option key={f} value={String(f)}>{f}</option>
-                            ))}
-                          </select>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: winnerVictoryType === 'team' ? '1fr' : '1.2fr 1fr', gap: '8px' }}>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>
+                              {winnerVictoryType === 'team' ? 'Winning Wing (Receives overall +' + resultModalData.winnerPoints + ' pts)' : 'Wing'}
+                            </label>
+                            <select
+                              className="select"
+                              value={winnerWing}
+                              onChange={(e) => setWinnerWing(e.target.value)}
+                              style={{ backgroundColor: '#FFFFFF', fontSize: '0.85rem' }}
+                            >
+                              {['Wing N','Wing O','Wing P','Wing Q','Wing R','Wing S','Wing T','Wing U','Wing V','Wing W'].map(w => (
+                                <option key={w} value={w}>{w}</option>
+                              ))}
+                            </select>
+                          </div>
+                          {winnerVictoryType === 'individual' && (
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Flat (Opt)</label>
+                              <select
+                                className="select"
+                                value={winnerFlat}
+                                onChange={(e) => setWinnerFlat(e.target.value)}
+                                style={{ backgroundColor: '#FFFFFF', fontSize: '0.85rem' }}
+                              >
+                                <option value="">Select Flat</option>
+                                {[101,102,103,104,201,202,203,204,301,302,303,304,401,402,403,404,501,502,503,504,601,602,603,604,701,702,703,704].map(f => (
+                                  <option key={f} value={String(f)}>{f}</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
                         </div>
+
+                        {/* Team Members List (Only for Team Victory) */}
+                        {winnerVictoryType === 'team' && (
+                          <div style={{ background: '#FFF9E6', padding: '10px', borderRadius: '8px', border: '1px dashed #FCD34D', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                            <div className="flex-between">
+                              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#92400E' }}>
+                                👥 Winning Team Members ({winnerTeamMembers.length})
+                              </span>
+                              <span style={{ fontSize: '0.68rem', color: '#B45309', fontWeight: 600 }}>
+                                *Overall points only
+                              </span>
+                            </div>
+
+                            {winnerTeamMembers.map((m, idx) => (
+                              <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr auto', gap: '6px', alignItems: 'center' }}>
+                                <input
+                                  type="text"
+                                  className="input input-sm"
+                                  placeholder={`Member #${idx + 1} Name`}
+                                  value={m.name}
+                                  onChange={(e) => handleUpdateWinnerMember(idx, 'name', e.target.value)}
+                                  required
+                                  style={{ backgroundColor: '#FFFFFF', fontSize: '0.8rem' }}
+                                />
+                                <select
+                                  className="select select-sm"
+                                  value={m.flat}
+                                  onChange={(e) => handleUpdateWinnerMember(idx, 'flat', e.target.value)}
+                                  style={{ backgroundColor: '#FFFFFF', fontSize: '0.8rem' }}
+                                >
+                                  <option value="">Flat</option>
+                                  {[101,102,103,104,201,202,203,204,301,302,303,304,401,402,403,404,501,502,503,504,601,602,603,604,701,702,703,704].map(f => (
+                                    <option key={f} value={String(f)}>{f}</option>
+                                  ))}
+                                </select>
+                                {winnerTeamMembers.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveWinnerMember(idx)}
+                                    className="logout-btn"
+                                    style={{ padding: '3px', color: 'var(--color-danger)' }}
+                                    title="Remove member"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+
+                            <div className="flex-between" style={{ marginTop: '2px' }}>
+                              <button
+                                type="button"
+                                onClick={handleAddWinnerMember}
+                                className="btn btn-secondary btn-xs"
+                                style={{ fontSize: '0.72rem', borderColor: '#FCD34D', color: '#92400E', fontWeight: 700 }}
+                              >
+                                ➕ Add Member
+                              </button>
+                              <span style={{ fontSize: '0.68rem', color: '#92400E', fontStyle: 'italic' }}>
+                                ℹ️ +{resultModalData.winnerPoints} pts assigned to Wing in total
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1428,40 +1676,139 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                       </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {/* Victory Type Selector for Runner-Up */}
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Format:</span>
+                          <button
+                            type="button"
+                            className={`btn btn-xs ${runnerUpVictoryType === 'individual' ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setRunnerUpVictoryType('individual')}
+                            style={{ fontSize: '0.72rem', padding: '2px 8px' }}
+                          >
+                            👤 Individual
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn btn-xs ${runnerUpVictoryType === 'team' ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setRunnerUpVictoryType('team')}
+                            style={{ fontSize: '0.72rem', padding: '2px 8px' }}
+                          >
+                            👥 Team
+                          </button>
+                        </div>
+
                         <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>
+                            {runnerUpVictoryType === 'team' ? '🥈 Runner-Up Team Name' : '👤 Runner-Up Participant Name'}
+                          </label>
                           <input
                             type="text"
                             className="input"
-                            placeholder="Runner-Up Name / Team Name"
+                            placeholder={runnerUpVictoryType === 'team' ? "e.g. Culinary Queens / Wing R MasterChef Team" : "e.g. Sunita Patil"}
                             value={runnerUpName}
                             onChange={(e) => setRunnerUpName(e.target.value)}
                             required
                             style={{ backgroundColor: '#FFFFFF' }}
                           />
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px' }}>
-                          <select
-                            className="select"
-                            value={runnerUpWing}
-                            onChange={(e) => setRunnerUpWing(e.target.value)}
-                            style={{ backgroundColor: '#FFFFFF', fontSize: '0.85rem' }}
-                          >
-                            {['Wing N','Wing O','Wing P','Wing Q','Wing R','Wing S','Wing T','Wing U','Wing V','Wing W'].map(w => (
-                              <option key={w} value={w}>{w}</option>
-                            ))}
-                          </select>
-                          <select
-                            className="select"
-                            value={runnerUpFlat}
-                            onChange={(e) => setRunnerUpFlat(e.target.value)}
-                            style={{ backgroundColor: '#FFFFFF', fontSize: '0.85rem' }}
-                          >
-                            <option value="">Flat (Opt)</option>
-                            {[101,102,103,104,201,202,203,204,301,302,303,304,401,402,403,404,501,502,503,504,601,602,603,604,701,702,703,704].map(f => (
-                              <option key={f} value={String(f)}>{f}</option>
-                            ))}
-                          </select>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: runnerUpVictoryType === 'team' ? '1fr' : '1.2fr 1fr', gap: '8px' }}>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>
+                              {runnerUpVictoryType === 'team' ? 'Runner-Up Wing (Receives overall +' + resultModalData.runnerUpPoints + ' pts)' : 'Wing'}
+                            </label>
+                            <select
+                              className="select"
+                              value={runnerUpWing}
+                              onChange={(e) => setRunnerUpWing(e.target.value)}
+                              style={{ backgroundColor: '#FFFFFF', fontSize: '0.85rem' }}
+                            >
+                              {['Wing N','Wing O','Wing P','Wing Q','Wing R','Wing S','Wing T','Wing U','Wing V','Wing W'].map(w => (
+                                <option key={w} value={w}>{w}</option>
+                              ))}
+                            </select>
+                          </div>
+                          {runnerUpVictoryType === 'individual' && (
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Flat (Opt)</label>
+                              <select
+                                className="select"
+                                value={runnerUpFlat}
+                                onChange={(e) => setRunnerUpFlat(e.target.value)}
+                                style={{ backgroundColor: '#FFFFFF', fontSize: '0.85rem' }}
+                              >
+                                <option value="">Select Flat</option>
+                                {[101,102,103,104,201,202,203,204,301,302,303,304,401,402,403,404,501,502,503,504,601,602,603,604,701,702,703,704].map(f => (
+                                  <option key={f} value={String(f)}>{f}</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
                         </div>
+
+                        {/* Team Members List (Only for Team Victory) */}
+                        {runnerUpVictoryType === 'team' && (
+                          <div style={{ background: '#F1F5F9', padding: '10px', borderRadius: '8px', border: '1px dashed #CBD5E1', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                            <div className="flex-between">
+                              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#334155' }}>
+                                👥 Runner-Up Team Members ({runnerUpTeamMembers.length})
+                              </span>
+                              <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 600 }}>
+                                *Overall points only
+                              </span>
+                            </div>
+
+                            {runnerUpTeamMembers.map((m, idx) => (
+                              <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr auto', gap: '6px', alignItems: 'center' }}>
+                                <input
+                                  type="text"
+                                  className="input input-sm"
+                                  placeholder={`Member #${idx + 1} Name`}
+                                  value={m.name}
+                                  onChange={(e) => handleUpdateRunnerUpMember(idx, 'name', e.target.value)}
+                                  required
+                                  style={{ backgroundColor: '#FFFFFF', fontSize: '0.8rem' }}
+                                />
+                                <select
+                                  className="select select-sm"
+                                  value={m.flat}
+                                  onChange={(e) => handleUpdateRunnerUpMember(idx, 'flat', e.target.value)}
+                                  style={{ backgroundColor: '#FFFFFF', fontSize: '0.8rem' }}
+                                >
+                                  <option value="">Flat</option>
+                                  {[101,102,103,104,201,202,203,204,301,302,303,304,401,402,403,404,501,502,503,504,601,602,603,604,701,702,703,704].map(f => (
+                                    <option key={f} value={String(f)}>{f}</option>
+                                  ))}
+                                </select>
+                                {runnerUpTeamMembers.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveRunnerUpMember(idx)}
+                                    className="logout-btn"
+                                    style={{ padding: '3px', color: 'var(--color-danger)' }}
+                                    title="Remove member"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+
+                            <div className="flex-between" style={{ marginTop: '2px' }}>
+                              <button
+                                type="button"
+                                onClick={handleAddRunnerUpMember}
+                                className="btn btn-secondary btn-xs"
+                                style={{ fontSize: '0.72rem', borderColor: '#CBD5E1', color: '#475569', fontWeight: 700 }}
+                              >
+                                ➕ Add Member
+                              </button>
+                              <span style={{ fontSize: '0.68rem', color: '#64748B', fontStyle: 'italic' }}>
+                                ℹ️ +{resultModalData.runnerUpPoints} pts assigned to Wing in total
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1469,8 +1816,8 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                   {/* Impact Preview */}
                   <div style={{ background: '#F1F5F9', borderRadius: '8px', padding: '10px 12px', fontSize: '0.78rem', color: '#475569' }}>
                     <div style={{ fontWeight: 700, marginBottom: '4px', color: '#1E293B' }}>📊 Standings Impact:</div>
-                    <div>🥇 Gold Winner: +{resultModalData.winnerPoints} pts awarded to <strong>{winnerWingPreview}</strong></div>
-                    <div>🥈 Silver Runner-Up: +{resultModalData.runnerUpPoints} pts awarded to <strong>{runnerUpWingPreview}</strong></div>
+                    <div>🥇 Gold Winner: +{resultModalData.winnerPoints} pts awarded to <strong>{winnerWingPreview}</strong> {winnerVictoryType === 'team' ? '(Overall Team Victory)' : ''}</div>
+                    <div>🥈 Silver Runner-Up: +{resultModalData.runnerUpPoints} pts awarded to <strong>{runnerUpWingPreview}</strong> {runnerUpVictoryType === 'team' ? '(Overall Team Victory)' : ''}</div>
                   </div>
 
                   {/* Modal Action Buttons */}
@@ -1480,6 +1827,7 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                         type="button"
                         className="btn btn-secondary btn-sm"
                         onClick={handleClearResult}
+                        disabled={isSavingResult}
                         style={{ color: 'var(--color-danger)', borderColor: '#FECACA' }}
                       >
                         <RotateCcw size={14} /> Clear Result
@@ -1488,9 +1836,16 @@ export default function EventDetail({ eventId, onViewScreen, onShowToast }) {
                       <div></div>
                     )}
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button type="button" className="btn btn-secondary" onClick={() => setResultModalData(null)}>Cancel</button>
-                      <button type="submit" className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)', border: 'none', fontWeight: 800 }}>
-                        🏆 Publish Results
+                      <button type="button" className="btn btn-secondary" onClick={() => setResultModalData(null)} disabled={isSavingResult}>
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={isSavingResult}
+                        style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)', border: 'none', fontWeight: 800, minWidth: '170px' }}
+                      >
+                        {isSavingResult ? 'Saving to Google Sheet...' : (resultModalData.isCompleted ? '💾 Save & Update Results' : '💾 Save & Publish Results')}
                       </button>
                     </div>
                   </div>

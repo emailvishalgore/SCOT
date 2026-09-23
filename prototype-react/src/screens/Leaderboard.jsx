@@ -848,24 +848,38 @@ export default function Leaderboard({ onShowToast }) {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {res.winner && (
-                      <div style={{ background: '#FFFFFF', padding: '8px 10px', borderRadius: '6px', border: '1px solid #FCD34D', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#D97706', textTransform: 'uppercase' }}>🥇 Winner (Gold)</div>
-                          <strong style={{ fontSize: '0.85rem', color: '#78350F' }}>{res.winner.name}</strong>
-                          <div style={{ fontSize: '0.75rem', color: '#92400E' }}>{res.winner.wing} {res.winner.flat ? `(Flat ${res.winner.flat})` : ''}</div>
+                      <div style={{ background: '#FFFFFF', padding: '10px 12px', borderRadius: '8px', border: '1px solid #FCD34D', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div className="flex-between">
+                          <div>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#D97706', textTransform: 'uppercase' }}>🥇 Winner (Gold)</div>
+                            <strong style={{ fontSize: '0.9rem', color: '#78350F' }}>{res.winner.name}</strong>
+                            <div style={{ fontSize: '0.75rem', color: '#92400E' }}>{res.winner.wing} {res.winner.flat ? `(Flat ${res.winner.flat})` : ''}</div>
+                          </div>
+                          <span style={{ fontWeight: 800, color: '#B45309', fontFamily: 'var(--font-mono)' }}>+{res.winnerPoints} pts</span>
                         </div>
-                        <span style={{ fontWeight: 800, color: '#B45309', fontFamily: 'var(--font-mono)' }}>+{res.winnerPoints} pts</span>
+                        {res.winner.members && res.winner.members.length > 0 && (
+                          <div style={{ fontSize: '0.73rem', color: '#92400E', borderTop: '1px dashed #FDE68A', paddingTop: '4px', marginTop: '2px' }}>
+                            👥 <strong>Team Members:</strong> {res.winner.members.map(m => `${m.name}${m.flat ? ` (${m.flat})` : ''}`).join(', ')}
+                          </div>
+                        )}
                       </div>
                     )}
 
                     {res.runnerUp && (
-                      <div style={{ background: '#FFFFFF', padding: '8px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>🥈 Runner-Up (Silver)</div>
-                          <strong style={{ fontSize: '0.85rem', color: '#1E293B' }}>{res.runnerUp.name}</strong>
-                          <div style={{ fontSize: '0.75rem', color: '#475569' }}>{res.runnerUp.wing} {res.runnerUp.flat ? `(Flat ${res.runnerUp.flat})` : ''}</div>
+                      <div style={{ background: '#FFFFFF', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div className="flex-between">
+                          <div>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>🥈 Runner-Up (Silver)</div>
+                            <strong style={{ fontSize: '0.9rem', color: '#1E293B' }}>{res.runnerUp.name}</strong>
+                            <div style={{ fontSize: '0.75rem', color: '#475569' }}>{res.runnerUp.wing} {res.runnerUp.flat ? `(Flat ${res.runnerUp.flat})` : ''}</div>
+                          </div>
+                          <span style={{ fontWeight: 800, color: '#475569', fontFamily: 'var(--font-mono)' }}>+{res.runnerUpPoints} pts</span>
                         </div>
-                        <span style={{ fontWeight: 800, color: '#475569', fontFamily: 'var(--font-mono)' }}>+{res.runnerUpPoints} pts</span>
+                        {res.runnerUp.members && res.runnerUp.members.length > 0 && (
+                          <div style={{ fontSize: '0.73rem', color: '#475569', borderTop: '1px dashed #CBD5E1', paddingTop: '4px', marginTop: '2px' }}>
+                            👥 <strong>Team Members:</strong> {res.runnerUp.members.map(m => `${m.name}${m.flat ? ` (${m.flat})` : ''}`).join(', ')}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
