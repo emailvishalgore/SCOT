@@ -171,6 +171,17 @@ export default function Leaderboard({ onShowToast }) {
     return a.name.localeCompare(b.name);
   });
 
+  // Compute standard competition rank (1224 ranking) with tie detection
+  let currentRank = 1;
+  for (let i = 0; i < sortedStandings.length; i++) {
+    if (i > 0 && sortedStandings[i].points < sortedStandings[i - 1].points) {
+      currentRank = i + 1;
+    }
+    sortedStandings[i].rank = currentRank;
+    sortedStandings[i].isTied = (i > 0 && sortedStandings[i].points === sortedStandings[i - 1].points) ||
+                                (i < sortedStandings.length - 1 && sortedStandings[i].points === sortedStandings[i + 1].points);
+  }
+
   const totalSeasonPoints = sortedStandings.reduce((sum, item) => sum + (item.points || 0), 0);
   const leaderWing = sortedStandings[0];
   const mostActiveWing = [...computedStandings].sort((a, b) => b.nominations - a.nominations)[0];
@@ -228,61 +239,82 @@ export default function Leaderboard({ onShowToast }) {
     ctx.fill();
     ctx.stroke();
 
-    // 🥇 Rank 1 (Center)
-    const rank1 = sortedStandings[0];
-    if (rank1) {
-      ctx.fillStyle = '#FEF08A';
+    // Helper to draw podium cards on canvas supporting tied ranks
+    const drawPodiumCard = (wing, x, y, w, h, defaultRankNum, isCenter = false) => {
+      if (!wing) return;
+      const rankNum = wing.rank || defaultRankNum;
+      const isGold = rankNum === 1;
+      const isSilver = rankNum === 2;
+      const isBronze = rankNum === 3;
+
+      let cardBg = '#E2E8F0';
+      let titleText = `🥈 2ND PLACE`;
+      let titleColor = '#475569';
+      let wingColor = '#334155';
+      let ptsColor = '#334155';
+      let subColor = '#475569';
+
+      if (isGold) {
+        cardBg = '#FEF08A';
+        titleText = wing.isTied ? '👑 1ST (TIED)' : '👑 1ST PLACE';
+        titleColor = '#854D0E';
+        wingColor = '#854D0E';
+        ptsColor = '#B45309';
+        subColor = '#78350F';
+      } else if (isSilver) {
+        cardBg = '#E2E8F0';
+        titleText = wing.isTied ? '🥈 2ND (TIED)' : '🥈 2ND PLACE';
+        titleColor = '#475569';
+        wingColor = '#334155';
+        ptsColor = '#334155';
+        subColor = '#475569';
+      } else if (isBronze) {
+        cardBg = '#FFEDD5';
+        titleText = wing.isTied ? '🥉 3RD (TIED)' : '🥉 3RD PLACE';
+        titleColor = '#9A3412';
+        wingColor = '#9A3412';
+        ptsColor = '#9A3412';
+        subColor = '#7C2D12';
+      } else {
+        cardBg = '#F1F5F9';
+        titleText = `#${rankNum} PLACE`;
+        titleColor = '#64748B';
+        wingColor = '#1E293B';
+        ptsColor = '#64748B';
+        subColor = '#64748B';
+      }
+
+      ctx.fillStyle = cardBg;
       ctx.beginPath();
-      ctx.roundRect(width / 2 - 130, podiumY + 25, 260, 230, 16);
+      ctx.roundRect(x, y, w, h, 14);
       ctx.fill();
-      ctx.fillStyle = '#854D0E';
-      ctx.font = '900 26px sans-serif';
-      ctx.fillText('👑 1ST PLACE', width / 2, podiumY + 70);
-      ctx.font = '900 48px sans-serif';
-      ctx.fillText(`WING ${rank1.letter}`, width / 2, podiumY + 135);
-      ctx.fillStyle = '#B45309';
-      ctx.font = 'bold 28px sans-serif';
-      ctx.fillText(`${rank1.points} PTS`, width / 2, podiumY + 185);
-      ctx.fillStyle = '#78350F';
-      ctx.font = 'bold 18px sans-serif';
-      ctx.fillText(`🥇 ${rank1.gold} Gold  🥈 ${rank1.silver} Silver`, width / 2, podiumY + 220);
-    }
+
+      const centerX = x + w / 2;
+      ctx.fillStyle = titleColor;
+      ctx.font = isCenter ? '900 24px sans-serif' : 'bold 20px sans-serif';
+      ctx.fillText(titleText, centerX, y + 42);
+
+      ctx.fillStyle = wingColor;
+      ctx.font = isCenter ? '900 46px sans-serif' : '900 36px sans-serif';
+      ctx.fillText(`WING ${wing.letter}`, centerX, y + (isCenter ? 105 : 95));
+
+      ctx.fillStyle = ptsColor;
+      ctx.font = isCenter ? 'bold 28px sans-serif' : 'bold 24px sans-serif';
+      ctx.fillText(`${wing.points} PTS`, centerX, y + (isCenter ? 155 : 138));
+
+      ctx.fillStyle = subColor;
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(`🥇 ${wing.gold} Gold  🥈 ${wing.silver} Silver`, centerX, y + (isCenter ? 192 : 172));
+    };
+
+    // 🥇 Rank 1 (Center)
+    drawPodiumCard(sortedStandings[0], width / 2 - 130, podiumY + 25, 260, 230, 1, true);
 
     // 🥈 Rank 2 (Left)
-    const rank2 = sortedStandings[1];
-    if (rank2) {
-      ctx.fillStyle = '#E2E8F0';
-      ctx.beginPath();
-      ctx.roundRect(85, podiumY + 60, 220, 195, 14);
-      ctx.fill();
-      ctx.fillStyle = '#475569';
-      ctx.font = 'bold 22px sans-serif';
-      ctx.fillText('🥈 2ND PLACE', 195, podiumY + 102);
-      ctx.font = '900 38px sans-serif';
-      ctx.fillText(`WING ${rank2.letter}`, 195, podiumY + 155);
-      ctx.font = 'bold 26px sans-serif';
-      ctx.fillText(`${rank2.points} PTS`, 195, podiumY + 198);
-      ctx.font = 'bold 16px sans-serif';
-      ctx.fillText(`🥇 ${rank2.gold}G  🥈 ${rank2.silver}S`, 195, podiumY + 230);
-    }
+    drawPodiumCard(sortedStandings[1], 85, podiumY + 55, 220, 200, 2, false);
 
     // 🥉 Rank 3 (Right)
-    const rank3 = sortedStandings[2];
-    if (rank3) {
-      ctx.fillStyle = '#FFEDD5';
-      ctx.beginPath();
-      ctx.roundRect(width - 305, podiumY + 60, 220, 195, 14);
-      ctx.fill();
-      ctx.fillStyle = '#9A3412';
-      ctx.font = 'bold 22px sans-serif';
-      ctx.fillText('🥉 3RD PLACE', width - 195, podiumY + 102);
-      ctx.font = '900 38px sans-serif';
-      ctx.fillText(`WING ${rank3.letter}`, width - 195, podiumY + 155);
-      ctx.font = 'bold 26px sans-serif';
-      ctx.fillText(`${rank3.points} PTS`, width - 195, podiumY + 198);
-      ctx.font = 'bold 16px sans-serif';
-      ctx.fillText(`🥇 ${rank3.gold}G  🥈 ${rank3.silver}S`, width - 195, podiumY + 230);
-    }
+    drawPodiumCard(sortedStandings[2], width - 305, podiumY + 55, 220, 200, 3, false);
 
     // Full Standings Table Header
     const tableY = 550;
@@ -308,22 +340,22 @@ export default function Leaderboard({ onShowToast }) {
 
       // Rank badge
       ctx.textAlign = 'left';
-      if (idx === 0) {
+      if (wing.rank === 1) {
         ctx.fillStyle = '#F59E0B';
         ctx.font = 'bold 24px sans-serif';
-        ctx.fillText('🥇 #1', 90, currentY + 36);
-      } else if (idx === 1) {
+        ctx.fillText(wing.isTied ? '🥇 #1 (T)' : '🥇 #1', 90, currentY + 36);
+      } else if (wing.rank === 2) {
         ctx.fillStyle = '#CBD5E1';
         ctx.font = 'bold 24px sans-serif';
-        ctx.fillText('🥈 #2', 90, currentY + 36);
-      } else if (idx === 2) {
+        ctx.fillText(wing.isTied ? '🥈 #2 (T)' : '🥈 #2', 90, currentY + 36);
+      } else if (wing.rank === 3) {
         ctx.fillStyle = '#F97316';
         ctx.font = 'bold 24px sans-serif';
-        ctx.fillText('🥉 #3', 90, currentY + 36);
+        ctx.fillText(wing.isTied ? '🥉 #3 (T)' : '🥉 #3', 90, currentY + 36);
       } else {
         ctx.fillStyle = '#64748B';
         ctx.font = 'bold 22px sans-serif';
-        ctx.fillText(`   #${idx + 1}`, 90, currentY + 36);
+        ctx.fillText(`   #${wing.rank}`, 90, currentY + 36);
       }
 
       // Wing Name
@@ -388,14 +420,18 @@ export default function Leaderboard({ onShowToast }) {
     let msg = `🏆 *TOPAZ PARK SCOT CHAMPIONSHIP 2026-27* 🏆\n`;
     msg += `_Official Society Wing Standings Bulletin_\n\n`;
 
-    sortedStandings.forEach((w, idx) => {
-      const medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : '🔹'));
-      msg += `${medal} *#${idx + 1} ${w.name}* — *${w.points} pts* (🥇 ${w.gold} Gold, 🥈 ${w.silver} Silver)\n`;
+    sortedStandings.forEach((w) => {
+      const medal = w.rank === 1 ? '🥇' : (w.rank === 2 ? '🥈' : (w.rank === 3 ? '🥉' : '🔹'));
+      const tiedTag = w.isTied ? ' (Tied)' : '';
+      msg += `${medal} *#${w.rank}${tiedTag} ${w.name}* — *${w.points} pts* (🥇 ${w.gold} Gold, 🥈 ${w.silver} Silver)\n`;
     });
 
     msg += `\n📊 *Total Season Points:* ${totalSeasonPoints} pts\n`;
     msg += `🎯 *Decided Events:* ${totalDeclaredPodiums}\n`;
-    if (leaderWing && leaderWing.points > 0) {
+    const tiedLeaders = sortedStandings.filter(w => w.rank === 1 && w.points > 0);
+    if (tiedLeaders.length > 1) {
+      msg += `👑 *Championship Co-Leaders (Tied):* ${tiedLeaders.map(w => w.name).join(', ')} (${tiedLeaders[0].points} pts each)\n`;
+    } else if (leaderWing && leaderWing.points > 0) {
       msg += `👑 *Championship Leader:* ${leaderWing.name} (${leaderWing.points} pts)\n`;
     }
     msg += `\n📲 *Track live scores & results:* https://emailvishalgore.github.io/SCOT/wing-champions/\n`;
@@ -481,8 +517,12 @@ export default function Leaderboard({ onShowToast }) {
         <div className="stat-card" style={{ borderLeft: '4px solid #F59E0B' }}>
           <div className="stat-info">
             <span className="stat-label">Season Leader</span>
-            <span className="stat-value" style={{ color: '#D97706', fontSize: '1.3rem' }}>
-              {totalSeasonPoints > 0 ? `${leaderWing?.name} (${leaderWing?.points} pts)` : 'No events scored'}
+            <span className="stat-value" style={{ color: '#D97706', fontSize: '1.15rem' }}>
+              {totalSeasonPoints > 0 ? (
+                sortedStandings.filter(w => w.rank === 1).length > 1
+                  ? `Wings ${sortedStandings.filter(w => w.rank === 1).map(w => w.letter).join(', ')} (${leaderWing?.points} pts - Tied)`
+                  : `${leaderWing?.name} (${leaderWing?.points} pts)`
+              ) : 'No events scored'}
             </span>
           </div>
           <div className="stat-icon-wrapper" style={{ background: '#FEF3C7', color: '#D97706' }}>
@@ -535,7 +575,9 @@ export default function Leaderboard({ onShowToast }) {
                   👑 TOPAZ PARK PODIUM
                 </span>
                 <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.4rem', fontWeight: 800, marginTop: '6px' }}>
-                  Championship Leaders
+                  {sortedStandings[0]?.isTied && sortedStandings[1]?.rank === 1
+                    ? 'Championship Co-Leaders (Tied for 1st)'
+                    : 'Championship Leaders'}
                 </h2>
               </div>
 
@@ -549,130 +591,166 @@ export default function Leaderboard({ onShowToast }) {
                 padding: '0 0.5rem' 
               }}>
                 
-                {/* 🥈 2ND PLACE (SILVER) */}
+                {/* 🥈 PODIUM LEFT */}
                 <div style={{ textAlign: 'center' }}>
-                  {sortedStandings[1] && (
-                    <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}>
-                      <div style={{ 
-                        width: '56px', 
-                        height: '56px', 
-                        borderRadius: '50%', 
-                        background: '#E2E8F0', 
-                        border: '3px solid #94A3B8', 
-                        margin: '0 auto 8px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        fontSize: '1.4rem', 
-                        fontWeight: 800, 
-                        color: '#475569' 
-                      }}>
-                        {sortedStandings[1].letter}
-                      </div>
-                      <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{sortedStandings[1].name}</div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>{sortedStandings[1].points} pts</div>
-                      <div style={{ 
-                        height: '110px', 
-                        background: 'linear-gradient(180deg, #CBD5E1 0%, #94A3B8 100%)', 
-                        borderRadius: '12px 12px 0 0', 
-                        marginTop: '10px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        color: '#FFFFFF', 
-                        fontWeight: 800, 
-                        fontSize: '1.3rem', 
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.08)' 
-                      }}>
-                        🥈 2nd
-                      </div>
-                    </motion.div>
-                  )}
+                  {sortedStandings[1] && (() => {
+                    const item = sortedStandings[1];
+                    const isRank1 = item.rank === 1;
+                    const isRank2 = item.rank === 2;
+                    const circleBg = isRank1 ? '#FEF08A' : (isRank2 ? '#E2E8F0' : '#FFEDD5');
+                    const circleBorder = isRank1 ? '#EAB308' : (isRank2 ? '#94A3B8' : '#F97316');
+                    const circleColor = isRank1 ? '#854D0E' : (isRank2 ? '#475569' : '#9A3412');
+                    const pedestalBg = isRank1 
+                      ? 'linear-gradient(180deg, #FCD34D 0%, #F59E0B 100%)' 
+                      : (isRank2 ? 'linear-gradient(180deg, #CBD5E1 0%, #94A3B8 100%)' : 'linear-gradient(180deg, #FED7AA 0%, #FB923C 100%)');
+                    const pedestalColor = isRank1 ? '#78350F' : (isRank2 ? '#FFFFFF' : '#7C2D12');
+                    const pedestalLabel = isRank1 
+                      ? (item.isTied ? '🥇 1st (Tied)' : '🥇 1st') 
+                      : (isRank2 ? (item.isTied ? '🥈 2nd (Tied)' : '🥈 2nd') : (item.isTied ? '🥉 3rd (Tied)' : '🥉 3rd'));
+
+                    return (
+                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}>
+                        <div style={{ 
+                          width: '56px', 
+                          height: '56px', 
+                          borderRadius: '50%', 
+                          background: circleBg, 
+                          border: `3px solid ${circleBorder}`, 
+                          margin: '0 auto 8px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          fontSize: '1.4rem', 
+                          fontWeight: 800, 
+                          color: circleColor 
+                        }}>
+                          {item.letter}
+                        </div>
+                        <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{item.name}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>{item.points} pts</div>
+                        <div style={{ 
+                          height: '110px', 
+                          background: pedestalBg, 
+                          borderRadius: '12px 12px 0 0', 
+                          marginTop: '10px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          color: pedestalColor, 
+                          fontWeight: 800, 
+                          fontSize: '1.15rem', 
+                          boxShadow: '0 4px 10px rgba(0,0,0,0.08)' 
+                        }}>
+                          {pedestalLabel}
+                        </div>
+                      </motion.div>
+                    );
+                  })()}
                 </div>
 
-                {/* 🥇 1ST PLACE (GOLD) */}
+                {/* 🥇 PODIUM CENTER */}
                 <div style={{ textAlign: 'center' }}>
-                  {sortedStandings[0] && (
-                    <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
-                      <div style={{ 
-                        width: '72px', 
-                        height: '72px', 
-                        borderRadius: '50%', 
-                        background: '#FEF08A', 
-                        border: '4px solid #EAB308', 
-                        margin: '0 auto 8px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        fontSize: '1.8rem', 
-                        fontWeight: 900, 
-                        color: '#854D0E',
-                        boxShadow: '0 0 20px rgba(234, 179, 8, 0.4)'
-                      }}>
-                        {sortedStandings[0].letter}
-                      </div>
-                      <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#854D0E' }}>👑 {sortedStandings[0].name}</div>
-                      <div style={{ fontSize: '0.9rem', color: '#B45309', fontWeight: 800 }}>{sortedStandings[0].points} pts • {sortedStandings[0].gold} 🥇</div>
-                      <div style={{ 
-                        height: '150px', 
-                        background: 'linear-gradient(180deg, #FCD34D 0%, #F59E0B 100%)', 
-                        borderRadius: '14px 14px 0 0', 
-                        marginTop: '10px', 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        color: '#78350F', 
-                        fontWeight: 900, 
-                        fontSize: '1.5rem', 
-                        boxShadow: '0 6px 16px rgba(245, 158, 11, 0.3)' 
-                      }}>
-                        <Trophy size={28} style={{ marginBottom: '4px' }} />
-                        1st
-                      </div>
-                    </motion.div>
-                  )}
+                  {sortedStandings[0] && (() => {
+                    const item = sortedStandings[0];
+                    return (
+                      <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
+                        <div style={{ 
+                          width: '72px', 
+                          height: '72px', 
+                          borderRadius: '50%', 
+                          background: '#FEF08A', 
+                          border: '4px solid #EAB308', 
+                          margin: '0 auto 8px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          fontSize: '1.8rem', 
+                          fontWeight: 900, 
+                          color: '#854D0E',
+                          boxShadow: '0 0 20px rgba(234, 179, 8, 0.4)'
+                        }}>
+                          {item.letter}
+                        </div>
+                        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#854D0E' }}>👑 {item.name}</div>
+                        <div style={{ fontSize: '0.9rem', color: '#B45309', fontWeight: 800 }}>{item.points} pts • {item.gold} 🥇</div>
+                        <div style={{ 
+                          height: '150px', 
+                          background: 'linear-gradient(180deg, #FCD34D 0%, #F59E0B 100%)', 
+                          borderRadius: '14px 14px 0 0', 
+                          marginTop: '10px', 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          color: '#78350F', 
+                          fontWeight: 900, 
+                          fontSize: '1.4rem', 
+                          boxShadow: '0 6px 16px rgba(245, 158, 11, 0.3)' 
+                        }}>
+                          <Trophy size={28} style={{ marginBottom: '4px' }} />
+                          {item.isTied ? '1st (Tied)' : '1st'}
+                        </div>
+                      </motion.div>
+                    );
+                  })()}
                 </div>
 
-                {/* 🥉 3RD PLACE (BRONZE) */}
+                {/* 🥉 PODIUM RIGHT */}
                 <div style={{ textAlign: 'center' }}>
-                  {sortedStandings[2] && (
-                    <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
-                      <div style={{ 
-                        width: '56px', 
-                        height: '56px', 
-                        borderRadius: '50%', 
-                        background: '#FFEDD5', 
-                        border: '3px solid #F97316', 
-                        margin: '0 auto 8px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        fontSize: '1.4rem', 
-                        fontWeight: 800, 
-                        color: '#9A3412' 
-                      }}>
-                        {sortedStandings[2].letter}
-                      </div>
-                      <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{sortedStandings[2].name}</div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>{sortedStandings[2].points} pts</div>
-                      <div style={{ 
-                        height: '90px', 
-                        background: 'linear-gradient(180deg, #FED7AA 0%, #FB923C 100%)', 
-                        borderRadius: '12px 12px 0 0', 
-                        marginTop: '10px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        color: '#7C2D12', 
-                        fontWeight: 800, 
-                        fontSize: '1.2rem', 
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.08)' 
-                      }}>
-                        🥉 3rd
-                      </div>
-                    </motion.div>
-                  )}
+                  {sortedStandings[2] && (() => {
+                    const item = sortedStandings[2];
+                    const isRank1 = item.rank === 1;
+                    const isRank2 = item.rank === 2;
+                    const isRank3 = item.rank === 3;
+                    const circleBg = isRank1 ? '#FEF08A' : (isRank2 ? '#E2E8F0' : '#FFEDD5');
+                    const circleBorder = isRank1 ? '#EAB308' : (isRank2 ? '#94A3B8' : '#F97316');
+                    const circleColor = isRank1 ? '#854D0E' : (isRank2 ? '#475569' : '#9A3412');
+                    const pedestalBg = isRank1 
+                      ? 'linear-gradient(180deg, #FCD34D 0%, #F59E0B 100%)' 
+                      : (isRank2 ? 'linear-gradient(180deg, #CBD5E1 0%, #94A3B8 100%)' : 'linear-gradient(180deg, #FED7AA 0%, #FB923C 100%)');
+                    const pedestalColor = isRank1 ? '#78350F' : (isRank2 ? '#FFFFFF' : '#7C2D12');
+                    const pedestalLabel = isRank1 
+                      ? (item.isTied ? '🥇 1st (Tied)' : '🥇 1st') 
+                      : (isRank2 ? (item.isTied ? '🥈 2nd (Tied)' : '🥈 2nd') : (item.isTied ? '🥉 3rd (Tied)' : '🥉 3rd'));
+
+                    return (
+                      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
+                        <div style={{ 
+                          width: '56px', 
+                          height: '56px', 
+                          borderRadius: '50%', 
+                          background: circleBg, 
+                          border: `3px solid ${circleBorder}`, 
+                          margin: '0 auto 8px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          fontSize: '1.4rem', 
+                          fontWeight: 800, 
+                          color: circleColor 
+                        }}>
+                          {item.letter}
+                        </div>
+                        <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{item.name}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>{item.points} pts</div>
+                        <div style={{ 
+                          height: '90px', 
+                          background: pedestalBg, 
+                          borderRadius: '12px 12px 0 0', 
+                          marginTop: '10px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          color: pedestalColor, 
+                          fontWeight: 800, 
+                          fontSize: '1.15rem', 
+                          boxShadow: '0 4px 10px rgba(0,0,0,0.08)' 
+                        }}>
+                          {pedestalLabel}
+                        </div>
+                      </motion.div>
+                    );
+                  })()}
                 </div>
 
               </div>
@@ -685,7 +763,7 @@ export default function Leaderboard({ onShowToast }) {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '70px' }}>Rank</th>
+                    <th style={{ width: '80px' }}>Rank</th>
                     <th>Wing Name</th>
                     <th style={{ textAlign: 'center' }}>Gold 🥇</th>
                     <th style={{ textAlign: 'center' }}>Silver 🥈</th>
@@ -695,10 +773,10 @@ export default function Leaderboard({ onShowToast }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedStandings.map((row, index) => {
+                  {sortedStandings.map((row) => {
                     const isUserWing = row.name === user.wing || row.wingId === user.wingId;
-                    const rankNum = totalSeasonPoints > 0 ? index + 1 : '-';
-                    const hasMedal = totalSeasonPoints > 0 && index < 3;
+                    const rankNum = totalSeasonPoints > 0 ? row.rank : '-';
+                    const hasMedal = totalSeasonPoints > 0 && row.rank <= 3;
                     const wingColor = WING_COLORS[row.letter] || { bg: '#F1F5F9', text: '#334155', border: '#E2E8F0' };
 
                     return (
@@ -708,15 +786,22 @@ export default function Leaderboard({ onShowToast }) {
                         onClick={() => setSelectedWingDrawer(row)}
                       >
                         <td>
-                          {hasMedal ? (
-                            <span className={`rank-badge ${index === 0 ? 'rank-1' : (index === 1 ? 'rank-2' : 'rank-3')}`}>
-                              {index + 1}
-                            </span>
-                          ) : (
-                            <span className="badge badge-slate" style={{ width: '28px', justifyContent: 'center' }}>
-                              {rankNum}
-                            </span>
-                          )}
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            {hasMedal ? (
+                              <span className={`rank-badge rank-${row.rank}`}>
+                                {row.rank}
+                              </span>
+                            ) : (
+                              <span className="badge badge-slate" style={{ width: '28px', justifyContent: 'center' }}>
+                                {rankNum}
+                              </span>
+                            )}
+                            {row.isTied && totalSeasonPoints > 0 && (
+                              <span className="badge badge-amber" style={{ fontSize: '0.62rem', padding: '1px 5px', lineHeight: 1.2 }}>
+                                Tied
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -928,7 +1013,14 @@ export default function Leaderboard({ onShowToast }) {
                     {selectedWingDrawer.letter}
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{selectedWingDrawer.name} Profile</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{selectedWingDrawer.name} Profile</h3>
+                      {selectedWingDrawer.rank && (
+                        <span className={`badge ${selectedWingDrawer.rank === 1 ? 'badge-amber' : 'badge-slate'}`} style={{ fontSize: '0.72rem', padding: '1px 6px' }}>
+                          Rank #{selectedWingDrawer.rank}{selectedWingDrawer.isTied ? ' (Tied)' : ''}
+                        </span>
+                      )}
+                    </div>
                     <span style={{ fontSize: '0.78rem', color: '#64748B' }}>
                       {selectedWingDrawer.points} Total Points • 🥇 {selectedWingDrawer.gold} Gold • 🥈 {selectedWingDrawer.silver} Silver
                     </span>

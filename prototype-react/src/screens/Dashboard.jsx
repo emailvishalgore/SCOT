@@ -15,12 +15,28 @@ export default function Dashboard({ onViewScreen }) {
   const assignedEvents = events.filter(e => canEditEvent(user, e));
   const nominationEvents = events.filter(e => canSubmitNominations(user, e));
 
-  // Calculate wing rank and points
-  const sortedLeaderboard = [...leaderboard].sort((a, b) => b.points - a.points);
+  // Calculate wing rank and points with tie-handling
+  const sortedLeaderboard = [...leaderboard].sort((a, b) => {
+    if ((b.points || 0) !== (a.points || 0)) return (b.points || 0) - (a.points || 0);
+    if ((b.gold || 0) !== (a.gold || 0)) return (b.gold || 0) - (a.gold || 0);
+    if ((b.silver || 0) !== (a.silver || 0)) return (b.silver || 0) - (a.silver || 0);
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  let curRank = 1;
+  for (let i = 0; i < sortedLeaderboard.length; i++) {
+    if (i > 0 && (sortedLeaderboard[i].points || 0) < (sortedLeaderboard[i - 1].points || 0)) {
+      curRank = i + 1;
+    }
+    sortedLeaderboard[i].rank = curRank;
+    sortedLeaderboard[i].isTied = (i > 0 && (sortedLeaderboard[i].points || 0) === (sortedLeaderboard[i - 1].points || 0)) ||
+                                  (i < sortedLeaderboard.length - 1 && (sortedLeaderboard[i].points || 0) === (sortedLeaderboard[i + 1].points || 0));
+  }
+
   const totalPtsAwarded = sortedLeaderboard.reduce((s, i) => s + (i.points || 0), 0);
-  const userWingIndex = sortedLeaderboard.findIndex(l => l.name === user.wing || l.wingId === user.wingId);
-  const rankDisplay = totalPtsAwarded > 0 && userWingIndex !== -1 ? `#${userWingIndex + 1}` : '-';
-  const wingPoints = leaderboard.find(l => l.name === user.wing || l.wingId === user.wingId)?.points || 0;
+  const userWingItem = sortedLeaderboard.find(l => l.name === user.wing || l.wingId === user.wingId);
+  const rankDisplay = totalPtsAwarded > 0 && userWingItem?.rank ? `#${userWingItem.rank}${userWingItem.isTied ? ' (Tied)' : ''}` : '-';
+  const wingPoints = userWingItem?.points || 0;
 
   const wingFlatText = user.wing && user.flat ? `${user.wing} (${user.flat})` : (user.wing || user.flat || '');
   const formattedDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -245,10 +261,10 @@ export default function Dashboard({ onViewScreen }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedLeaderboard.slice(0, 5).map((item, index) => {
+                  {sortedLeaderboard.slice(0, 5).map((item) => {
                     const isUserWing = item.name === user.wing || item.wingId === user.wingId;
-                    const rankBadgeClass = index === 0 ? 'rank-1' : (index === 1 ? 'rank-2' : (index === 2 ? 'rank-3' : 'badge-slate'));
-                    const rankNum = totalPtsAwarded > 0 ? index + 1 : '-';
+                    const rankBadgeClass = item.rank === 1 ? 'rank-1' : (item.rank === 2 ? 'rank-2' : (item.rank === 3 ? 'rank-3' : 'badge-slate'));
+                    const rankNum = totalPtsAwarded > 0 ? item.rank : '-';
 
                     return (
                       <tr key={item.wingId} style={isUserWing ? { backgroundColor: 'var(--color-primary-lighter)', fontWeight: 700 } : {}}>
@@ -258,8 +274,13 @@ export default function Dashboard({ onViewScreen }) {
                           </span>
                         </td>
                         <td>
-                          <strong style={{ color: 'var(--color-text)' }}>{item.name}</strong>
-                          {isUserWing && <span style={{ marginLeft: '4px', fontSize: '0.7rem' }} className="badge badge-violet">You</span>}
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <strong style={{ color: 'var(--color-text)' }}>{item.name}</strong>
+                            {item.isTied && totalPtsAwarded > 0 && (
+                              <span style={{ fontSize: '0.62rem', padding: '1px 5px', lineHeight: 1.2 }} className="badge badge-amber">Tied</span>
+                            )}
+                            {isUserWing && <span style={{ fontSize: '0.7rem' }} className="badge badge-violet">You</span>}
+                          </div>
                         </td>
                         <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--color-primary-dark)' }}>{item.points}</td>
                       </tr>

@@ -19,14 +19,29 @@ export default function AdminDashboard({ onViewScreen }) {
 
   const events = state.events || [];
   
-  // Calculate sorted standing points
-  const sortedStandings = [...(state.leaderboard || [])].sort((a, b) => (b.points || 0) - (a.points || 0));
+  // Calculate sorted standing points with tie handling
+  const sortedStandings = [...(state.leaderboard || [])].sort((a, b) => {
+    if ((b.points || 0) !== (a.points || 0)) return (b.points || 0) - (a.points || 0);
+    if ((b.gold || 0) !== (a.gold || 0)) return (b.gold || 0) - (a.gold || 0);
+    if ((b.silver || 0) !== (a.silver || 0)) return (b.silver || 0) - (a.silver || 0);
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  let curRank = 1;
+  for (let i = 0; i < sortedStandings.length; i++) {
+    if (i > 0 && (sortedStandings[i].points || 0) < (sortedStandings[i - 1].points || 0)) {
+      curRank = i + 1;
+    }
+    sortedStandings[i].rank = curRank;
+    sortedStandings[i].isTied = (i > 0 && (sortedStandings[i].points || 0) === (sortedStandings[i - 1].points || 0)) ||
+                                (i < sortedStandings.length - 1 && (sortedStandings[i].points || 0) === (sortedStandings[i + 1].points || 0));
+  }
 
   const handleWhatsAppShare = () => {
     let text = `*🏆 TOPAZ PARK WING CHAMPIONSHIP STANDINGS*\n`;
     text += `----------------------------------------\n`;
-    sortedStandings.forEach((row, index) => {
-      text += `*#${index + 1}* ${row.name} — *${row.points || 0} pts* (${row.wins || 0} wins)\n`;
+    sortedStandings.forEach((row) => {
+      text += `*#${row.rank}${row.isTied ? ' (Tied)' : ''}* ${row.name} — *${row.points || 0} pts* (${row.wins || 0} wins)\n`;
     });
     text += `----------------------------------------\n`;
     text += `_Shared from Topaz Park SCOT Platform_`;
@@ -44,8 +59,8 @@ export default function AdminDashboard({ onViewScreen }) {
 
   const handlePublishStandingsAnnouncement = () => {
     let standingsContent = `The Topaz Park Season 2026-27 championship standings have been updated by the committee. Here is the current wing-wise standings leaderboard:\n\n`;
-    sortedStandings.forEach((row, index) => {
-      standingsContent += `#${index + 1} — ${row.name}: ${row.points || 0} pts (${row.wins || 0} wins)\n`;
+    sortedStandings.forEach((row) => {
+      standingsContent += `#${row.rank}${row.isTied ? ' (Tied)' : ''} — ${row.name}: ${row.points || 0} pts (${row.wins || 0} wins)\n`;
     });
     standingsContent += `\nKeep participating and supporting your wing!`;
 
@@ -176,9 +191,12 @@ export default function AdminDashboard({ onViewScreen }) {
           <div key={item.wingId} style={{ background: 'var(--color-bg-alt)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ display: 'inline-flex', width: '22px', height: '22px', borderRadius: '50%', background: color, color: '#FFF', fontSize: '0.72rem', fontWeight: 800, alignItems: 'center', justifyContent: 'center' }}>
-                {idx + 1}
+                {item.rank || (idx + 1)}
               </span>
               <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>{item.name}</span>
+              {item.isTied && (
+                <span style={{ fontSize: '0.6rem', padding: '1px 4px', lineHeight: 1 }} className="badge badge-amber">T</span>
+              )}
             </div>
             <span style={{ fontSize: '0.85rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--color-primary)' }}>
               {item.points || 0} pts

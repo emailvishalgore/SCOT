@@ -1228,7 +1228,7 @@ export const StoreProvider = ({ children }) => {
       }
     });
 
-    return (baseLeaderboard || []).map(item => {
+    const updated = (baseLeaderboard || []).map(item => {
       const letter = item.letter || String(item.name || '').replace(/Wing\s*/i, '').trim().toUpperCase();
       const stats = wingStats[letter];
       if (stats) {
@@ -1245,6 +1245,25 @@ export const StoreProvider = ({ children }) => {
       }
       return { ...item, letter };
     });
+
+    const sorted = [...updated].sort((a, b) => {
+      if ((b.points || 0) !== (a.points || 0)) return (b.points || 0) - (a.points || 0);
+      if ((b.gold || 0) !== (a.gold || 0)) return (b.gold || 0) - (a.gold || 0);
+      if ((b.silver || 0) !== (a.silver || 0)) return (b.silver || 0) - (a.silver || 0);
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+    let currentRank = 1;
+    for (let i = 0; i < sorted.length; i++) {
+      if (i > 0 && (sorted[i].points || 0) < (sorted[i - 1].points || 0)) {
+        currentRank = i + 1;
+      }
+      sorted[i].rank = currentRank;
+      sorted[i].isTied = (i > 0 && (sorted[i].points || 0) === (sorted[i - 1].points || 0)) ||
+                         (i < sorted.length - 1 && (sorted[i].points || 0) === (sorted[i + 1].points || 0));
+    }
+
+    return sorted;
   };
 
   // Direct Event Results Declaration (Winner & Runner-up)
